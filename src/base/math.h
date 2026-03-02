@@ -143,7 +143,7 @@ struct mat4
 
   mat4 operator*(const mat4& other) const;
 
-  [[nodiscard]] inline constexpr f32* data()
+  [[nodiscard]] inline constexpr const f32* data() const
   {
     return &m_data[0].x;
   }

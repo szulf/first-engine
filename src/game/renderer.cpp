@@ -1,424 +1,13 @@
 #include "renderer.h"
 
 #include <algorithm>
-#include <fstream>
-#include <sstream>
 
-#include "base/enum_array.h"
 #include "game/assets.h"
 #include "os/gl_functions.h"
 
 // TODO: should be owned by the Renderer class,
 // but cant be bothered to work more on the renderer for now
-static RenderData render_data = {};
-
-static std::string_view shader_type_to_string(ShaderType type)
-{
-  switch (type)
-  {
-    case ShaderType::VERTEX:
-      return "Vertex";
-    case ShaderType::FRAGMENT:
-      return "Fragment";
-    case ShaderType::GEOMETRY:
-      return "Geometry";
-    default:
-      return "Invalid";
-  }
-}
-
-u32 shader_load_(const std::filesystem::path& path, ShaderType shader_type)
-{
-  std::ifstream file_stream{path};
-  if (file_stream.fail())
-  {
-    throw std::runtime_error{
-      std::format("[SHADER] File reading error. (path: {}).", path.string())
-    };
-  }
-  std::stringstream ss{};
-  ss << file_stream.rdbuf();
-  auto file = ss.str();
-
-  u32 shader;
-  switch (shader_type)
-  {
-    case ShaderType::VERTEX:
-    {
-      shader = glCreateShader(GL_VERTEX_SHADER);
-    }
-    break;
-    case ShaderType::FRAGMENT:
-    {
-      shader = glCreateShader(GL_FRAGMENT_SHADER);
-    }
-    break;
-    case ShaderType::GEOMETRY:
-    {
-      shader = glCreateShader(GL_GEOMETRY_SHADER);
-    }
-    break;
-  }
-
-  auto shader_src = file.c_str();
-  glShaderSource(shader, 1, &shader_src, nullptr);
-  glCompileShader(shader);
-  GLint compiled;
-  glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
-  if (compiled != GL_TRUE)
-  {
-    GLsizei log_length = 0;
-    GLchar message[1024];
-    glGetShaderInfoLog(shader, 1024, &log_length, message);
-    throw std::runtime_error{std::format(
-      "Shader compilation({}) failed with a message:\n{}",
-      shader_type_to_string(shader_type),
-      message
-    )};
-  }
-
-  return shader;
-}
-
-u32 shader_link_(u32 vertex_shader, u32 fragment_shader, std::optional<u32> geometry_shader)
-{
-  GLuint program = glCreateProgram();
-  glAttachShader(program, vertex_shader);
-  glAttachShader(program, fragment_shader);
-  if (geometry_shader)
-  {
-    glAttachShader(program, *geometry_shader);
-  }
-  glLinkProgram(program);
-
-  glDeleteShader(vertex_shader);
-  glDeleteShader(fragment_shader);
-  if (geometry_shader)
-  {
-    glDeleteShader(*geometry_shader);
-  }
-
-  GLint program_linked;
-  glGetProgramiv(program, GL_LINK_STATUS, &program_linked);
-  if (program_linked != GL_TRUE)
-  {
-    GLsizei log_length = 0;
-    GLchar message[1024];
-    glGetProgramInfoLog(program, 1024, &log_length, message);
-    throw std::runtime_error{std::format("Failed to link shaders with message:\n{}", message)};
-  }
-  return program;
-}
-
-struct ShaderDescription
-{
-  const char* vertex{};
-  const char* fragment{};
-  const char* geometry{};
-};
-
-u32 shader_create_(const ShaderDescription& desc)
-{
-  auto vertex_shader = shader_load_(desc.vertex, ShaderType::VERTEX);
-  auto fragment_shader = shader_load_(desc.fragment, ShaderType::FRAGMENT);
-
-  if (desc.geometry)
-  {
-    auto geometry_shader = shader_load_(desc.geometry, ShaderType::GEOMETRY);
-    auto shader = shader_link_(vertex_shader, fragment_shader, geometry_shader);
-    return shader;
-  }
-
-  auto shader = shader_link_(vertex_shader, fragment_shader, std::nullopt);
-  return shader;
-}
-
-constexpr static EnumArray<ShaderHandle, ShaderDescription> shader_descriptions = []()
-{
-  EnumArray<ShaderHandle, ShaderDescription> out{};
-  out[ShaderHandle::DEFAULT] = {
-    .vertex = "shaders/shader.vert",
-    .fragment = "shaders/default.frag",
-  };
-  out[ShaderHandle::LIGHTING] = {
-    .vertex = "shaders/shader.vert",
-    .fragment = "shaders/lighting.frag",
-  };
-  out[ShaderHandle::SHADOW_DEPTH] = {
-    .vertex = "shaders/shadow_depth.vert",
-    .fragment = "shaders/shadow_depth.frag",
-    .geometry = "shaders/shadow_depth.geom",
-  };
-  return out;
-}();
-
-Shader::Shader(ShaderHandle handle)
-{
-  auto& desc = shader_descriptions[handle];
-  auto shader = shader_create_(desc);
-  m_id = shader;
-
-  auto index = glGetUniformBlockIndex(m_id, "Camera");
-  if (index != GL_INVALID_INDEX)
-  {
-    glUniformBlockBinding(m_id, index, UBO_INDEX_CAMERA);
-  }
-  index = glGetUniformBlockIndex(m_id, "Lights");
-  if (index != GL_INVALID_INDEX)
-  {
-    glUniformBlockBinding(m_id, index, UBO_INDEX_LIGHTS);
-  }
-}
-
-Shader::Shader(Shader&& other)
-{
-  m_id = other.m_id;
-  other.m_id = 0;
-}
-
-Shader& Shader::operator=(Shader&& other)
-{
-  if (this == &other)
-  {
-    return *this;
-  }
-  if (m_id != 0)
-  {
-    glDeleteProgram(m_id);
-  }
-  m_id = other.m_id;
-  other.m_id = 0;
-  return *this;
-}
-
-Shader::~Shader()
-{
-  glDeleteProgram(m_id);
-}
-
-static GLint gl_wrapping_option_(TextureWrappingOption option)
-{
-  switch (option)
-  {
-    case TextureWrappingOption::REPEAT:
-      return GL_REPEAT;
-    case TextureWrappingOption::MIRRORED_REPEAT:
-      return GL_MIRRORED_REPEAT;
-    case TextureWrappingOption::CLAMP_TO_EDGE:
-      return GL_CLAMP_TO_EDGE;
-    case TextureWrappingOption::CLAMP_TO_BORDER:
-      return GL_CLAMP_TO_BORDER;
-  }
-}
-
-static GLint gl_filtering_option_(TextureFilteringOption option)
-{
-  switch (option)
-  {
-    case TextureFilteringOption::LINEAR:
-      return GL_LINEAR;
-    case TextureFilteringOption::NEAREST:
-      return GL_NEAREST;
-  }
-}
-
-TextureGPU::TextureGPU(TextureHandle handle)
-{
-  auto& texture = AssetManager::instance().textures.get(handle);
-
-  glGenTextures(1, &m_id);
-  glBindTexture(GL_TEXTURE_2D, m_id);
-
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, gl_wrapping_option_(texture.wrap_s));
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, gl_wrapping_option_(texture.wrap_t));
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filtering_option_(texture.min_filter));
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filtering_option_(texture.mag_filter));
-
-  glTexImage2D(
-    GL_TEXTURE_2D,
-    0,
-    GL_RGBA8,
-    (GLsizei) texture.image.width(),
-    (GLsizei) texture.image.height(),
-    0,
-    GL_RGBA,
-    GL_UNSIGNED_BYTE,
-    texture.image.data()
-  );
-  glGenerateMipmap(GL_TEXTURE_2D);
-}
-
-TextureGPU::TextureGPU(TextureGPU&& other)
-{
-  m_id = other.m_id;
-  other.m_id = 0;
-}
-
-TextureGPU& TextureGPU::operator=(TextureGPU&& other)
-{
-  if (this == &other)
-  {
-    return *this;
-  }
-  if (m_id != 0)
-  {
-    glDeleteTextures(1, &m_id);
-  }
-  m_id = other.m_id;
-  other.m_id = 0;
-  return *this;
-}
-
-TextureGPU::~TextureGPU()
-{
-  glDeleteTextures(1, &m_id);
-}
-
-MeshGPU::MeshGPU(MeshHandle handle)
-{
-  auto& mesh_data = AssetManager::instance().meshes.get(handle);
-  auto& vertices = mesh_data.vertices;
-  auto& indices = mesh_data.indices;
-
-  glGenVertexArrays(1, &m_vao);
-  glBindVertexArray(m_vao);
-
-  glGenBuffers(1, &m_vbo);
-  glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
-  glBufferData(
-    GL_ARRAY_BUFFER,
-    (GLsizei) (vertices.size() * sizeof(Vertex)),
-    vertices.data(),
-    GL_STATIC_DRAW
-  );
-  glGenBuffers(1, &m_ebo);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
-  glBufferData(
-    GL_ELEMENT_ARRAY_BUFFER,
-    (GLsizei) (indices.size() * sizeof(u32)),
-    indices.data(),
-    GL_STATIC_DRAW
-  );
-
-  {
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*) offsetof(Vertex, pos));
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(
-      1,
-      3,
-      GL_FLOAT,
-      GL_FALSE,
-      sizeof(Vertex),
-      (void*) offsetof(Vertex, normal)
-    );
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*) offsetof(Vertex, uv));
-    glEnableVertexAttribArray(2);
-  }
-
-  {
-    glBindBuffer(GL_ARRAY_BUFFER, render_data.instance_data_buffer);
-    // NOTE: model matrix
-    glVertexAttribPointer(
-      3,
-      4,
-      GL_FLOAT,
-      GL_FALSE,
-      sizeof(InstanceData),
-      (void*) offsetof(InstanceData, transform)
-    );
-    glEnableVertexAttribArray(3);
-    glVertexAttribPointer(
-      4,
-      4,
-      GL_FLOAT,
-      GL_FALSE,
-      sizeof(InstanceData),
-      (void*) (offsetof(InstanceData, transform) + sizeof(vec4))
-    );
-    glEnableVertexAttribArray(4);
-    glVertexAttribPointer(
-      5,
-      4,
-      GL_FLOAT,
-      GL_FALSE,
-      sizeof(InstanceData),
-      (void*) (offsetof(InstanceData, transform) + 2 * sizeof(vec4))
-    );
-    glEnableVertexAttribArray(5);
-    glVertexAttribPointer(
-      6,
-      4,
-      GL_FLOAT,
-      GL_FALSE,
-      sizeof(InstanceData),
-      (void*) (offsetof(InstanceData, transform) + 3 * sizeof(vec4))
-    );
-    glEnableVertexAttribArray(6);
-    // NOTE: entity tint
-    glVertexAttribPointer(
-      7,
-      4,
-      GL_FLOAT,
-      GL_FALSE,
-      sizeof(InstanceData),
-      (void*) offsetof(InstanceData, tint)
-    );
-    glEnableVertexAttribArray(7);
-
-    glVertexAttribDivisor(3, 1);
-    glVertexAttribDivisor(4, 1);
-    glVertexAttribDivisor(5, 1);
-    glVertexAttribDivisor(6, 1);
-    glVertexAttribDivisor(7, 1);
-  }
-
-  glBindVertexArray(0);
-}
-
-MeshGPU::MeshGPU(MeshGPU&& other)
-{
-  m_vbo = other.m_vbo;
-  other.m_vbo = 0;
-  m_ebo = other.m_ebo;
-  other.m_ebo = 0;
-  m_vao = other.m_vao;
-  other.m_vao = 0;
-}
-
-MeshGPU& MeshGPU::operator=(MeshGPU&& other)
-{
-  if (this == &other)
-  {
-    return *this;
-  }
-  if (m_vbo)
-  {
-    glDeleteBuffers(1, &m_vbo);
-  }
-  m_vbo = other.m_vbo;
-  other.m_vbo = 0;
-  if (m_ebo)
-  {
-    glDeleteBuffers(1, &m_ebo);
-  }
-  m_ebo = other.m_ebo;
-  other.m_ebo = 0;
-  if (m_vao)
-  {
-    glDeleteVertexArrays(1, &m_vao);
-  }
-  m_vao = other.m_vao;
-  other.m_vao = 0;
-  return *this;
-}
-
-MeshGPU::~MeshGPU()
-{
-  glDeleteBuffers(1, &m_vbo);
-  glDeleteBuffers(1, &m_ebo);
-  glDeleteVertexArrays(1, &m_vao);
-}
+RenderData render_data = {};
 
 mat4 get_transform_(const vec3& pos, const vec3& size, f32 rotation)
 {
@@ -513,7 +102,6 @@ static GLenum get_primitive_(RenderPrimitive primitive)
 void RenderPass::finish()
 {
   auto& assets = AssetManager::instance();
-  auto& assets_gpu = AssetGPUManager::instance();
   std::ranges::sort(
     m_items,
     [](const RenderItem& a, const RenderItem& b) -> bool
@@ -575,15 +163,6 @@ void RenderPass::finish()
     const auto& submesh = mesh.submeshes[item.submesh_idx];
     const auto& material = assets.materials.get(item.material);
 
-    if (!assets_gpu.meshes.contains(item.mesh))
-    {
-      assets_gpu.meshes.create(item.mesh);
-    }
-    if (!assets_gpu.textures.contains(material.diffuse_map))
-    {
-      assets_gpu.textures.create(material.diffuse_map);
-    }
-
     usize batch_idx = item_idx + 1;
     while ((batch_idx < m_items.size() && batch_idx - item_idx < InstanceData::MAX) &&
            item.mesh == m_items[batch_idx].mesh &&
@@ -601,49 +180,33 @@ void RenderPass::finish()
       instance_data.push_back(m_items[i].instance_data);
     }
 
-    ShaderHandle handle =
-      m_type == RenderPassType::POINT_SHADOW_MAP ? ShaderHandle::SHADOW_DEPTH : material.shader;
-    if (!assets_gpu.shaders.contains(handle))
+    ShaderHandle handle = render_data.default_shader;
+    if (m_type == RenderPassType::POINT_SHADOW_MAP)
     {
-      assets_gpu.shaders.create(handle);
+      handle = render_data.shadow_depth_shader;
     }
-    const auto& shader = assets_gpu.shaders.get(handle);
+    else if (material.specular_exponent != 0.0f)
+    {
+      handle = render_data.lighting_shader;
+    }
+    auto& shader = assets.shaders.get(handle);
 
-    glUseProgram(shader.handle());
+    shader.use();
 
     {
-      glUniform3f(
-        glGetUniformLocation(shader.handle(), "material.ambient"),
-        m_ambient_color.x,
-        m_ambient_color.y,
-        m_ambient_color.z
-      );
-      glUniform3f(
-        glGetUniformLocation(shader.handle(), "material.diffuse"),
-        material.diffuse_color.x,
-        material.diffuse_color.y,
-        material.diffuse_color.z
-      );
-      glUniform3f(
-        glGetUniformLocation(shader.handle(), "material.specular"),
-        material.specular_color.x,
-        material.specular_color.y,
-        material.specular_color.z
-      );
-      glUniform1f(
-        glGetUniformLocation(shader.handle(), "material.specular_exponent"),
-        material.specular_exponent
-      );
-      const auto& diffuse_map = assets_gpu.textures.get(material.diffuse_map);
-      glActiveTexture(GL_TEXTURE0);
-      glBindTexture(GL_TEXTURE_2D, diffuse_map.handle());
-      glUniform1i(glGetUniformLocation(shader.handle(), "material.diffuse_map"), 0);
+      shader.set("material.ambient", m_ambient_color);
+      shader.set("material.diffuse", material.diffuse_color);
+      shader.set("material.specular", material.specular_color);
+      shader.set("material.specular_exponent", material.specular_exponent);
+      const auto& diffuse_map = assets.textures.get(material.diffuse_map);
+      diffuse_map.activate(0);
+      shader.set("material.diffuse_map", 0);
     }
 
     if (m_type == RenderPassType::POINT_SHADOW_MAP)
     {
       mat4 light_proj_mat = m_camera.projection();
-      mat4 transforms[6] = {
+      std::array<mat4, 6> transforms = {
         light_proj_mat * mat4::look_at(
                            m_camera.pos(),
                            m_camera.pos() + vec3{1.0f, 0.0f, 0.0f},
@@ -676,12 +239,12 @@ void RenderPass::finish()
                          ),
       };
 
-      glUniformMatrix4fv(
-        glGetUniformLocation(shader.handle(), "shadow_matrices"),
-        (GLsizei) 6,
-        false,
-        transforms[0].data()
-      );
+      shader.set("shadow_matrices[0]", transforms[0]);
+      shader.set("shadow_matrices[1]", transforms[1]);
+      shader.set("shadow_matrices[2]", transforms[2]);
+      shader.set("shadow_matrices[3]", transforms[3]);
+      shader.set("shadow_matrices[4]", transforms[4]);
+      shader.set("shadow_matrices[5]", transforms[5]);
     }
 
     if (m_shadow_map_camera)
@@ -689,12 +252,9 @@ void RenderPass::finish()
       glActiveTexture(GL_TEXTURE1);
 
       glBindTexture(GL_TEXTURE_CUBE_MAP, render_data.shadow_cubemap);
-      glUniform1i(glGetUniformLocation(shader.handle(), "shadow_map"), 1);
+      shader.set("shadow_map", 1);
 
-      glUniform1f(
-        glGetUniformLocation(shader.handle(), "shadow_map_camera_far_plane"),
-        m_shadow_map_camera->far_plane()
-      );
+      shader.set("shadow_map_camera_far_plane", m_shadow_map_camera->far_plane());
     }
 
     glBindBuffer(GL_ARRAY_BUFFER, render_data.instance_data_buffer);
@@ -705,7 +265,7 @@ void RenderPass::finish()
       instance_data.data()
     );
 
-    glBindVertexArray(assets_gpu.meshes.get(item.mesh).handle());
+    mesh.use();
 
     glDrawElementsInstanced(
       get_primitive_(mesh.primitive),
@@ -795,28 +355,37 @@ static u32 line_indices[] = {0, 1};
 
 void static_model_init_(
   StaticModel static_model,
-  ShaderHandle shader,
   std::vector<Vertex>&& vertices,
   std::vector<u32>&& indices,
   RenderPrimitive primitive
 )
 {
   Material material = {};
-  material.shader = shader;
   material.diffuse_color = {1.0f, 1.0f, 1.0f};
   auto material_handle = AssetManager::instance().materials.set(std::move(material));
-  MeshData mesh = {};
-  mesh.vertices = std::move(vertices);
-  mesh.indices = std::move(indices);
-  mesh.primitive = primitive;
-  mesh.submeshes.push_back({0, mesh.indices.size(), material_handle});
-  auto mesh_handle = AssetManager::instance().meshes.set(std::move(mesh));
+  auto mesh_handle = AssetManager::instance().meshes.set(
+    Mesh{
+      std::move(vertices),
+      std::move(indices),
+      {{0, indices.size(), material_handle}},
+      primitive,
+      render_data
+    }
+  );
   ASSERT(mesh_handle == static_model, "failed to initalize a static model");
 }
 
 Renderer::Renderer()
 {
   glEnable(GL_DEPTH_TEST);
+
+  render_data.default_shader =
+    AssetManager::instance().shaders.set({"shaders/shader.vert", "shaders/default.frag"});
+  render_data.lighting_shader =
+    AssetManager::instance().shaders.set({"shaders/shader.vert", "shaders/lighting.frag"});
+  render_data.shadow_depth_shader = AssetManager::instance().shaders.set(
+    {"shaders/shadow_depth.vert", "shaders/shadow_depth.frag", "shaders/shadow_depth.geom"}
+  );
 
   glGenBuffers(1, &render_data.camera_ubo);
   glBindBuffer(GL_UNIFORM_BUFFER, render_data.camera_ubo);
@@ -864,21 +433,18 @@ Renderer::Renderer()
 
   static_model_init_(
     StaticModel_CUBE_WIRES,
-    ShaderHandle::DEFAULT,
     std::vector<Vertex>{cube_vertices, cube_vertices + ARRAY_SIZE(cube_vertices)},
     std::vector<u32>{cube_wires_indices, cube_wires_indices + ARRAY_SIZE(cube_wires_indices)},
     RenderPrimitive::LINE_STRIP
   );
   static_model_init_(
     StaticModel_RING,
-    ShaderHandle::DEFAULT,
     std::vector<Vertex>{ring_vertices, ring_vertices + ARRAY_SIZE(ring_vertices)},
     std::vector<u32>{ring_indices, ring_indices + ARRAY_SIZE(ring_indices)},
     RenderPrimitive::LINE_STRIP
   );
   static_model_init_(
     StaticModel_LINE,
-    ShaderHandle::DEFAULT,
     std::vector<Vertex>{line_vertices, line_vertices + ARRAY_SIZE(line_vertices)},
     std::vector<u32>{line_indices, line_indices + ARRAY_SIZE(line_indices)},
     RenderPrimitive::LINE_STRIP

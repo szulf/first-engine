@@ -54,3 +54,9 @@
 
 1. write a spsc queue
 2. do the audio(multithreaded)
+
+## 5. BIG TODO: basic ui
+
+1. renderer refactor
+   - combine cpu and gpu assets
+   - asset loading through the AssetManager (AssetManager loads cpu part, constructors do gpu part)

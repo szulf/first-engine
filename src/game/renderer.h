@@ -1,7 +1,6 @@
 #ifndef RENDERER_H
 #define RENDERER_H
 
-#include <unordered_map>
 #include <vector>
 
 #include "base/base.h"
@@ -9,71 +8,8 @@
 #include "assets.h"
 #include "camera.h"
 
-enum class ShaderType
-{
-  VERTEX,
-  FRAGMENT,
-  GEOMETRY,
-};
-
-class Shader
-{
-public:
-  Shader(ShaderHandle handle);
-  Shader(const Shader&) = delete;
-  Shader& operator=(const Shader&) = delete;
-  Shader(Shader&& other);
-  Shader& operator=(Shader&& other);
-  ~Shader();
-
-  [[nodiscard]] inline constexpr u32 handle() const noexcept
-  {
-    return m_id;
-  }
-
-private:
-  u32 m_id{};
-};
-
-class TextureGPU
-{
-public:
-  TextureGPU(TextureHandle handle);
-  TextureGPU(const TextureGPU&) = delete;
-  TextureGPU& operator=(const TextureGPU&) = delete;
-  TextureGPU(TextureGPU&& other);
-  TextureGPU& operator=(TextureGPU&& other);
-  ~TextureGPU();
-
-  [[nodiscard]] inline constexpr u32 handle() const noexcept
-  {
-    return m_id;
-  }
-
-private:
-  u32 m_id{};
-};
-
-class MeshGPU
-{
-public:
-  MeshGPU(MeshHandle handle);
-  MeshGPU(const MeshGPU&) = delete;
-  MeshGPU& operator=(const MeshGPU&) = delete;
-  MeshGPU(MeshGPU&& other);
-  MeshGPU& operator=(MeshGPU&& other);
-  ~MeshGPU();
-
-  [[nodiscard]] inline constexpr u32 handle() const noexcept
-  {
-    return m_vao;
-  }
-
-private:
-  u32 m_vao{};
-  u32 m_vbo{};
-  u32 m_ebo{};
-};
+// TODO: remove this
+extern RenderData render_data;
 
 // TODO: i dont like this
 struct RenderData
@@ -87,41 +23,10 @@ struct RenderData
   u32 shadow_framebuffer_id{};
 
   u32 instance_data_buffer{};
-};
 
-template <typename Handle, typename T>
-struct AssetTypeGPU
-{
-  void create(Handle handle)
-  {
-    m_data.insert_or_assign(handle, T{handle});
-  }
-
-  const T& get(Handle handle) const
-  {
-    return m_data.at(handle);
-  }
-
-  bool contains(Handle handle) const
-  {
-    return m_data.contains(handle);
-  }
-
-private:
-  std::unordered_map<Handle, T> m_data;
-};
-
-struct AssetGPUManager
-{
-  static AssetGPUManager& instance()
-  {
-    static AssetGPUManager a{};
-    return a;
-  }
-
-  AssetTypeGPU<ShaderHandle, Shader> shaders;
-  AssetTypeGPU<TextureHandle, TextureGPU> textures;
-  AssetTypeGPU<MeshHandle, MeshGPU> meshes;
+  ShaderHandle default_shader;
+  ShaderHandle lighting_shader;
+  ShaderHandle shadow_depth_shader;
 };
 
 struct InstanceData
