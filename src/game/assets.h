@@ -107,15 +107,6 @@ enum class RenderPrimitive
   LINE_STRIP,
 };
 
-enum StaticModel
-{
-  StaticModel_CUBE_WIRES,
-  StaticModel_RING,
-  StaticModel_LINE,
-
-  StaticModel_COUNT,
-};
-
 // TODO: change this
 struct RenderData;
 using MeshHandle = usize;
@@ -184,6 +175,7 @@ public:
   MeshHandle load_obj(const std::filesystem::path& path);
   TextureHandle load_texture(const std::filesystem::path& path);
   void clear();
+  void bind_render_data(RenderData& render_data);
 
   inline constexpr static AssetManager& instance()
   {
@@ -204,6 +196,8 @@ public:
   AssetType<ShaderHandle, Shader> shaders;
 
 private:
+  RenderData* m_render_data;
+
   std::unordered_map<std::string, TextureHandle> m_texture_handles;
   std::unordered_map<std::string, MaterialHandle> m_material_handles;
 };

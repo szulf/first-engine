@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <print>
 
@@ -25,22 +26,14 @@ using f64 = double;
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
-#ifdef MODE_DEBUG
-#  if defined(COMPILER_CLANG) || defined(COMPILER_GCC)
-#    define breakpoint() __builtin_trap()
-#  else
-#    error Unknown compiler, Supported compilers: clang, gcc
-#  endif
-#endif
-
 #define ASSERT(expr, ...)                                                                          \
   do                                                                                               \
   {                                                                                                \
     if (!(expr))                                                                                   \
     {                                                                                              \
-      std::print("assertion failed on expression: %s\nwith message: ", #expr);                     \
+      std::println("assertion failed on expression: '{}' with message:", #expr);                   \
       std::println(__VA_ARGS__);                                                                   \
-      breakpoint();                                                                                \
+      std::abort();                                                                                \
     }                                                                                              \
   }                                                                                                \
   while (false)

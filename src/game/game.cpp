@@ -84,7 +84,6 @@ Game::Game(os::Window& window, os::Audio& audio)
     .viewport = m_window.dimensions(),
   }}, m_debug_camera{m_gameplay_camera}, m_main_camera{&m_gameplay_camera}
 {
-  m_sound_system.master_volume = 0.1f;
   m_sound_system.play_looped(SoundHandle::TEST_MUSIC, 0.1f);
 }
 

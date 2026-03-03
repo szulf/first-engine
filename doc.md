@@ -3,8 +3,6 @@
 ## SMALL TODOS: (ordered)
 
 1. renderer refactor
-   - store static models and shaders in RenderData
-   - store RenderData on the Renderer
    - make asset handles their own distinct type
    - get rid of the weird AssetType thingies
    - get rid of render pass types

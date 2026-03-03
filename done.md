@@ -60,3 +60,5 @@
 1. renderer refactor
    - combine cpu and gpu assets
    - asset loading through the AssetManager (AssetManager loads cpu part, constructors do gpu part)
+   - store static models and shaders in RenderData
+   - store RenderData on the Renderer

@@ -600,6 +600,7 @@ static void obj_parse_vertex(OBJContext& ctx, parser::Pos& pos)
 
 MeshHandle AssetManager::load_obj(const std::filesystem::path& path)
 {
+  ASSERT(m_render_data, "Need to bind render data, before loading meshes.");
   OBJContext ctx{};
   std::ifstream file{path};
   ASSERT(!file.fail(), "File reading error. (path: {}).", path.string());
@@ -672,7 +673,7 @@ MeshHandle AssetManager::load_obj(const std::filesystem::path& path)
       std::move(ctx.indices),
       std::move(ctx.submeshes),
       RenderPrimitive::TRIANGLES,
-      render_data
+      *m_render_data
     }
   );
 }
@@ -696,4 +697,9 @@ void AssetManager::clear()
 
   m_texture_handles.clear();
   m_material_handles.clear();
+}
+
+void AssetManager::bind_render_data(RenderData& render_data)
+{
+  m_render_data = &render_data;
 }

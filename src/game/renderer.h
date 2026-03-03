@@ -8,9 +8,6 @@
 #include "assets.h"
 #include "camera.h"
 
-// TODO: remove this
-extern RenderData render_data;
-
 // TODO: i dont like this
 struct RenderData
 {
@@ -27,6 +24,10 @@ struct RenderData
   ShaderHandle default_shader;
   ShaderHandle lighting_shader;
   ShaderHandle shadow_depth_shader;
+
+  MeshHandle cube_wires;
+  MeshHandle ring;
+  MeshHandle line;
 };
 
 struct InstanceData
@@ -83,13 +84,19 @@ public:
   void finish();
 
 private:
-  inline constexpr RenderPass(RenderPassType type, const Camera& camera, const vec3& ambient_color)
-    : m_type{type}, m_camera{camera}, m_ambient_color{ambient_color}
+  inline constexpr RenderPass(
+    RenderData& render_data,
+    RenderPassType type,
+    const Camera& camera,
+    const vec3& ambient_color
+  )
+    : m_render_data{render_data}, m_type{type}, m_camera{camera}, m_ambient_color{ambient_color}
   {
   }
 
 private:
   // TODO: i dont like have a pass 'type'
+  RenderData& m_render_data;
   RenderPassType m_type{};
   const Camera& m_camera;
   std::vector<RenderItem> m_items{};
@@ -107,6 +114,9 @@ public:
 
   RenderPass
   begin_pass(RenderPassType type, const Camera& camera, const vec3& ambient_color = {1, 1, 1});
+
+private:
+  RenderData m_render_data;
 };
 
 enum UBO_Index
