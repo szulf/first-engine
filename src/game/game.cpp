@@ -85,6 +85,11 @@ Game::Game(os::Window& window, os::Audio& audio)
   }}, m_debug_camera{m_gameplay_camera}, m_main_camera{&m_gameplay_camera}
 {
   m_sound_system.play_looped(SoundHandle::TEST_MUSIC, 0.1f);
+  shadow_map = AssetManager::instance().set(Texture{TextureType::CUBEMAP, SHADOW_MAP_DIMENSIONS});
+  shadow_depth_shader = AssetManager::instance().set(
+    Shader{"shaders/shadow_depth.vert", "shaders/shadow_depth.frag", "shaders/shadow_depth.geom"}
+  );
+  m_renderer.create_framebuffer(shadow_map);
 }
 
 void Game::update_tick(f32 dt)
@@ -337,10 +342,33 @@ void Game::render()
        .fov = std::numbers::pi_v<f32> * 0.5f,
        .near_plane = 0.1f,
        .far_plane = 25.0f,
-       .viewport = RenderData::SHADOW_CUBEMAP_DIMENSIONS}
+       .viewport = SHADOW_MAP_DIMENSIONS}
+    };
+    auto& c = shadow_map_camera;
+    mat4 light_proj_mat = c.projection();
+    std::array<mat4, 6> transforms = {
+      light_proj_mat * look_at(c.pos(), c.pos() + vec3{1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
+      light_proj_mat * look_at(c.pos(), c.pos() + vec3{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
+      light_proj_mat * look_at(c.pos(), c.pos() + vec3{0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}),
+      light_proj_mat * look_at(c.pos(), c.pos() + vec3{0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}),
+      light_proj_mat * look_at(c.pos(), c.pos() + vec3{0.0f, 0.0f, 1.0f}, {0.0f, -1.0f, 0.0f}),
+      light_proj_mat * look_at(c.pos(), c.pos() + vec3{0.0f, 0.0f, -1.0f}, {0.0f, -1.0f, 0.0f}),
     };
 
-    auto pass = m_renderer.begin_pass(RenderPassType::POINT_SHADOW_MAP, shadow_map_camera);
+    auto pass = m_renderer.begin_pass(shadow_map_camera);
+    pass.render_to(shadow_map);
+    pass.override_shader(shadow_depth_shader);
+    pass.on_shader_bind(
+      [&transforms](Shader& shader)
+      {
+        shader.set("shadow_matrices[0]", transforms[0]);
+        shader.set("shadow_matrices[1]", transforms[1]);
+        shader.set("shadow_matrices[2]", transforms[2]);
+        shader.set("shadow_matrices[3]", transforms[3]);
+        shader.set("shadow_matrices[4]", transforms[4]);
+        shader.set("shadow_matrices[5]", transforms[5]);
+      }
+    );
 
     for (usize i = 0; i < m_scene.entities.size(); ++i)
     {
@@ -356,9 +384,15 @@ void Game::render()
 
   // NOTE: main draw pass
   {
-    auto pass =
-      m_renderer.begin_pass(RenderPassType::FORWARD, *m_main_camera, m_scene.ambient_color);
-    pass.use_shadow_map(shadow_map_camera);
+    auto pass = m_renderer.begin_pass(*m_main_camera, m_scene.ambient_color);
+    pass.on_shader_bind(
+      [&](Shader& shader)
+      {
+        AssetManager::instance().get(shadow_map).activate(1);
+        shader.set("shadow_map", 1);
+        shader.set("shadow_map_camera_far_plane", shadow_map_camera.far_plane());
+      }
+    );
 
     for (usize i = 0; i < m_scene.entities.size(); ++i)
     {

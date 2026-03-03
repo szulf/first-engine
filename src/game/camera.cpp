@@ -25,7 +25,7 @@ void Camera::move(const vec3& acceleration, const vec3& direction, f32 dt)
 
 mat4 Camera::look_at() const
 {
-  return mat4::look_at(m_rendered_pos, m_rendered_pos + m_front, m_up);
+  return ::look_at(m_rendered_pos, m_rendered_pos + m_front, m_up);
 }
 
 mat4 Camera::projection() const
@@ -34,7 +34,7 @@ mat4 Camera::projection() const
   {
     case CameraType::PERSPECTIVE:
     {
-      return mat4::perspective(
+      return perspective(
         m_fov,
         (f32) m_viewport.x / (f32) m_viewport.y,
         m_near_plane,
@@ -49,7 +49,7 @@ mat4 Camera::projection() const
       static constexpr f32 half_height = world_height * 0.5f;
       f32 half_width = half_height * ((f32) m_viewport.x / (f32) m_viewport.y);
 
-      return mat4::orthographic(
+      return orthographic(
         half_width,
         -half_width,
         half_height,

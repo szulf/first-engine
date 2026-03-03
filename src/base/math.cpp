@@ -222,7 +222,23 @@ vec3 cross(const vec3& va, const vec3& vb)
   };
 }
 
-mat4 mat4::perspective(f32 fov, f32 aspect, f32 near, f32 far, bool vertical)
+mat4 mat4::operator*(const mat4& other) const
+{
+  mat4 out = {};
+  for (usize i = 0; i < 4; ++i)
+  {
+    for (usize j = 0; j < 4; ++j)
+    {
+      for (usize k = 0; k < 4; ++k)
+      {
+        out.data[j][i] += data[k][i] * other.data[j][k];
+      }
+    }
+  }
+  return out;
+}
+
+mat4 perspective(f32 fov, f32 aspect, f32 near, f32 far, bool vertical)
 {
   f32 tangent = std::tan(fov / 2.0f);
   f32 top;
@@ -238,30 +254,30 @@ mat4 mat4::perspective(f32 fov, f32 aspect, f32 near, f32 far, bool vertical)
     top = right / aspect;
   }
   mat4 out = {};
-  out.m_data[0][0] = near / right;
-  out.m_data[0][0] = near / right;
-  out.m_data[1][1] = near / top;
-  out.m_data[2][2] = -(far + near) / (far - near);
-  out.m_data[2][3] = -1;
-  out.m_data[3][2] = -(2 * near * far) / (far - near);
-  out.m_data[3][3] = 0;
+  out.data[0][0] = near / right;
+  out.data[0][0] = near / right;
+  out.data[1][1] = near / top;
+  out.data[2][2] = -(far + near) / (far - near);
+  out.data[2][3] = -1;
+  out.data[3][2] = -(2 * near * far) / (far - near);
+  out.data[3][3] = 0;
   return out;
 }
 
-mat4 mat4::orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far)
+mat4 orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far)
 {
   mat4 out = {};
-  out.m_data[0][0] = 2 / (right - left);
-  out.m_data[1][1] = 2 / (top - bottom);
-  out.m_data[2][2] = -2 / (far - near);
-  out.m_data[3][0] = -(right + left) / (right - left);
-  out.m_data[3][1] = -(top + bottom) / (top - bottom);
-  out.m_data[3][2] = -(far + near) / (far - near);
-  out.m_data[3][3] = 1;
+  out.data[0][0] = 2 / (right - left);
+  out.data[1][1] = 2 / (top - bottom);
+  out.data[2][2] = -2 / (far - near);
+  out.data[3][0] = -(right + left) / (right - left);
+  out.data[3][1] = -(top + bottom) / (top - bottom);
+  out.data[3][2] = -(far + near) / (far - near);
+  out.data[3][3] = 1;
   return out;
 }
 
-mat4 mat4::look_at(const vec3& pos, const vec3& target, const vec3& up)
+mat4 look_at(const vec3& pos, const vec3& target, const vec3& up)
 {
   vec3 f = (target - pos).normalize();
   vec3 s = cross(f, up).normalize();
@@ -269,82 +285,66 @@ mat4 mat4::look_at(const vec3& pos, const vec3& target, const vec3& up)
 
   mat4 out = {};
 
-  out.m_data[0][0] = s.x;
-  out.m_data[1][0] = s.y;
-  out.m_data[2][0] = s.z;
-  out.m_data[3][0] = -dot(s, pos);
+  out.data[0][0] = s.x;
+  out.data[1][0] = s.y;
+  out.data[2][0] = s.z;
+  out.data[3][0] = -dot(s, pos);
 
-  out.m_data[0][1] = u.x;
-  out.m_data[1][1] = u.y;
-  out.m_data[2][1] = u.z;
-  out.m_data[3][1] = -dot(u, pos);
+  out.data[0][1] = u.x;
+  out.data[1][1] = u.y;
+  out.data[2][1] = u.z;
+  out.data[3][1] = -dot(u, pos);
 
-  out.m_data[0][2] = -f.x;
-  out.m_data[1][2] = -f.y;
-  out.m_data[2][2] = -f.z;
-  out.m_data[3][2] = dot(f, pos);
+  out.data[0][2] = -f.x;
+  out.data[1][2] = -f.y;
+  out.data[2][2] = -f.z;
+  out.data[3][2] = dot(f, pos);
 
-  out.m_data[0][3] = 0.0f;
-  out.m_data[1][3] = 0.0f;
-  out.m_data[2][3] = 0.0f;
-  out.m_data[3][3] = 1.0f;
+  out.data[0][3] = 0.0f;
+  out.data[1][3] = 0.0f;
+  out.data[2][3] = 0.0f;
+  out.data[3][3] = 1.0f;
 
-  return out;
-}
-
-mat4 mat4::operator*(const mat4& other) const
-{
-  mat4 out = {};
-  for (usize i = 0; i < 4; ++i)
-  {
-    for (usize j = 0; j < 4; ++j)
-    {
-      for (usize k = 0; k < 4; ++k)
-      {
-        out.m_data[j][i] += m_data[k][i] * other.m_data[j][k];
-      }
-    }
-  }
   return out;
 }
 
 mat4 scale(mat4 mat, f32 scale)
 {
-  mat.m_data[0][0] *= scale;
-  mat.m_data[1][0] *= scale;
-  mat.m_data[2][0] *= scale;
+  mat.data[0][0] *= scale;
+  mat.data[1][0] *= scale;
+  mat.data[2][0] *= scale;
 
-  mat.m_data[0][1] *= scale;
-  mat.m_data[1][1] *= scale;
-  mat.m_data[2][1] *= scale;
+  mat.data[0][1] *= scale;
+  mat.data[1][1] *= scale;
+  mat.data[2][1] *= scale;
 
-  mat.m_data[0][2] *= scale;
-  mat.m_data[1][2] *= scale;
-  mat.m_data[2][2] *= scale;
+  mat.data[0][2] *= scale;
+  mat.data[1][2] *= scale;
+  mat.data[2][2] *= scale;
   return mat;
 }
 
 mat4 scale(mat4 mat, const vec3& scale)
 {
-  mat.m_data[0][0] *= scale.x;
-  mat.m_data[0][1] *= scale.x;
-  mat.m_data[0][2] *= scale.x;
+  mat.data[0][0] *= scale.x;
+  mat.data[0][1] *= scale.x;
+  mat.data[0][2] *= scale.x;
 
-  mat.m_data[1][0] *= scale.y;
-  mat.m_data[1][1] *= scale.y;
-  mat.m_data[1][2] *= scale.y;
+  mat.data[1][0] *= scale.y;
+  mat.data[1][1] *= scale.y;
+  mat.data[1][2] *= scale.y;
 
-  mat.m_data[2][0] *= scale.z;
-  mat.m_data[2][1] *= scale.z;
-  mat.m_data[2][2] *= scale.z;
+  mat.data[2][0] *= scale.z;
+  mat.data[2][1] *= scale.z;
+  mat.data[2][2] *= scale.z;
   return mat;
 }
 
 mat4 translate(mat4 mat, const vec3& position)
 {
-  mat.m_data[3][0] = position.x;
-  mat.m_data[3][1] = position.y;
-  mat.m_data[3][2] = position.z;
+  mat.data[3][0] = position.x;
+  mat.data[3][1] = position.y;
+  mat.data[3][2] = position.z;
   return mat;
 }
 
@@ -355,17 +355,17 @@ mat4 rotate(mat4 mat, f32 rad, const vec3& axis)
   f32 t = 1.0f - c;
   vec3 u = axis.normalize();
 
-  mat.m_data[0][0] = (u.x * u.x) * t + c;
-  mat.m_data[0][1] = (u.x * u.y) * t - u.z * s;
-  mat.m_data[0][2] = (u.x * u.z) * t + u.y * s;
+  mat.data[0][0] = (u.x * u.x) * t + c;
+  mat.data[0][1] = (u.x * u.y) * t - u.z * s;
+  mat.data[0][2] = (u.x * u.z) * t + u.y * s;
 
-  mat.m_data[1][0] = (u.x * u.y) * t + u.z * s;
-  mat.m_data[1][1] = (u.y * u.y) * t + c;
-  mat.m_data[1][2] = (u.y * u.z) * t - u.x * s;
+  mat.data[1][0] = (u.x * u.y) * t + u.z * s;
+  mat.data[1][1] = (u.y * u.y) * t + c;
+  mat.data[1][2] = (u.y * u.z) * t - u.x * s;
 
-  mat.m_data[2][0] = (u.x * u.z) * t - u.y * s;
-  mat.m_data[2][1] = (u.y * u.z) * t + u.x * s;
-  mat.m_data[2][2] = (u.z * u.z) * t + c;
+  mat.data[2][0] = (u.x * u.z) * t - u.y * s;
+  mat.data[2][1] = (u.y * u.z) * t + u.x * s;
+  mat.data[2][2] = (u.z * u.z) * t + c;
   return mat;
 }
 

@@ -2,8 +2,8 @@
 
 ## SMALL TODOS: (ordered)
 
-1. renderer refactor
-   - get rid of render pass types
+2. 2D texture rendering
+3. widget thingy
 
 ---
 

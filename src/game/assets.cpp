@@ -1,11 +1,13 @@
 #include "assets.h"
 
+#include <GL/glcorearb.h>
 #include <filesystem>
 #include <fstream>
 #include <string>
 
 #include "os/gl_functions.h"
 
+#include "os/os.h"
 #include "parser.h"
 #include "renderer.h"
 
@@ -191,13 +193,28 @@ void Shader::set(std::string_view name, const vec3& value)
 
 void Shader::set(std::string_view name, const mat4& value)
 {
-  glUniformMatrix4fv(glGetUniformLocation(m_id, name.data()), 1, false, value.data());
+  glUniformMatrix4fv(glGetUniformLocation(m_id, name.data()), 1, false, value.data[0].data());
 }
 
-Texture2D::Texture2D(const Image& image)
+Texture::Texture(TextureType type, const uvec2& dimensions) : m_type{type}
 {
   constructor_helper(
-    image,
+    nullptr,
+    dimensions,
+    WrapOption::CLAMP_TO_EDGE,
+    WrapOption::CLAMP_TO_EDGE,
+    WrapOption::CLAMP_TO_EDGE,
+    FilterOption::NEAREST,
+    FilterOption::NEAREST
+  );
+}
+
+Texture::Texture(const Image& image) : m_type{TextureType::FLAT}
+{
+  constructor_helper(
+    image.data(),
+    image.dimensions(),
+    WrapOption::REPEAT,
     WrapOption::REPEAT,
     WrapOption::REPEAT,
     FilterOption::LINEAR,
@@ -205,44 +222,66 @@ Texture2D::Texture2D(const Image& image)
   );
 }
 
-Texture2D::Texture2D(
+Texture::Texture(
   const Image& image,
   WrapOption wrap_s,
   WrapOption wrap_t,
   FilterOption min_filter,
   FilterOption mag_filter
 )
+  : m_type{TextureType::FLAT}
 {
-  constructor_helper(image, wrap_s, wrap_t, min_filter, mag_filter);
+  constructor_helper(
+    image.data(),
+    image.dimensions(),
+    wrap_s,
+    wrap_t,
+    WrapOption::REPEAT,
+    min_filter,
+    mag_filter
+  );
 }
 
-Texture2D::Texture2D(Texture2D&& other)
+Texture::Texture(Texture&& other) : m_type{other.m_type}, m_id{other.m_id}
 {
-  m_id = other.m_id;
   other.m_id = 0;
 }
 
-Texture2D& Texture2D::operator=(Texture2D&& other)
+Texture& Texture::operator=(Texture&& other)
 {
   if (this == &other)
   {
     return *this;
   }
+  m_type = other.m_type;
   glDeleteTextures(1, &m_id);
   m_id = other.m_id;
   other.m_id = 0;
   return *this;
 }
 
-Texture2D::~Texture2D()
+Texture::~Texture()
 {
   glDeleteTextures(1, &m_id);
 }
 
-void Texture2D::activate(u32 slot) const
+static GLenum gl_texture_type(TextureType type)
+{
+  switch (type)
+  {
+    case TextureType::FLAT:
+      return GL_TEXTURE_2D;
+    case TextureType::CUBEMAP:
+      return GL_TEXTURE_CUBE_MAP;
+  }
+  ASSERT(false, "Invalid texture type.");
+  return (GLenum) -1;
+}
+
+void Texture::activate(u32 slot) const
 {
   glActiveTexture(GL_TEXTURE0 + slot);
-  glBindTexture(GL_TEXTURE_2D, m_id);
+  glBindTexture(gl_texture_type(m_type), m_id);
 }
 
 static GLint gl_wrap_option(WrapOption option)
@@ -271,34 +310,63 @@ static GLint gl_filter_option(FilterOption option)
   }
 }
 
-void Texture2D::constructor_helper(
-  const Image& image,
+void Texture::constructor_helper(
+  void* data,
+  const uvec2& dimensions,
   WrapOption wrap_s,
   WrapOption wrap_t,
+  WrapOption wrap_r,
   FilterOption min_filter,
   FilterOption mag_filter
 )
 {
+  auto gl_type = gl_texture_type(m_type);
   glGenTextures(1, &m_id);
-  glBindTexture(GL_TEXTURE_2D, m_id);
+  glBindTexture(gl_type, m_id);
 
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, gl_wrap_option(wrap_s));
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, gl_wrap_option(wrap_t));
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, gl_filter_option(min_filter));
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, gl_filter_option(mag_filter));
+  glTexParameteri(gl_type, GL_TEXTURE_WRAP_S, gl_wrap_option(wrap_s));
+  glTexParameteri(gl_type, GL_TEXTURE_WRAP_T, gl_wrap_option(wrap_t));
+  glTexParameteri(gl_type, GL_TEXTURE_WRAP_R, gl_wrap_option(wrap_r));
+  glTexParameteri(gl_type, GL_TEXTURE_MIN_FILTER, gl_filter_option(min_filter));
+  glTexParameteri(gl_type, GL_TEXTURE_MAG_FILTER, gl_filter_option(mag_filter));
 
-  glTexImage2D(
-    GL_TEXTURE_2D,
-    0,
-    GL_RGBA8,
-    (GLsizei) image.width(),
-    (GLsizei) image.height(),
-    0,
-    GL_RGBA,
-    GL_UNSIGNED_BYTE,
-    image.data()
-  );
-  glGenerateMipmap(GL_TEXTURE_2D);
+  switch (m_type)
+  {
+    case TextureType::FLAT:
+    {
+      glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGBA8,
+        (GLsizei) dimensions.x,
+        (GLsizei) dimensions.y,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        data
+      );
+      glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    break;
+    case TextureType::CUBEMAP:
+    {
+      for (u32 i = 0; i < 6; ++i)
+      {
+        glTexImage2D(
+          GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+          0,
+          GL_DEPTH_COMPONENT,
+          (GLsizei) dimensions.x,
+          (GLsizei) dimensions.y,
+          0,
+          GL_DEPTH_COMPONENT,
+          GL_FLOAT,
+          data
+        );
+      }
+    }
+    break;
+  }
 }
 
 Mesh::Mesh(
@@ -678,7 +746,7 @@ MeshHandle AssetManager::load_obj(const std::filesystem::path& path)
   );
 }
 
-Texture2DHandle AssetManager::load_texture(const std::filesystem::path& path)
+TextureHandle AssetManager::load_texture(const std::filesystem::path& path)
 {
   if (m_texture_handles.contains(path.string()))
   {

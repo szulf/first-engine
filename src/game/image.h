@@ -28,6 +28,11 @@ struct Image
     return m_dimensions.y;
   }
 
+  [[nodiscard]] constexpr inline const uvec2& dimensions() const
+  {
+    return m_dimensions;
+  }
+
   [[nodiscard]] constexpr inline void* data() const
   {
     return m_data;

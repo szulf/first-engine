@@ -2,42 +2,37 @@
 #define RENDERER_H
 
 #include <vector>
+#include <functional>
 
 #include "base/base.h"
 
 #include "assets.h"
 #include "camera.h"
 
-// TODO: i dont like this
 struct RenderData
 {
   u32 camera_ubo{};
   u32 lights_ubo{};
-
-  static constexpr uvec2 SHADOW_CUBEMAP_DIMENSIONS = {1024, 1024};
-  // TODO: this should go through the TextureGPU class, but it doesnt handle cubemaps yet
-  u32 shadow_cubemap{};
-  u32 shadow_framebuffer_id{};
-
   u32 instance_data_buffer{};
 
   ShaderHandle default_shader;
   ShaderHandle lighting_shader;
-  ShaderHandle shadow_depth_shader;
 
   MeshHandle cube_wires;
   MeshHandle ring;
   MeshHandle line;
+
+  std::unordered_map<TextureHandle, u32> framebuffers;
 };
 
+static constexpr usize MAX_INSTANCES = 10000;
 struct InstanceData
 {
-  static constexpr usize MAX = 10000;
   mat4 transform;
   vec3 tint;
 };
 
-struct RenderItem
+struct RenderCmd
 {
   MaterialHandle material;
   MeshHandle mesh;
@@ -55,15 +50,18 @@ struct Light
   static constexpr f32 QUADRATIC = 0.2f;
 };
 
-enum class RenderPassType
-{
-  FORWARD,
-  POINT_SHADOW_MAP,
-};
-
 class RenderPass
 {
+  using OnShaderBindCallback = std::function<void(Shader& shader)>;
+
 public:
+  void render_to(TextureHandle texture);
+  void override_shader(ShaderHandle shader);
+  void on_shader_bind(OnShaderBindCallback&& on_bind);
+  // TODO: when overriding shaders i should probably only bind it once
+  // before iterating over all render commands
+  void finish();
+
   void draw_mesh(
     MeshHandle handle,
     const vec3& pos,
@@ -77,32 +75,36 @@ public:
   // NOTE: supports rendering only a single point light since that is what i need for the game,
   // would not be too hard to implement more lights (will implement directional light later)
   void set_light(const vec3& pos, const vec3& color);
-  // TODO: i feel like this method should take more arguments,
-  // probably will fix itself when i will implement the directional light shadow map
-  void use_shadow_map(const Camera& shadow_map_camera);
-
-  void finish();
 
 private:
   inline constexpr RenderPass(
     RenderData& render_data,
-    RenderPassType type,
     const Camera& camera,
     const vec3& ambient_color
   )
-    : m_render_data{render_data}, m_type{type}, m_camera{camera}, m_ambient_color{ambient_color}
+    : m_render_data{render_data}, m_camera{camera}, m_ambient_color{ambient_color}
   {
   }
 
 private:
-  // TODO: i dont like have a pass 'type'
+  using Flags = u32;
+  static constexpr Flags OVERRIDED_FRAMEBUFFER = 1 << 0;
+  static constexpr Flags OVERRIDED_SHADER = 1 << 1;
+  static constexpr Flags USES_SHADOW_MAP = 1 << 2;
+
+  Flags m_flags{};
+
   RenderData& m_render_data;
-  RenderPassType m_type{};
+  std::vector<RenderCmd> m_cmds{};
   const Camera& m_camera;
-  std::vector<RenderItem> m_items{};
+  OnShaderBindCallback m_on_shader_bind{};
+
   Light m_light{};
   vec3 m_ambient_color{};
-  const Camera* m_shadow_map_camera{};
+
+  u32 m_framebuffer{};
+
+  ShaderHandle m_overidded_shader{};
 
   friend class Renderer;
 };
@@ -112,8 +114,9 @@ class Renderer
 public:
   Renderer();
 
-  RenderPass
-  begin_pass(RenderPassType type, const Camera& camera, const vec3& ambient_color = {1, 1, 1});
+  void create_framebuffer(TextureHandle texture);
+
+  RenderPass begin_pass(const Camera& camera, const vec3& ambient_color = {1, 1, 1});
 
 private:
   RenderData m_render_data;

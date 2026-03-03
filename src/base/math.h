@@ -131,31 +131,20 @@ struct mat4
 {
   mat4() {}
   mat4(f32 v)
-    : m_data{
+    : data{
         {{v, 0, 0, 0}, {0, v, 0, 0}, {0, 0, v, 0}, {0, 0, 0, v}}
   }
   {
   }
 
-  static mat4 perspective(f32 fov, f32 aspect, f32 near, f32 far, bool vertical);
-  static mat4 orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far);
-  static mat4 look_at(const vec3& pos, const vec3& target, const vec3& up);
-
   mat4 operator*(const mat4& other) const;
 
-  [[nodiscard]] inline constexpr const f32* data() const
-  {
-    return &m_data[0].x;
-  }
-
-private:
-  std::array<vec4, 4> m_data{};
-
-  friend mat4 scale(mat4 mat, f32 scale);
-  friend mat4 scale(mat4 mat, const vec3& scale);
-  friend mat4 translate(mat4 mat, const vec3& position);
-  friend mat4 rotate(mat4 mat, f32 rad, const vec3& axis);
+  std::array<std::array<f32, 4>, 4> data{};
 };
+
+mat4 perspective(f32 fov, f32 aspect, f32 near, f32 far, bool vertical);
+mat4 orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far);
+mat4 look_at(const vec3& pos, const vec3& target, const vec3& up);
 
 [[nodiscard]] mat4 scale(mat4 mat, f32 scale);
 [[nodiscard]] mat4 scale(mat4 mat, const vec3& scale);

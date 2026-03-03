@@ -51,9 +51,10 @@ private:
 private:
   os::Window& m_window;
 
-  // NOTE: loading static models depends on the renderer constructor being called
-  // before the scene constructor
   Renderer m_renderer{};
+  static constexpr uvec2 SHADOW_MAP_DIMENSIONS = {1024, 1024};
+  TextureHandle shadow_map;
+  ShaderHandle shadow_depth_shader;
 
   SoundSystem m_sound_system;
 

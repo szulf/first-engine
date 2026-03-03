@@ -41,6 +41,8 @@ struct ShaderHandle
   usize id;
 };
 
+// TODO: combine Texture2D and TextureCubemap??
+
 enum class WrapOption
 {
   REPEAT,
@@ -55,48 +57,79 @@ enum class FilterOption
   NEAREST,
 };
 
-class Texture2D
+enum class TextureType
+{
+  // NOTE: would love to name this 2D but cant
+  FLAT,
+  CUBEMAP,
+};
+
+// NOTE: currently supports:
+// - u8 rgba 2d textures
+// - f32 depth component cubemap textures
+class Texture
 {
 public:
-  Texture2D(const Image& image);
-  Texture2D(
+  Texture(TextureType type, const uvec2& dimensions);
+  Texture(const Image& image);
+  Texture(
     const Image& image,
     WrapOption wrap_s,
     WrapOption wrap_t,
     FilterOption min_filter,
     FilterOption mag_filter
   );
-  Texture2D(const Texture2D&) = delete;
-  Texture2D& operator=(const Texture2D&) = delete;
-  Texture2D(Texture2D&& other);
-  Texture2D& operator=(Texture2D&& other);
-  ~Texture2D();
+  Texture(const Texture&) = delete;
+  Texture& operator=(const Texture&) = delete;
+  Texture(Texture&& other);
+  Texture& operator=(Texture&& other);
+  ~Texture();
 
   void activate(u32 slot) const;
 
+  [[nodiscard]] inline constexpr u32 handle() const
+  {
+    return m_id;
+  }
+
 private:
   void constructor_helper(
-    const Image& image,
+    void* data,
+    const uvec2& dimensions,
     WrapOption wrap_s,
     WrapOption wrap_t,
+    WrapOption wrap_r,
     FilterOption min_filter,
     FilterOption mag_filter
   );
 
 private:
+  TextureType m_type;
   u32 m_id;
 };
-struct Texture2DHandle
+struct TextureHandle
 {
+  inline constexpr bool operator==(const TextureHandle& other) const
+  {
+    return id == other.id;
+  }
+
   usize id;
 };
-
+template <>
+struct std::hash<TextureHandle>
+{
+  std::size_t operator()(const TextureHandle& h) const noexcept
+  {
+    return h.id;
+  }
+};
 struct Material
 {
   vec3 diffuse_color;
   vec3 specular_color;
   f32 specular_exponent;
-  Texture2DHandle diffuse_map;
+  TextureHandle diffuse_map;
 };
 struct MaterialHandle
 {
@@ -156,7 +189,7 @@ class AssetManager
 {
 public:
   MeshHandle load_obj(const std::filesystem::path& path);
-  Texture2DHandle load_texture(const std::filesystem::path& path);
+  TextureHandle load_texture(const std::filesystem::path& path);
   void clear();
   void bind_render_data(RenderData& render_data);
 
@@ -166,7 +199,7 @@ public:
     return a;
   }
 
-  inline constexpr Texture2DHandle set(Texture2D&& texture)
+  inline constexpr TextureHandle set(Texture&& texture)
   {
     m_textures.emplace_back(std::move(texture));
     return {.id = m_textures.size() - 1};
@@ -187,7 +220,7 @@ public:
     return {.id = m_shaders.size() - 1};
   }
 
-  inline constexpr Texture2D& get(Texture2DHandle handle)
+  inline constexpr Texture& get(TextureHandle handle)
   {
     return m_textures[handle.id];
   }
@@ -213,11 +246,11 @@ private:
 private:
   RenderData* m_render_data;
 
-  std::vector<Texture2D> m_textures;
+  std::vector<Texture> m_textures;
   std::vector<Material> m_materials;
   std::vector<Mesh> m_meshes;
   std::vector<Shader> m_shaders;
 
-  std::unordered_map<std::string, Texture2DHandle> m_texture_handles;
+  std::unordered_map<std::string, TextureHandle> m_texture_handles;
   std::unordered_map<std::string, MaterialHandle> m_material_handles;
 };
