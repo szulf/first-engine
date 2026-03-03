@@ -62,3 +62,5 @@
    - asset loading through the AssetManager (AssetManager loads cpu part, constructors do gpu part)
    - store static models and shaders in RenderData
    - store RenderData on the Renderer
+   - make asset handles their own distinct type
+   - get rid of the weird AssetType thingies

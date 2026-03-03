@@ -17,7 +17,7 @@ mat4 get_transform_(const vec3& pos, const vec3& size, f32 rotation)
 void RenderPass::draw_mesh(MeshHandle handle, const vec3& pos, f32 rotation, const vec3& tint)
 {
   auto transform = get_transform_(pos, {1.0f, 1.0f, 1.0f}, rotation);
-  auto& mesh = AssetManager::instance().meshes.get(handle);
+  auto& mesh = AssetManager::instance().get(handle);
   for (usize i = 0; i < mesh.submeshes.size(); ++i)
   {
     RenderItem item = {};
@@ -36,8 +36,7 @@ void RenderPass::draw_cube_wires(const vec3& pos, const vec3& size, const vec3& 
   RenderItem item = {};
   item.mesh = m_render_data.cube_wires;
   item.submesh_idx = 0;
-  item.material =
-    AssetManager::instance().meshes.get(m_render_data.cube_wires).submeshes[0].material;
+  item.material = AssetManager::instance().get(m_render_data.cube_wires).submeshes[0].material;
   item.instance_data.transform = transform;
   item.instance_data.tint = color;
   m_items.push_back(item);
@@ -50,7 +49,7 @@ void RenderPass::draw_ring(const vec3& pos, f32 radius, const vec3& color)
   RenderItem item = {};
   item.mesh = m_render_data.ring;
   item.submesh_idx = 0;
-  item.material = AssetManager::instance().meshes.get(m_render_data.ring).submeshes[0].material;
+  item.material = AssetManager::instance().get(m_render_data.ring).submeshes[0].material;
   item.instance_data.transform = transform;
   item.instance_data.tint = color;
   m_items.push_back(item);
@@ -62,7 +61,7 @@ void RenderPass::draw_line(const vec3& pos, f32 length, f32 rotation, const vec3
   RenderItem item = {};
   item.mesh = m_render_data.line;
   item.submesh_idx = 0;
-  item.material = AssetManager::instance().meshes.get(m_render_data.line).submeshes[0].material;
+  item.material = AssetManager::instance().get(m_render_data.line).submeshes[0].material;
   item.instance_data.transform = transform;
   item.instance_data.tint = color;
   m_items.push_back(item);
@@ -103,13 +102,13 @@ void RenderPass::finish()
     m_items,
     [](const RenderItem& a, const RenderItem& b) -> bool
     {
-      if (a.material != b.material)
+      if (a.material.id != b.material.id)
       {
-        return a.material > b.material;
+        return a.material.id > b.material.id;
       }
-      if (a.mesh != b.mesh)
+      if (a.mesh.id != b.mesh.id)
       {
-        return a.mesh > b.mesh;
+        return a.mesh.id > b.mesh.id;
       }
       return a.submesh_idx > b.submesh_idx;
     }
@@ -156,15 +155,15 @@ void RenderPass::finish()
   for (usize item_idx = 0; item_idx < m_items.size();)
   {
     const auto& item = m_items[item_idx];
-    const auto& mesh = assets.meshes.get(item.mesh);
+    const auto& mesh = assets.get(item.mesh);
     const auto& submesh = mesh.submeshes[item.submesh_idx];
-    const auto& material = assets.materials.get(item.material);
+    const auto& material = assets.get(item.material);
 
     usize batch_idx = item_idx + 1;
     while ((batch_idx < m_items.size() && batch_idx - item_idx < InstanceData::MAX) &&
-           item.mesh == m_items[batch_idx].mesh &&
+           item.mesh.id == m_items[batch_idx].mesh.id &&
            item.submesh_idx == m_items[batch_idx].submesh_idx &&
-           item.material == m_items[batch_idx].material)
+           item.material.id == m_items[batch_idx].material.id)
     {
       ++batch_idx;
     }
@@ -186,7 +185,7 @@ void RenderPass::finish()
     {
       handle = m_render_data.lighting_shader;
     }
-    auto& shader = assets.shaders.get(handle);
+    auto& shader = assets.get(handle);
 
     shader.use();
 
@@ -195,7 +194,7 @@ void RenderPass::finish()
       shader.set("material.diffuse", material.diffuse_color);
       shader.set("material.specular", material.specular_color);
       shader.set("material.specular_exponent", material.specular_exponent);
-      const auto& diffuse_map = assets.textures.get(material.diffuse_map);
+      const auto& diffuse_map = assets.get(material.diffuse_map);
       diffuse_map.activate(0);
       shader.set("material.diffuse_map", 0);
     }
@@ -360,8 +359,8 @@ static MeshHandle static_model_init(
 {
   Material material = {};
   material.diffuse_color = {1.0f, 1.0f, 1.0f};
-  auto material_handle = AssetManager::instance().materials.set(std::move(material));
-  return AssetManager::instance().meshes.set(
+  auto material_handle = AssetManager::instance().set(std::move(material));
+  return AssetManager::instance().set(
     Mesh{
       std::move(vertices),
       std::move(indices),
@@ -421,10 +420,10 @@ Renderer::Renderer()
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 
   m_render_data.default_shader =
-    AssetManager::instance().shaders.set({"shaders/shader.vert", "shaders/default.frag"});
+    AssetManager::instance().set({"shaders/shader.vert", "shaders/default.frag"});
   m_render_data.lighting_shader =
-    AssetManager::instance().shaders.set({"shaders/shader.vert", "shaders/lighting.frag"});
-  m_render_data.shadow_depth_shader = AssetManager::instance().shaders.set(
+    AssetManager::instance().set({"shaders/shader.vert", "shaders/lighting.frag"});
+  m_render_data.shadow_depth_shader = AssetManager::instance().set(
     {"shaders/shadow_depth.vert", "shaders/shadow_depth.frag", "shaders/shadow_depth.geom"}
   );
 

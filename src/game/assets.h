@@ -11,7 +11,6 @@
 #include "vertex.h"
 #include "image.h"
 
-using ShaderHandle = usize;
 class Shader
 {
 public:
@@ -37,6 +36,10 @@ public:
 private:
   u32 m_id;
 };
+struct ShaderHandle
+{
+  usize id;
+};
 
 enum class WrapOption
 {
@@ -52,7 +55,6 @@ enum class FilterOption
   NEAREST,
 };
 
-using TextureHandle = usize;
 class Texture2D
 {
 public:
@@ -84,14 +86,21 @@ private:
 private:
   u32 m_id;
 };
+struct Texture2DHandle
+{
+  usize id;
+};
 
-using MaterialHandle = usize;
 struct Material
 {
   vec3 diffuse_color;
   vec3 specular_color;
   f32 specular_exponent;
-  TextureHandle diffuse_map;
+  Texture2DHandle diffuse_map;
+};
+struct MaterialHandle
+{
+  usize id;
 };
 
 struct Submesh
@@ -109,7 +118,6 @@ enum class RenderPrimitive
 
 // TODO: change this
 struct RenderData;
-using MeshHandle = usize;
 class Mesh
 {
 public:
@@ -139,41 +147,16 @@ private:
   u32 m_ebo;
   u32 m_vao;
 };
-
-template <typename Handle, typename T>
-class AssetType
+struct MeshHandle
 {
-public:
-  Handle set(T&& t)
-  {
-    m_data.emplace_back(std::move(t));
-    return m_data.size() - 1;
-  }
-
-  T& get(Handle handle)
-  {
-    return m_data[(usize) handle];
-  }
-
-  void clear()
-  {
-    m_data.clear();
-  }
-
-  [[nodiscard]] inline constexpr usize size() const
-  {
-    return m_data.size();
-  }
-
-private:
-  std::vector<T> m_data{};
+  usize id;
 };
 
 class AssetManager
 {
 public:
   MeshHandle load_obj(const std::filesystem::path& path);
-  TextureHandle load_texture(const std::filesystem::path& path);
+  Texture2DHandle load_texture(const std::filesystem::path& path);
   void clear();
   void bind_render_data(RenderData& render_data);
 
@@ -183,21 +166,58 @@ public:
     return a;
   }
 
+  inline constexpr Texture2DHandle set(Texture2D&& texture)
+  {
+    m_textures.emplace_back(std::move(texture));
+    return {.id = m_textures.size() - 1};
+  }
+  inline constexpr MaterialHandle set(Material&& material)
+  {
+    m_materials.emplace_back(std::move(material));
+    return {.id = m_materials.size() - 1};
+  }
+  inline constexpr MeshHandle set(Mesh&& mesh)
+  {
+    m_meshes.emplace_back(std::move(mesh));
+    return {.id = m_meshes.size() - 1};
+  }
+  inline constexpr ShaderHandle set(Shader&& shader)
+  {
+    m_shaders.emplace_back(std::move(shader));
+    return {.id = m_shaders.size() - 1};
+  }
+
+  inline constexpr Texture2D& get(Texture2DHandle handle)
+  {
+    return m_textures[handle.id];
+  }
+  inline constexpr Material& get(MaterialHandle handle)
+  {
+    return m_materials[handle.id];
+  }
+  inline constexpr Mesh& get(MeshHandle handle)
+  {
+    return m_meshes[handle.id];
+  }
+  inline constexpr Shader& get(ShaderHandle handle)
+  {
+    return m_shaders[handle.id];
+  }
+
 private:
   AssetManager() {}
 
   // TODO: change to a public load_materials function or something?
   void load_mtl_file(const std::filesystem::path& path);
 
-public:
-  AssetType<TextureHandle, Texture2D> textures;
-  AssetType<MaterialHandle, Material> materials;
-  AssetType<MeshHandle, Mesh> meshes;
-  AssetType<ShaderHandle, Shader> shaders;
-
 private:
   RenderData* m_render_data;
 
-  std::unordered_map<std::string, TextureHandle> m_texture_handles;
+  std::vector<Texture2D> m_textures;
+  std::vector<Material> m_materials;
+  std::vector<Mesh> m_meshes;
+  std::vector<Shader> m_shaders;
+
+  std::unordered_map<std::string, Texture2DHandle> m_texture_handles;
   std::unordered_map<std::string, MaterialHandle> m_material_handles;
 };

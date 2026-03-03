@@ -9,7 +9,7 @@ vec2 bounding_box_from_mesh(MeshHandle handle)
 {
   vec3 max_corner = {std::numeric_limits<f32>::min(), 0, std::numeric_limits<f32>::min()};
   vec3 min_corner = {std::numeric_limits<f32>::max(), 0, std::numeric_limits<f32>::max()};
-  const auto& mesh = AssetManager::instance().meshes.get(handle);
+  const auto& mesh = AssetManager::instance().get(handle);
 
   for (usize vertex_idx = 0; vertex_idx < mesh.vertices.size(); ++vertex_idx)
   {

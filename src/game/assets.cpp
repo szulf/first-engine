@@ -491,7 +491,7 @@ void AssetManager::load_mtl_file(const std::filesystem::path& path)
     {
       if (parsing)
       {
-        auto material_handle = materials.set(std::move(mat));
+        auto material_handle = set(std::move(mat));
         m_material_handles.insert_or_assign(mat_name, material_handle);
       }
       mat_name = parser::word(pos);
@@ -565,7 +565,7 @@ void AssetManager::load_mtl_file(const std::filesystem::path& path)
   }
   if (parsing)
   {
-    auto material_handle = materials.set(std::move(mat));
+    auto material_handle = set(std::move(mat));
     m_material_handles.insert_or_assign(mat_name, material_handle);
   }
 }
@@ -667,7 +667,7 @@ MeshHandle AssetManager::load_obj(const std::filesystem::path& path)
     }
   }
 
-  return meshes.set(
+  return set(
     Mesh{
       std::move(ctx.vertices),
       std::move(ctx.indices),
@@ -678,22 +678,22 @@ MeshHandle AssetManager::load_obj(const std::filesystem::path& path)
   );
 }
 
-TextureHandle AssetManager::load_texture(const std::filesystem::path& path)
+Texture2DHandle AssetManager::load_texture(const std::filesystem::path& path)
 {
   if (m_texture_handles.contains(path.string()))
   {
     return m_texture_handles[path.string()];
   }
-  auto handle = textures.set({Image::from_file(path)});
+  auto handle = set({Image::from_file(path)});
   m_texture_handles.insert_or_assign(path.string(), handle);
   return handle;
 }
 
 void AssetManager::clear()
 {
-  textures.clear();
-  materials.clear();
-  meshes.clear();
+  m_textures.clear();
+  m_materials.clear();
+  m_meshes.clear();
 
   m_texture_handles.clear();
   m_material_handles.clear();
