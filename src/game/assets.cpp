@@ -7,7 +7,6 @@
 
 #include "os/gl_functions.h"
 
-#include "os/os.h"
 #include "parser.h"
 #include "renderer.h"
 
@@ -117,12 +116,12 @@ Shader::Shader(const std::filesystem::path& vs_path, const std::filesystem::path
   auto index = glGetUniformBlockIndex(m_id, "Camera");
   if (index != GL_INVALID_INDEX)
   {
-    glUniformBlockBinding(m_id, index, UBO_INDEX_CAMERA);
+    glUniformBlockBinding(m_id, index, RenderData::UBO_INDEX_CAMERA);
   }
   index = glGetUniformBlockIndex(m_id, "Lights");
   if (index != GL_INVALID_INDEX)
   {
-    glUniformBlockBinding(m_id, index, UBO_INDEX_LIGHTS);
+    glUniformBlockBinding(m_id, index, RenderData::UBO_INDEX_LIGHTS);
   }
 }
 
@@ -140,12 +139,12 @@ Shader::Shader(
   auto index = glGetUniformBlockIndex(m_id, "Camera");
   if (index != GL_INVALID_INDEX)
   {
-    glUniformBlockBinding(m_id, index, UBO_INDEX_CAMERA);
+    glUniformBlockBinding(m_id, index, RenderData::UBO_INDEX_CAMERA);
   }
   index = glGetUniformBlockIndex(m_id, "Lights");
   if (index != GL_INVALID_INDEX)
   {
-    glUniformBlockBinding(m_id, index, UBO_INDEX_LIGHTS);
+    glUniformBlockBinding(m_id, index, RenderData::UBO_INDEX_LIGHTS);
   }
 }
 
@@ -194,6 +193,19 @@ void Shader::set(std::string_view name, const vec3& value)
 void Shader::set(std::string_view name, const mat4& value)
 {
   glUniformMatrix4fv(glGetUniformLocation(m_id, name.data()), 1, false, value.data[0].data());
+}
+
+void Shader::set(std::string_view name, TextureHandle handle)
+{
+  ASSERT(m_texture_slot < 16, "Reached max active textures.");
+  AssetManager::instance().get(handle).activate(m_texture_slot);
+  set(name, (i32) m_texture_slot);
+  ++m_texture_slot;
+}
+
+void Shader::reset_texture_slot()
+{
+  m_texture_slot = 0;
 }
 
 Texture::Texture(TextureType type, const uvec2& dimensions) : m_type{type}
@@ -752,7 +764,7 @@ TextureHandle AssetManager::load_texture(const std::filesystem::path& path)
   {
     return m_texture_handles[path.string()];
   }
-  auto handle = set({Image::from_file(path)});
+  auto handle = set(Texture{{path}});
   m_texture_handles.insert_or_assign(path.string(), handle);
   return handle;
 }

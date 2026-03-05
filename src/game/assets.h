@@ -11,38 +11,6 @@
 #include "vertex.h"
 #include "image.h"
 
-class Shader
-{
-public:
-  Shader(const std::filesystem::path& vs, const std::filesystem::path& fs);
-  Shader(
-    const std::filesystem::path& vs,
-    const std::filesystem::path& fs,
-    const std::filesystem::path& gs
-  );
-  Shader(const Shader&) = delete;
-  Shader& operator=(const Shader&) = delete;
-  Shader(Shader&& other);
-  Shader& operator=(Shader&& other);
-  ~Shader();
-
-  // TODO: array uniform support
-  void use() const;
-  void set(std::string_view name, i32 value);
-  void set(std::string_view name, f32 value);
-  void set(std::string_view name, const vec3& value);
-  void set(std::string_view name, const mat4& value);
-
-private:
-  u32 m_id;
-};
-struct ShaderHandle
-{
-  usize id;
-};
-
-// TODO: combine Texture2D and TextureCubemap??
-
 enum class WrapOption
 {
   REPEAT,
@@ -113,7 +81,6 @@ struct TextureHandle
   {
     return id == other.id;
   }
-
   usize id;
 };
 template <>
@@ -124,6 +91,41 @@ struct std::hash<TextureHandle>
     return h.id;
   }
 };
+
+class Shader
+{
+public:
+  Shader(const std::filesystem::path& vs, const std::filesystem::path& fs);
+  Shader(
+    const std::filesystem::path& vs,
+    const std::filesystem::path& fs,
+    const std::filesystem::path& gs
+  );
+  Shader(const Shader&) = delete;
+  Shader& operator=(const Shader&) = delete;
+  Shader(Shader&& other);
+  Shader& operator=(Shader&& other);
+  ~Shader();
+
+  // TODO: array uniform support
+  void use() const;
+  void set(std::string_view name, i32 value);
+  void set(std::string_view name, f32 value);
+  void set(std::string_view name, const vec3& value);
+  void set(std::string_view name, const mat4& value);
+  void set(std::string_view name, TextureHandle handle);
+
+  void reset_texture_slot();
+
+private:
+  u32 m_id{};
+  u32 m_texture_slot{};
+};
+struct ShaderHandle
+{
+  usize id;
+};
+
 struct Material
 {
   vec3 diffuse_color;

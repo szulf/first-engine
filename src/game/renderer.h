@@ -11,7 +11,11 @@
 
 struct RenderData
 {
+  Camera camera_2d{};
+
+  static constexpr u32 UBO_INDEX_CAMERA = 0;
   u32 camera_ubo{};
+  static constexpr u32 UBO_INDEX_LIGHTS = 1;
   u32 lights_ubo{};
   u32 instance_data_buffer{};
 
@@ -21,6 +25,9 @@ struct RenderData
   MeshHandle cube_wires;
   MeshHandle ring;
   MeshHandle line;
+  MeshHandle quad;
+
+  TextureHandle blank_texture;
 
   std::unordered_map<TextureHandle, u32> framebuffers;
 };
@@ -32,11 +39,17 @@ struct InstanceData
   vec3 tint;
 };
 
-struct RenderCmd
+struct RenderCmd3D
 {
   MaterialHandle material;
   MeshHandle mesh;
   usize submesh_idx;
+  InstanceData instance_data;
+};
+
+struct RenderCmd2D
+{
+  std::optional<TextureHandle> texture;
   InstanceData instance_data;
 };
 
@@ -62,6 +75,16 @@ public:
   // before iterating over all render commands
   void finish();
 
+  // NOTE: 2D
+  void draw_quad(const vec3& pos, const vec2& size, const vec3& color);
+  void draw_texture(
+    TextureHandle texture,
+    const vec3& pos,
+    const vec2& size,
+    const vec3& tint = {1.0f, 1.0f, 1.0f}
+  );
+
+  // NOTE: 3D
   void draw_mesh(
     MeshHandle handle,
     const vec3& pos,
@@ -93,9 +116,9 @@ private:
   static constexpr Flags USES_SHADOW_MAP = 1 << 2;
 
   Flags m_flags{};
-
   RenderData& m_render_data;
-  std::vector<RenderCmd> m_cmds{};
+  std::vector<RenderCmd3D> m_cmds_3d{};
+  std::vector<RenderCmd2D> m_cmds_2d{};
   const Camera& m_camera;
   OnShaderBindCallback m_on_shader_bind{};
 
@@ -120,12 +143,6 @@ public:
 
 private:
   RenderData m_render_data;
-};
-
-enum UBO_Index
-{
-  UBO_INDEX_CAMERA = 0,
-  UBO_INDEX_LIGHTS,
 };
 
 struct STD140Camera

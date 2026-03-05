@@ -388,8 +388,7 @@ void Game::render()
     pass.on_shader_bind(
       [&](Shader& shader)
       {
-        AssetManager::instance().get(shadow_map).activate(1);
-        shader.set("shadow_map", 1);
+        shader.set("shadow_map", shadow_map);
         shader.set("shadow_map_camera_far_plane", shadow_map_camera.far_plane());
       }
     );
@@ -428,6 +427,15 @@ void Game::render()
         }
       }
     }
+
+    pass.draw_quad({400.0f, -500.0f, 0.0f}, {128.0f, 512.0f}, {1.0f, 1.0f, 1.0f});
+    pass.draw_quad({15.0f, -500.0f, 0.6f}, {1000.0f, 64.f}, {0.0f, 1.0f, 0.0f});
+    pass.draw_quad({0.0f, 0.0f, 0.0f}, {8.0f, 8.0f}, {1.0f, 0.0f, 0.0f});
+    pass.draw_texture(
+      AssetManager::instance().load_texture("assets/player_texture.png"),
+      {-400.0f, -450.0f, 1.0f},
+      {128.0f, 128.0f}
+    );
 
     pass.finish();
   }

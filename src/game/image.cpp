@@ -4,11 +4,27 @@
 
 #include "stb/image.h"
 
-Image::Image(Image&& other)
+Image::Image(const u8* data, const uvec2& dimensions) : m_dimensions{dimensions}
 {
-  m_data = other.m_data;
+  m_data = new u8[m_dimensions.x * m_dimensions.y * 4];
+  for (u32 i = 0; i < m_dimensions.x * m_dimensions.y * 4; ++i)
+  {
+    m_data[i] = data[i];
+  }
+}
+
+Image::Image(const std::filesystem::path& path) : m_stbi_loaded{true}
+{
+  int width, height, channels;
+  m_data = stbi_load(path.c_str(), &width, &height, &channels, 4);
+  ASSERT(channels == 4, "Invalid image file.");
+  m_dimensions = {static_cast<u32>(width), static_cast<u32>(height)};
+}
+
+Image::Image(Image&& other)
+  : m_stbi_loaded{other.m_stbi_loaded}, m_data{other.m_data}, m_dimensions{other.m_dimensions}
+{
   other.m_data = nullptr;
-  m_dimensions = other.m_dimensions;
 }
 
 Image& Image::operator=(Image&& other)
@@ -17,47 +33,29 @@ Image& Image::operator=(Image&& other)
   {
     return *this;
   }
-  if (m_data)
+  if (m_stbi_loaded)
   {
     stbi_image_free(m_data);
+  }
+  else
+  {
+    delete[] m_data;
   }
   m_data = other.m_data;
   other.m_data = nullptr;
   m_dimensions = other.m_dimensions;
+  m_stbi_loaded = other.m_stbi_loaded;
   return *this;
 }
 
 Image::~Image()
 {
-  if (m_data)
+  if (m_stbi_loaded)
   {
     stbi_image_free(m_data);
   }
-}
-
-Image Image::from_file(const std::filesystem::path& path)
-{
-  Image out{};
-  int width, height, channels;
-  out.m_data = stbi_load(path.c_str(), &width, &height, &channels, 4);
-  ASSERT(channels == 4, "Invalid image file.");
-  out.m_dimensions = {static_cast<u32>(width), static_cast<u32>(height)};
-  return out;
-}
-
-static u8 error_placeholder_data[] = {
-  // clang-format off
-  0x00, 0x00, 0x00, 0xFF,
-  0xFC, 0x0F, 0xC0, 0xFF,
-  0xFC, 0x0F, 0xC0, 0xFF,
-  0x00, 0x00, 0x00, 0xFF,
-  // clang-format on
-};
-
-Image Image::error_placeholder()
-{
-  Image out = {};
-  out.m_dimensions = {2, 2};
-  out.m_data = error_placeholder_data;
-  return out;
+  else
+  {
+    delete[] m_data;
+  }
 }

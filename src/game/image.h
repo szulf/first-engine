@@ -6,17 +6,17 @@
 #include "base/base.h"
 #include "base/math.h"
 
+// TODO: turn factory functions into constructors?
 struct Image
 {
+  Image(const u8* data, const uvec2& dimensions);
+  Image(const std::filesystem::path& path);
   Image() {}
   Image(const Image& other) = delete;
   Image& operator=(const Image& other) = delete;
   Image(Image&& other);
   Image& operator=(Image&& other);
   ~Image();
-
-  static Image from_file(const std::filesystem::path& path);
-  static Image error_placeholder();
 
   [[nodiscard]] constexpr inline u32 width() const
   {
@@ -39,6 +39,7 @@ struct Image
   }
 
 private:
+  bool m_stbi_loaded{};
   u8* m_data{};
   uvec2 m_dimensions{};
 };

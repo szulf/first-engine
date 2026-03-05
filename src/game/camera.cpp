@@ -45,8 +45,8 @@ mat4 Camera::projection() const
     break;
     case CameraType::ORTHOGRAPHIC:
     {
-      static constexpr f32 world_height = 10.0f;
-      static constexpr f32 half_height = world_height * 0.5f;
+      f32 ortho_size = (f32) m_viewport.y * 0.5f;
+      f32 half_height = ortho_size;
       f32 half_width = half_height * ((f32) m_viewport.x / (f32) m_viewport.y);
 
       return orthographic(
