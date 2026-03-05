@@ -35,22 +35,24 @@ struct RenderData
 static constexpr usize MAX_INSTANCES = 10000;
 struct InstanceData
 {
-  mat4 transform;
-  vec3 tint;
+  mat4 transform{};
+  vec3 tint{};
+  vec2 uv_scale{1, 1};
+  vec2 uv_offset{0, 0};
 };
 
 struct RenderCmd3D
 {
-  MaterialHandle material;
-  MeshHandle mesh;
-  usize submesh_idx;
-  InstanceData instance_data;
+  MaterialHandle material{};
+  MeshHandle mesh{};
+  usize submesh_idx{};
+  InstanceData instance_data{};
 };
 
 struct RenderCmd2D
 {
-  std::optional<TextureHandle> texture;
-  InstanceData instance_data;
+  std::optional<TextureHandle> texture{};
+  InstanceData instance_data{};
 };
 
 struct Light
@@ -81,6 +83,14 @@ public:
     TextureHandle texture,
     const vec3& pos,
     const vec2& size,
+    const vec3& tint = {1.0f, 1.0f, 1.0f}
+  );
+  void draw_texture_part(
+    TextureHandle texture,
+    const vec3& pos,
+    const vec2& size,
+    const vec2& in_texture_pos,
+    const vec2& in_texture_size,
     const vec3& tint = {1.0f, 1.0f, 1.0f}
   );
 

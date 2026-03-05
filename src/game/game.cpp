@@ -90,6 +90,8 @@ Game::Game(os::Window& window, os::Audio& audio)
     Shader{"shaders/shadow_depth.vert", "shaders/shadow_depth.frag", "shaders/shadow_depth.geom"}
   );
   m_renderer.create_framebuffer(shadow_map);
+  // TODO: load this with FilterOption::NEAREST
+  font_texture = AssetManager::instance().load_texture("assets/font.png");
 }
 
 void Game::update_tick(f32 dt)
@@ -436,6 +438,17 @@ void Game::render()
       {-400.0f, -450.0f, 1.0f},
       {128.0f, 128.0f}
     );
+    std::array<f32, 4> text_parts = {19, 4, 18, 19};
+    for (usize i = 0; i < text_parts.size(); ++i)
+    {
+      pass.draw_texture_part(
+        font_texture,
+        {(0.5f * -27 * (f32) text_parts.size()) + (27 * (f32) i), -480, 2},
+        {27, 48},
+        {9 * text_parts[i], 0},
+        {9, 16}
+      );
+    }
 
     pass.finish();
   }

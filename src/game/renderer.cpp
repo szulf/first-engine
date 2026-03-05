@@ -312,6 +312,31 @@ void RenderPass::draw_texture(
   // clang-format on
 }
 
+void RenderPass::draw_texture_part(
+  TextureHandle texture,
+  const vec3& pos,
+  const vec2& size,
+  const vec2& in_texture_pos,
+  const vec2& in_texture_size,
+  const vec3& tint
+)
+{
+  uvec2 dims = AssetManager::instance().get(texture).dimensions;
+  vec2 dims_f32 = {(f32) dims.x, (f32) dims.y};
+  // TODO: how do i get clang-format to do this correctly???
+  // clang-format off
+  m_cmds_2d.push_back({
+    .texture = texture,
+    .instance_data = {
+      .transform = get_transform(pos, {size.x, size.y, 1.0f}, 0.0f),
+      .tint = tint,
+      .uv_scale = in_texture_size / dims_f32,
+      .uv_offset = in_texture_pos / dims_f32,
+    },
+  });
+  // clang-format on
+}
+
 void RenderPass::set_light(const vec3& pos, const vec3& color)
 {
   m_light.pos = pos;

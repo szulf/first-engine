@@ -208,11 +208,10 @@ void Shader::reset_texture_slot()
   m_texture_slot = 0;
 }
 
-Texture::Texture(TextureType type, const uvec2& dimensions) : m_type{type}
+Texture::Texture(TextureType type, const uvec2& dimensions_) : dimensions{dimensions_}, m_type{type}
 {
   constructor_helper(
     nullptr,
-    dimensions,
     WrapOption::CLAMP_TO_EDGE,
     WrapOption::CLAMP_TO_EDGE,
     WrapOption::CLAMP_TO_EDGE,
@@ -221,11 +220,10 @@ Texture::Texture(TextureType type, const uvec2& dimensions) : m_type{type}
   );
 }
 
-Texture::Texture(const Image& image) : m_type{TextureType::FLAT}
+Texture::Texture(const Image& image) : dimensions{image.dimensions()}, m_type{TextureType::FLAT}
 {
   constructor_helper(
     image.data(),
-    image.dimensions(),
     WrapOption::REPEAT,
     WrapOption::REPEAT,
     WrapOption::REPEAT,
@@ -241,20 +239,13 @@ Texture::Texture(
   FilterOption min_filter,
   FilterOption mag_filter
 )
-  : m_type{TextureType::FLAT}
+  : dimensions{image.dimensions()}, m_type{TextureType::FLAT}
 {
-  constructor_helper(
-    image.data(),
-    image.dimensions(),
-    wrap_s,
-    wrap_t,
-    WrapOption::REPEAT,
-    min_filter,
-    mag_filter
-  );
+  constructor_helper(image.data(), wrap_s, wrap_t, WrapOption::REPEAT, min_filter, mag_filter);
 }
 
-Texture::Texture(Texture&& other) : m_type{other.m_type}, m_id{other.m_id}
+Texture::Texture(Texture&& other)
+  : dimensions{other.dimensions}, m_type{other.m_type}, m_id{other.m_id}
 {
   other.m_id = 0;
 }
@@ -265,6 +256,7 @@ Texture& Texture::operator=(Texture&& other)
   {
     return *this;
   }
+  dimensions = other.dimensions;
   m_type = other.m_type;
   glDeleteTextures(1, &m_id);
   m_id = other.m_id;
@@ -324,7 +316,6 @@ static GLint gl_filter_option(FilterOption option)
 
 void Texture::constructor_helper(
   void* data,
-  const uvec2& dimensions,
   WrapOption wrap_s,
   WrapOption wrap_t,
   WrapOption wrap_r,
@@ -475,12 +466,33 @@ Mesh::Mesh(
       (void*) offsetof(InstanceData, tint)
     );
     glEnableVertexAttribArray(7);
+    // NOTE: for rendering parts of a texture
+    glVertexAttribPointer(
+      8,
+      2,
+      GL_FLOAT,
+      GL_FALSE,
+      sizeof(InstanceData),
+      (void*) offsetof(InstanceData, uv_scale)
+    );
+    glEnableVertexAttribArray(8);
+    glVertexAttribPointer(
+      9,
+      2,
+      GL_FLOAT,
+      GL_FALSE,
+      sizeof(InstanceData),
+      (void*) offsetof(InstanceData, uv_offset)
+    );
+    glEnableVertexAttribArray(9);
 
     glVertexAttribDivisor(3, 1);
     glVertexAttribDivisor(4, 1);
     glVertexAttribDivisor(5, 1);
     glVertexAttribDivisor(6, 1);
     glVertexAttribDivisor(7, 1);
+    glVertexAttribDivisor(8, 1);
+    glVertexAttribDivisor(9, 1);
   }
 
   glBindVertexArray(0);
@@ -764,7 +776,7 @@ TextureHandle AssetManager::load_texture(const std::filesystem::path& path)
   {
     return m_texture_handles[path.string()];
   }
-  auto handle = set(Texture{{path}});
+  auto handle = set(Texture{Image{path}});
   m_texture_handles.insert_or_assign(path.string(), handle);
   return handle;
 }

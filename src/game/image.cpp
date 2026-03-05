@@ -15,6 +15,7 @@ Image::Image(const u8* data, const uvec2& dimensions) : m_dimensions{dimensions}
 
 Image::Image(const std::filesystem::path& path) : m_stbi_loaded{true}
 {
+  stbi_set_flip_vertically_on_load(true);
   int width, height, channels;
   m_data = stbi_load(path.c_str(), &width, &height, &channels, 4);
   ASSERT(channels == 4, "Invalid image file.");

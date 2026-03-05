@@ -20,6 +20,7 @@
   - system for in game tests
 - profiler
 - inventory system
+- logging
 
 - more on lighting
   - pcf or other technique for better shadow mapping

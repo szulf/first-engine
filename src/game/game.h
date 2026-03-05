@@ -55,6 +55,7 @@ private:
   static constexpr uvec2 SHADOW_MAP_DIMENSIONS = {1024, 1024};
   TextureHandle shadow_map;
   ShaderHandle shadow_depth_shader;
+  TextureHandle font_texture;
 
   SoundSystem m_sound_system;
 

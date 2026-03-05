@@ -63,13 +63,15 @@ public:
 private:
   void constructor_helper(
     void* data,
-    const uvec2& dimensions,
     WrapOption wrap_s,
     WrapOption wrap_t,
     WrapOption wrap_r,
     FilterOption min_filter,
     FilterOption mag_filter
   );
+
+public:
+  uvec2 dimensions;
 
 private:
   TextureType m_type;

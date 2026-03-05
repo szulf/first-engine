@@ -33,6 +33,7 @@ struct vec2
   vec2 operator*(f32 scalar) const;
   vec2 operator*(const vec2& other) const;
   vec2 operator/(f32 scalar) const;
+  vec2 operator/(const vec2& other) const;
   vec2& operator+=(const vec2& other);
   vec2& operator-=(const vec2& other);
   vec2& operator*=(f32 scalar);

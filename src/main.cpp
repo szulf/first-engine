@@ -9,8 +9,6 @@
 static constexpr std::chrono::milliseconds DT{50};
 static constexpr f32 DT_F32{(f32) DT.count() / (f32) std::milli::den};
 
-// TODO: better logging than std::println?
-
 i32 main()
 {
   os::init();
