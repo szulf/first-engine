@@ -51,7 +51,8 @@ struct RenderCmd3D
 
 struct RenderCmd2D
 {
-  std::optional<TextureHandle> texture{};
+  TextureHandle texture{};
+  f32 z_idx{};
   InstanceData instance_data{};
 };
 
@@ -85,6 +86,7 @@ public:
     const vec2& size,
     const vec3& tint = {1.0f, 1.0f, 1.0f}
   );
+  // NOTE: texture (0, 0) is in the lower left corner
   void draw_texture_part(
     TextureHandle texture,
     const vec3& pos,

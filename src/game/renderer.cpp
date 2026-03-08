@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "base/math.h"
 #include "game/assets.h"
 #include "game/camera.h"
 #include "os/gl_functions.h"
@@ -53,7 +54,7 @@ void RenderPass::finish()
     {
       if (a.material.id != b.material.id)
       {
-        return a.material.id > b.material.id;
+        return a.material.id < b.material.id;
       }
       if (a.mesh.id != b.mesh.id)
       {
@@ -161,6 +162,18 @@ void RenderPass::finish()
     shader.reset_texture_slot();
   }
 
+  std::ranges::sort(
+    m_cmds_2d,
+    [](const RenderCmd2D& a, const RenderCmd2D& b)
+    {
+      if (!f32_equal(a.z_idx, b.z_idx))
+      {
+        return a.z_idx < b.z_idx;
+      }
+      return a.texture.id > b.texture.id;
+    }
+  );
+
   camera_std140 = {};
   m_render_data.camera_2d.update_viewport(m_camera.viewport());
   camera_std140.view_pos = m_render_data.camera_2d.pos();
@@ -193,7 +206,7 @@ void RenderPass::finish()
     auto& shader = assets.get(m_render_data.default_shader);
     shader.use();
     shader.set("material.diffuse", vec3{});
-    shader.set("material.diffuse_map", cmd.texture.value_or(m_render_data.blank_texture));
+    shader.set("material.diffuse_map", cmd.texture);
 
     glBindBuffer(GL_ARRAY_BUFFER, m_render_data.instance_data_buffer);
     glBufferSubData(
@@ -229,68 +242,71 @@ static mat4 get_transform(const vec3& pos, const vec3& size, f32 rotation)
 
 void RenderPass::draw_mesh(MeshHandle handle, const vec3& pos, f32 rotation, const vec3& tint)
 {
-  auto transform = get_transform(pos, {1.0f, 1.0f, 1.0f}, rotation);
   auto& mesh = AssetManager::instance().get(handle);
   for (usize i = 0; i < mesh.submeshes.size(); ++i)
   {
-    RenderCmd3D cmd = {};
-    cmd.mesh = handle;
-    cmd.submesh_idx = i;
-    cmd.material = mesh.submeshes[i].material;
-    cmd.instance_data.transform = transform;
-    cmd.instance_data.tint = tint;
-    m_cmds_3d.push_back(cmd);
+    m_cmds_3d.push_back({
+      .material = mesh.submeshes[i].material,
+      .mesh = handle,
+      .submesh_idx = i,
+      .instance_data = {
+        .transform = get_transform(pos, {1.0f, 1.0f, 1.0f}, rotation),
+        .tint = tint,
+      },
+    });
   }
 }
 
 void RenderPass::draw_cube_wires(const vec3& pos, const vec3& size, const vec3& color)
 {
-  auto transform = get_transform(pos, size, 0.0f);
-  RenderCmd3D cmd = {};
-  cmd.mesh = m_render_data.cube_wires;
-  cmd.submesh_idx = 0;
-  cmd.material = AssetManager::instance().get(m_render_data.cube_wires).submeshes[0].material;
-  cmd.instance_data.transform = transform;
-  cmd.instance_data.tint = color;
-  m_cmds_3d.push_back(cmd);
+  m_cmds_3d.push_back({
+    .material = AssetManager::instance().get(m_render_data.cube_wires).submeshes[0].material,
+    .mesh = m_render_data.cube_wires,
+    .submesh_idx = 0,
+    .instance_data = {
+      .transform = get_transform(pos, size, 0.0f),
+      .tint = color,
+    },
+  });
 }
 
 void RenderPass::draw_ring(const vec3& pos, f32 radius, const vec3& color)
 {
   auto diameter = 2.0f * radius;
-  auto transform = get_transform(pos, {diameter, 1.0f, diameter}, 0.0f);
-  RenderCmd3D cmd = {};
-  cmd.mesh = m_render_data.ring;
-  cmd.submesh_idx = 0;
-  cmd.material = AssetManager::instance().get(m_render_data.ring).submeshes[0].material;
-  cmd.instance_data.transform = transform;
-  cmd.instance_data.tint = color;
-  m_cmds_3d.push_back(cmd);
+  m_cmds_3d.push_back({
+    .material = AssetManager::instance().get(m_render_data.ring).submeshes[0].material,
+    .mesh = m_render_data.ring,
+    .submesh_idx = 0,
+    .instance_data = {
+      .transform = get_transform(pos, {diameter, 1.0f, diameter}, 0.0f),
+      .tint = color,
+    },
+  });
 }
 
 void RenderPass::draw_line(const vec3& pos, f32 length, f32 rotation, const vec3& color)
 {
-  auto transform = get_transform(pos, {length, 1.0f, length}, rotation);
-  RenderCmd3D cmd = {};
-  cmd.mesh = m_render_data.line;
-  cmd.submesh_idx = 0;
-  cmd.material = AssetManager::instance().get(m_render_data.line).submeshes[0].material;
-  cmd.instance_data.transform = transform;
-  cmd.instance_data.tint = color;
-  m_cmds_3d.push_back(cmd);
+  m_cmds_3d.push_back({
+    .material = AssetManager::instance().get(m_render_data.line).submeshes[0].material,
+    .mesh = m_render_data.line,
+    .submesh_idx = 0,
+    .instance_data = {
+      .transform = get_transform(pos, {length, 1.0f, length}, rotation),
+      .tint = color,
+    },
+  });
 }
 
 void RenderPass::draw_quad(const vec3& pos, const vec2& size, const vec3& color)
 {
-  // TODO: how do i get clang-format to do this correctly???
-  // clang-format off
   m_cmds_2d.push_back({
+    .texture = m_render_data.blank_texture,
+    .z_idx = pos.z,
     .instance_data = {
       .transform = get_transform(pos, {size.x, size.y, 1.0f}, 0.0f),
       .tint = color,
-    }
+    },
   });
-  // clang-format on
 }
 
 void RenderPass::draw_texture(
@@ -300,16 +316,14 @@ void RenderPass::draw_texture(
   const vec3& tint
 )
 {
-  // TODO: how do i get clang-format to do this correctly???
-  // clang-format off
   m_cmds_2d.push_back({
     .texture = texture,
+    .z_idx = pos.z,
     .instance_data = {
       .transform = get_transform(pos, {size.x, size.y, 1.0f}, 0.0f),
       .tint = tint,
-    }
+    },
   });
-  // clang-format on
 }
 
 void RenderPass::draw_texture_part(
@@ -323,10 +337,9 @@ void RenderPass::draw_texture_part(
 {
   uvec2 dims = AssetManager::instance().get(texture).dimensions;
   vec2 dims_f32 = {(f32) dims.x, (f32) dims.y};
-  // TODO: how do i get clang-format to do this correctly???
-  // clang-format off
   m_cmds_2d.push_back({
     .texture = texture,
+    .z_idx = pos.z,
     .instance_data = {
       .transform = get_transform(pos, {size.x, size.y, 1.0f}, 0.0f),
       .tint = tint,
@@ -334,7 +347,6 @@ void RenderPass::draw_texture_part(
       .uv_offset = in_texture_pos / dims_f32,
     },
   });
-  // clang-format on
 }
 
 void RenderPass::set_light(const vec3& pos, const vec3& color)
@@ -344,66 +356,50 @@ void RenderPass::set_light(const vec3& pos, const vec3& color)
 }
 
 static constexpr Vertex cube_vertices[] = {
-  {{-0.500000, 0.500000, 0.500000},   {-1.000000, -0.000000, -0.000000}, {0.000000, 1.000000}},
+  {{-0.500000, 0.500000, 0.500000}, {-1.000000, -0.000000, -0.000000}, {0.000000, 1.000000}},
   {{-0.500000, -0.500000, -0.500000}, {-1.000000, -0.000000, -0.000000}, {1.000000, 0.000000}},
-  {{-0.500000, -0.500000, 0.500000},  {-1.000000, -0.000000, -0.000000}, {0.000000, 0.000000}},
-  {{-0.500000, 0.500000, -0.500000},  {-0.000000, -0.000000, -1.000000}, {0.000000, 1.000000}},
-  {{0.500000, -0.500000, -0.500000},  {-0.000000, -0.000000, -1.000000}, {1.000000, 0.000000}},
+  {{-0.500000, -0.500000, 0.500000}, {-1.000000, -0.000000, -0.000000}, {0.000000, 0.000000}},
+  {{-0.500000, 0.500000, -0.500000}, {-0.000000, -0.000000, -1.000000}, {0.000000, 1.000000}},
+  {{0.500000, -0.500000, -0.500000}, {-0.000000, -0.000000, -1.000000}, {1.000000, 0.000000}},
   {{-0.500000, -0.500000, -0.500000}, {-0.000000, -0.000000, -1.000000}, {0.000000, 0.000000}},
-  {{0.500000, 0.500000, -0.500000},   {1.000000, -0.000000, -0.000000},  {1.000000, 1.000000}},
-  {{0.500000, -0.500000, 0.500000},   {1.000000, -0.000000, -0.000000},  {0.000000, 0.000000}},
-  {{0.500000, -0.500000, -0.500000},  {1.000000, -0.000000, -0.000000},  {1.000000, 0.000000}},
-  {{0.500000, 0.500000, 0.500000},    {-0.000000, -0.000000, 1.000000},  {1.000000, 1.000000}},
-  {{-0.500000, -0.500000, 0.500000},  {-0.000000, -0.000000, 1.000000},  {0.000000, 0.000000}},
-  {{0.500000, -0.500000, 0.500000},   {-0.000000, -0.000000, 1.000000},  {1.000000, 0.000000}},
-  {{0.500000, -0.500000, -0.500000},  {-0.000000, -1.000000, -0.000000}, {1.000000, 1.000000}},
-  {{-0.500000, -0.500000, 0.500000},  {-0.000000, -1.000000, -0.000000}, {0.000000, 0.000000}},
+  {{0.500000, 0.500000, -0.500000}, {1.000000, -0.000000, -0.000000}, {1.000000, 1.000000}},
+  {{0.500000, -0.500000, 0.500000}, {1.000000, -0.000000, -0.000000}, {0.000000, 0.000000}},
+  {{0.500000, -0.500000, -0.500000}, {1.000000, -0.000000, -0.000000}, {1.000000, 0.000000}},
+  {{0.500000, 0.500000, 0.500000}, {-0.000000, -0.000000, 1.000000}, {1.000000, 1.000000}},
+  {{-0.500000, -0.500000, 0.500000}, {-0.000000, -0.000000, 1.000000}, {0.000000, 0.000000}},
+  {{0.500000, -0.500000, 0.500000}, {-0.000000, -0.000000, 1.000000}, {1.000000, 0.000000}},
+  {{0.500000, -0.500000, -0.500000}, {-0.000000, -1.000000, -0.000000}, {1.000000, 1.000000}},
+  {{-0.500000, -0.500000, 0.500000}, {-0.000000, -1.000000, -0.000000}, {0.000000, 0.000000}},
   {{-0.500000, -0.500000, -0.500000}, {-0.000000, -1.000000, -0.000000}, {0.000000, 1.000000}},
-  {{-0.500000, 0.500000, -0.500000},  {-0.000000, 1.000000, -0.000000},  {0.000000, 1.000000}},
-  {{0.500000, 0.500000, 0.500000},    {-0.000000, 1.000000, -0.000000},  {1.000000, 0.000000}},
-  {{0.500000, 0.500000, -0.500000},   {-0.000000, 1.000000, -0.000000},  {1.000000, 1.000000}},
-  {{-0.500000, 0.500000, -0.500000},  {-1.000000, -0.000000, -0.000000}, {1.000000, 1.000000}},
-  {{0.500000, 0.500000, -0.500000},   {-0.000000, -0.000000, -1.000000}, {1.000000, 1.000000}},
-  {{0.500000, 0.500000, 0.500000},    {1.000000, -0.000000, -0.000000},  {0.000000, 1.000000}},
-  {{-0.500000, 0.500000, 0.500000},   {-0.000000, -0.000000, 1.000000},  {0.000000, 1.000000}},
-  {{0.500000, -0.500000, 0.500000},   {-0.000000, -1.000000, -0.000000}, {1.000000, 0.000000}},
-  {{-0.500000, 0.500000, 0.500000},   {-0.000000, 1.000000, -0.000000},  {0.000000, 0.000000}},
+  {{-0.500000, 0.500000, -0.500000}, {-0.000000, 1.000000, -0.000000}, {0.000000, 1.000000}},
+  {{0.500000, 0.500000, 0.500000}, {-0.000000, 1.000000, -0.000000}, {1.000000, 0.000000}},
+  {{0.500000, 0.500000, -0.500000}, {-0.000000, 1.000000, -0.000000}, {1.000000, 1.000000}},
+  {{-0.500000, 0.500000, -0.500000}, {-1.000000, -0.000000, -0.000000}, {1.000000, 1.000000}},
+  {{0.500000, 0.500000, -0.500000}, {-0.000000, -0.000000, -1.000000}, {1.000000, 1.000000}},
+  {{0.500000, 0.500000, 0.500000}, {1.000000, -0.000000, -0.000000}, {0.000000, 1.000000}},
+  {{-0.500000, 0.500000, 0.500000}, {-0.000000, -0.000000, 1.000000}, {0.000000, 1.000000}},
+  {{0.500000, -0.500000, 0.500000}, {-0.000000, -1.000000, -0.000000}, {1.000000, 0.000000}},
+  {{-0.500000, 0.500000, 0.500000}, {-0.000000, 1.000000, -0.000000}, {0.000000, 0.000000}},
 };
 static constexpr u32 cube_wires_indices[] = {1, 2, 7, 4, 1, 3, 21, 2, 21, 9, 7, 9, 17, 4, 17, 3};
 
 static constexpr Vertex ring_vertices[] = {
-  {{0.000000f, 0.000000f, -0.500000f},  {}, {}},
-  {{-0.097545f, 0.000000f, -0.490393f}, {}, {}},
-  {{-0.191342f, 0.000000f, -0.461940f}, {}, {}},
-  {{-0.277785f, 0.000000f, -0.415735f}, {}, {}},
-  {{-0.353553f, 0.000000f, -0.353553f}, {}, {}},
-  {{-0.415735f, 0.000000f, -0.277785f}, {}, {}},
-  {{-0.461940f, 0.000000f, -0.191342f}, {}, {}},
-  {{-0.490393f, 0.000000f, -0.097545f}, {}, {}},
-  {{-0.500000f, 0.000000f, 0.000000f},  {}, {}},
-  {{-0.490393f, 0.000000f, 0.097545f},  {}, {}},
-  {{-0.461940f, 0.000000f, 0.191342f},  {}, {}},
-  {{-0.415735f, 0.000000f, 0.277785f},  {}, {}},
-  {{-0.353553f, 0.000000f, 0.353553f},  {}, {}},
-  {{-0.277785f, 0.000000f, 0.415735f},  {}, {}},
-  {{-0.191342f, 0.000000f, 0.461940f},  {}, {}},
-  {{-0.097545f, 0.000000f, 0.490393f},  {}, {}},
-  {{0.000000f, 0.000000f, 0.500000f},   {}, {}},
-  {{0.097545f, 0.000000f, 0.490393f},   {}, {}},
-  {{0.191342f, 0.000000f, 0.461940f},   {}, {}},
-  {{0.277785f, 0.000000f, 0.415735f},   {}, {}},
-  {{0.353553f, 0.000000f, 0.353553f},   {}, {}},
-  {{0.415735f, 0.000000f, 0.277785f},   {}, {}},
-  {{0.461940f, 0.000000f, 0.191342f},   {}, {}},
-  {{0.490393f, 0.000000f, 0.097545f},   {}, {}},
-  {{0.500000f, 0.000000f, 0.000000f},   {}, {}},
-  {{0.490393f, 0.000000f, -0.097545f},  {}, {}},
-  {{0.461940f, 0.000000f, -0.191342f},  {}, {}},
-  {{0.415735f, 0.000000f, -0.277785f},  {}, {}},
-  {{0.353553f, 0.000000f, -0.353553f},  {}, {}},
-  {{0.277785f, 0.000000f, -0.415735f},  {}, {}},
-  {{0.191342f, 0.000000f, -0.461940f},  {}, {}},
-  {{0.097545f, 0.000000f, -0.490393f},  {}, {}},
+  {{0.000000f, 0.000000f, -0.500000f}, {}, {}},  {{-0.097545f, 0.000000f, -0.490393f}, {}, {}},
+  {{-0.191342f, 0.000000f, -0.461940f}, {}, {}}, {{-0.277785f, 0.000000f, -0.415735f}, {}, {}},
+  {{-0.353553f, 0.000000f, -0.353553f}, {}, {}}, {{-0.415735f, 0.000000f, -0.277785f}, {}, {}},
+  {{-0.461940f, 0.000000f, -0.191342f}, {}, {}}, {{-0.490393f, 0.000000f, -0.097545f}, {}, {}},
+  {{-0.500000f, 0.000000f, 0.000000f}, {}, {}},  {{-0.490393f, 0.000000f, 0.097545f}, {}, {}},
+  {{-0.461940f, 0.000000f, 0.191342f}, {}, {}},  {{-0.415735f, 0.000000f, 0.277785f}, {}, {}},
+  {{-0.353553f, 0.000000f, 0.353553f}, {}, {}},  {{-0.277785f, 0.000000f, 0.415735f}, {}, {}},
+  {{-0.191342f, 0.000000f, 0.461940f}, {}, {}},  {{-0.097545f, 0.000000f, 0.490393f}, {}, {}},
+  {{0.000000f, 0.000000f, 0.500000f}, {}, {}},   {{0.097545f, 0.000000f, 0.490393f}, {}, {}},
+  {{0.191342f, 0.000000f, 0.461940f}, {}, {}},   {{0.277785f, 0.000000f, 0.415735f}, {}, {}},
+  {{0.353553f, 0.000000f, 0.353553f}, {}, {}},   {{0.415735f, 0.000000f, 0.277785f}, {}, {}},
+  {{0.461940f, 0.000000f, 0.191342f}, {}, {}},   {{0.490393f, 0.000000f, 0.097545f}, {}, {}},
+  {{0.500000f, 0.000000f, 0.000000f}, {}, {}},   {{0.490393f, 0.000000f, -0.097545f}, {}, {}},
+  {{0.461940f, 0.000000f, -0.191342f}, {}, {}},  {{0.415735f, 0.000000f, -0.277785f}, {}, {}},
+  {{0.353553f, 0.000000f, -0.353553f}, {}, {}},  {{0.277785f, 0.000000f, -0.415735f}, {}, {}},
+  {{0.191342f, 0.000000f, -0.461940f}, {}, {}},  {{0.097545f, 0.000000f, -0.490393f}, {}, {}},
 };
 static constexpr u32 ring_indices[] = {0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10,
                                        11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
@@ -416,10 +412,10 @@ static constexpr Vertex line_vertices[] = {
 static constexpr u32 line_indices[] = {0, 1};
 
 static constexpr Vertex quad_vertices[] = {
-  {{0.5f, 0.5f, 0.0f},   {}, {1.0f, 1.0f}},
-  {{0.5f, -0.5f, 0.0f},  {}, {1.0f, 0.0f}},
+  {{0.5f, 0.5f, 0.0f}, {}, {1.0f, 1.0f}},
+  {{0.5f, -0.5f, 0.0f}, {}, {1.0f, 0.0f}},
   {{-0.5f, -0.5f, 0.0f}, {}, {0.0f, 0.0f}},
-  {{-0.5f, 0.5f, 0.0f},  {}, {0.0f, 1.0f}},
+  {{-0.5f, 0.5f, 0.0f}, {}, {0.0f, 1.0f}},
 };
 static constexpr u32 quad_indices[] = {0, 1, 3, 1, 2, 3};
 
@@ -451,18 +447,19 @@ Renderer::Renderer()
 {
   auto& assets = AssetManager::instance();
 
-  m_render_data.camera_2d = Camera{
-    CameraDescription{
-                      .type = CameraType::ORTHOGRAPHIC,
-                      .pos = {0, 0, 5},
-                      .yaw = -90,
-                      .pitch = 0,
-                      .using_vertical_fov = true,
-                      .fov = 0.25f * std::numbers::pi_v<f32>,
-                      .near_plane = 0.1f,
-                      .far_plane = 1000.0f
-    }
-  };
+  m_render_data.camera_2d = Camera{CameraDescription{
+    .type = CameraType::ORTHOGRAPHIC,
+    .pos = {0, 0, 5},
+    .yaw = -90,
+    .pitch = 0,
+    .using_vertical_fov = true,
+    .fov = 0.25f * std::numbers::pi_v<f32>,
+    .near_plane = 0.1f,
+    .far_plane = 1000.0f
+  }};
+
+  glEnable(GL_BLEND);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   glEnable(GL_DEPTH_TEST);
 
@@ -516,7 +513,7 @@ Renderer::Renderer()
       WrapOption::REPEAT,
       FilterOption::NEAREST,
       FilterOption::NEAREST
-  }
+    }
   );
 
   assets.bind_render_data(m_render_data);

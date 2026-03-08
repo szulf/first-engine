@@ -4,6 +4,7 @@
 #include <fstream>
 #include <string>
 
+#include "base/base.h"
 #include "camera.h"
 #include "os/os.h"
 #include "renderer.h"
@@ -71,18 +72,19 @@ Keymap load_gkey(const std::filesystem::path& path)
 }
 
 Game::Game(os::Window& window, os::Audio& audio)
-  : m_window{window}, m_sound_system{audio}, m_scene{"data/main.gscn"}, m_keymap{load_gkey("data/keymap.gkey")},
-  m_gameplay_camera{CameraDescription{
-    .type = CameraType::PERSPECTIVE,
-    .pos = {0, 12, 8},
-    .yaw = -90,
-    .pitch = -55,
-    .using_vertical_fov = true,
-    .fov = 0.25f * std::numbers::pi_v<f32>,
-    .near_plane = 0.1f,
-    .far_plane = 1000.0f,
-    .viewport = m_window.dimensions(),
-  }}, m_debug_camera{m_gameplay_camera}, m_main_camera{&m_gameplay_camera}
+  : m_window{window}, m_sound_system{audio}, m_scene{"data/main.gscn"},
+    m_keymap{load_gkey("data/keymap.gkey")}, m_gameplay_camera{CameraDescription{
+                                               .type = CameraType::PERSPECTIVE,
+                                               .pos = {0, 12, 8},
+                                               .yaw = -90,
+                                               .pitch = -55,
+                                               .using_vertical_fov = true,
+                                               .fov = 0.25f * std::numbers::pi_v<f32>,
+                                               .near_plane = 0.1f,
+                                               .far_plane = 1000.0f,
+                                               .viewport = m_window.dimensions(),
+                                             }},
+    m_debug_camera{m_gameplay_camera}, m_main_camera{&m_gameplay_camera}
 {
   m_sound_system.play_looped(SoundHandle::TEST_MUSIC, 0.1f);
   shadow_map = AssetManager::instance().set(Texture{TextureType::CUBEMAP, SHADOW_MAP_DIMENSIONS});
@@ -430,6 +432,38 @@ void Game::render()
       }
     }
 
+    auto draw_text = [&](vec2 char_size, std::string_view text)
+    {
+      std::vector<vec2> text_parts{};
+      text_parts.resize(text.size());
+      for (usize i = 0; i < text.size(); ++i)
+      {
+        if (std::islower(text[i]))
+        {
+          text_parts[i] = {(f32) (text[i] - 'a'), 1};
+        }
+        else if (std::isupper(text[i]))
+        {
+          text_parts[i] = {(f32) (text[i] - 'A'), 1};
+        }
+        else if (std::isdigit(text[i]))
+        {
+          text_parts[i] = {(f32) (text[i] - '0'), 2};
+        }
+      }
+      for (usize i = 0; i < text_parts.size(); ++i)
+      {
+        pass.draw_texture_part(
+          font_texture,
+          {(0.5f * -char_size.x * (f32) text_parts.size()) + (char_size.x * (f32) i), -480, 2},
+          char_size,
+          {9 * text_parts[i].x, 16 * text_parts[i].y},
+          {9, 16}
+        );
+      }
+    };
+
+    draw_text({27, 48}, "test STRING 123");
     pass.draw_quad({400.0f, -500.0f, 0.0f}, {128.0f, 512.0f}, {1.0f, 1.0f, 1.0f});
     pass.draw_quad({15.0f, -500.0f, 0.6f}, {1000.0f, 64.f}, {0.0f, 1.0f, 0.0f});
     pass.draw_quad({0.0f, 0.0f, 0.0f}, {8.0f, 8.0f}, {1.0f, 0.0f, 0.0f});
@@ -438,17 +472,6 @@ void Game::render()
       {-400.0f, -450.0f, 1.0f},
       {128.0f, 128.0f}
     );
-    std::array<f32, 4> text_parts = {19, 4, 18, 19};
-    for (usize i = 0; i < text_parts.size(); ++i)
-    {
-      pass.draw_texture_part(
-        font_texture,
-        {(0.5f * -27 * (f32) text_parts.size()) + (27 * (f32) i), -480, 2},
-        {27, 48},
-        {9 * text_parts[i], 0},
-        {9, 16}
-      );
-    }
 
     pass.finish();
   }

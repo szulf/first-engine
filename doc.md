@@ -2,7 +2,6 @@
 
 ## SMALL TODOS: (ordered)
 
-2. 2D texture rendering
 3. widget thingy
 
 ---
@@ -21,6 +20,8 @@
 - profiler
 - inventory system
 - logging
+
+- particles
 
 - more on lighting
   - pcf or other technique for better shadow mapping

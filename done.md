@@ -65,3 +65,4 @@
    - make asset handles their own distinct type
    - get rid of the weird AssetType thingies
    - get rid of render pass types
+2. 2D texture rendering

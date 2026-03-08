@@ -12,10 +12,7 @@ static constexpr f32 DT_F32{(f32) DT.count() / (f32) std::milli::den};
 i32 main()
 {
   os::init();
-  os::Window window{
-    "game",
-    {1280, 720}
-  };
+  os::Window window{"game", {1280, 720}};
   os::Audio audio{};
   Game game{window, audio};
 

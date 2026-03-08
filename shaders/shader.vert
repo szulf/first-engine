@@ -29,7 +29,7 @@ void main()
   vert_out.uv = (a_uv * a_uv_scale) + a_uv_offset;
   vert_out.frag_pos = vec3(a_model * vec4(a_pos, 1.0f));
   vert_out.normal = mat3(transpose(inverse(a_model))) * a_normal;
-  vert_out.tint = a_tint.rgb;
+  vert_out.tint = a_tint;
 
   gl_Position = proj_view * vec4(vert_out.frag_pos, 1.0f);
 }

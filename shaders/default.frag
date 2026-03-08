@@ -24,6 +24,9 @@ uniform Material material;
 
 void main()
 {
-  vec3 object_color = (texture(material.diffuse_map, vert_out.uv).rgb + material.diffuse) * vert_out.tint;
-  color = vec4(object_color, 1.0f);
+  // TODO: this is still not perfect, what if there is no diffuse_map and diffuse color is transparent?
+  // so diffuse color is a vec3 lol, but should it really be that?
+  vec4 texture_color = texture(material.diffuse_map, vert_out.uv);
+  vec4 object_color = vec4(texture_color.rgb + material.diffuse, texture_color.a) * vec4(vert_out.tint, 1.0f);
+  color = object_color;
 }

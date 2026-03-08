@@ -60,6 +60,7 @@ extern PFNGLVERTEXATTRIBDIVISORPROC glVertexAttribDivisor;
 extern PFNGLDRAWELEMENTSINSTANCEDPROC glDrawElementsInstanced;
 extern PFNGLDELETEPROGRAMPROC glDeleteProgram;
 extern PFNGLDELETETEXTURESPROC glDeleteTextures;
+extern PFNGLBLENDFUNCPROC glBlendFunc;
 void setup_gl_functions();
 
 #ifdef MODE_DEBUG
