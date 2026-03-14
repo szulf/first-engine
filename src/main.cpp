@@ -5,8 +5,10 @@
 #include "os/os.h"
 #include "game/game.h"
 
-// TODO: calculate this from TPS/MSPT
-static constexpr std::chrono::milliseconds DT{50};
+static constexpr i32 TPS{20};
+static constexpr std::chrono::milliseconds DT{
+  std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds{1}) / TPS
+};
 static constexpr f32 DT_F32{(f32) DT.count() / (f32) std::milli::den};
 
 i32 main()

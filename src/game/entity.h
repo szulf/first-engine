@@ -1,9 +1,9 @@
 #pragma once
 
-#include "base/base.h"
-
 #include <string>
 #include <vector>
+
+#include "base/base.h"
 
 #include "assets.h"
 
@@ -90,8 +90,8 @@ bool entities_collide(const Entity& ea, const Entity& eb);
 
 struct Scene
 {
-  Scene(const std::filesystem::path& path);
-
   vec3 ambient_color{};
   std::vector<Entity> entities{};
 };
+
+Scene load_scene(const std::filesystem::path& path);

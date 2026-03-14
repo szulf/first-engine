@@ -9,7 +9,10 @@
 #include "assets.h"
 #include "camera.h"
 
-struct RenderData
+namespace render
+{
+
+struct Data
 {
   Camera camera_2d{};
 
@@ -36,12 +39,12 @@ static constexpr usize MAX_INSTANCES = 10000;
 struct InstanceData
 {
   mat4 transform{};
-  vec3 tint{};
+  vec4 tint{};
   vec2 uv_scale{1, 1};
   vec2 uv_offset{0, 0};
 };
 
-struct RenderCmd3D
+struct Cmd3D
 {
   MaterialHandle material{};
   MeshHandle mesh{};
@@ -49,7 +52,7 @@ struct RenderCmd3D
   InstanceData instance_data{};
 };
 
-struct RenderCmd2D
+struct Cmd2D
 {
   TextureHandle texture{};
   f32 z_idx{};
@@ -66,11 +69,16 @@ struct Light
   static constexpr f32 QUADRATIC = 0.2f;
 };
 
-class RenderPass
+class Pass
 {
   using OnShaderBindCallback = std::function<void(Shader& shader)>;
 
 public:
+  Pass(const Camera& camera, const vec3& ambient_color = {1, 1, 1})
+    : m_camera{camera}, m_ambient_color{ambient_color}
+  {
+  }
+
   void render_to(TextureHandle texture);
   void override_shader(ShaderHandle shader);
   void on_shader_bind(OnShaderBindCallback&& on_bind);
@@ -78,48 +86,14 @@ public:
   // before iterating over all render commands
   void finish();
 
-  // NOTE: 2D
-  void draw_quad(const vec3& pos, const vec2& size, const vec3& color);
-  void draw_texture(
-    TextureHandle texture,
-    const vec3& pos,
-    const vec2& size,
-    const vec3& tint = {1.0f, 1.0f, 1.0f}
-  );
-  // NOTE: texture (0, 0) is in the lower left corner
-  void draw_texture_part(
-    TextureHandle texture,
-    const vec3& pos,
-    const vec2& size,
-    const vec2& in_texture_pos,
-    const vec2& in_texture_size,
-    const vec3& tint = {1.0f, 1.0f, 1.0f}
-  );
-
-  // NOTE: 3D
-  void draw_mesh(
-    MeshHandle handle,
-    const vec3& pos,
-    f32 rotation,
-    const vec3& tint = {1.0f, 1.0f, 1.0f}
-  );
-  void draw_cube_wires(const vec3& pos, const vec3& size, const vec3& color);
-  void draw_ring(const vec3& pos, f32 radius, const vec3& color);
-  void draw_line(const vec3& pos, f32 length, f32 rotation, const vec3& color);
+  void append(const Cmd2D& cmd);
+  void append(const std::vector<Cmd2D>& cmd);
+  void append(const Cmd3D& cmd);
+  void append(const std::vector<Cmd3D>& cmd);
 
   // NOTE: supports rendering only a single point light since that is what i need for the game,
   // would not be too hard to implement more lights (will implement directional light later)
   void set_light(const vec3& pos, const vec3& color);
-
-private:
-  inline constexpr RenderPass(
-    RenderData& render_data,
-    const Camera& camera,
-    const vec3& ambient_color
-  )
-    : m_render_data{render_data}, m_camera{camera}, m_ambient_color{ambient_color}
-  {
-  }
 
 private:
   using Flags = u32;
@@ -128,9 +102,8 @@ private:
   static constexpr Flags USES_SHADOW_MAP = 1 << 2;
 
   Flags m_flags{};
-  RenderData& m_render_data;
-  std::vector<RenderCmd3D> m_cmds_3d{};
-  std::vector<RenderCmd2D> m_cmds_2d{};
+  std::vector<Cmd3D> m_cmds_3d{};
+  std::vector<Cmd2D> m_cmds_2d{};
   const Camera& m_camera;
   OnShaderBindCallback m_on_shader_bind{};
 
@@ -144,18 +117,33 @@ private:
   friend class Renderer;
 };
 
-class Renderer
-{
-public:
-  Renderer();
+// NOTE: 2D
+// TODO: commands with the same z-index are rendered wrong
+Cmd2D quad(const vec3& pos, const vec2& size, const vec4& color);
+Cmd2D texture(
+  TextureHandle texture,
+  const vec3& pos,
+  const vec2& size,
+  const vec4& tint = {1.0f, 1.0f, 1.0f, 1.0f}
+);
+Cmd2D texture_part(
+  TextureHandle texture,
+  const vec3& pos,
+  const vec2& size,
+  const vec2& in_texture_pos,
+  const vec2& in_texture_size,
+  const vec4& tint = {1.0f, 1.0f, 1.0f, 1.0f}
+);
 
-  void create_framebuffer(TextureHandle texture);
+// NOTE: 3D
+std::vector<Cmd3D>
+mesh(MeshHandle handle, const vec3& pos, f32 rotation, const vec3& tint = {1.0f, 1.0f, 1.0f});
+Cmd3D cube_wires(const vec3& pos, const vec3& size, const vec3& color);
+Cmd3D ring(const vec3& pos, f32 radius, const vec3& color);
+Cmd3D line(const vec3& pos, f32 length, f32 rotation, const vec3& color);
 
-  RenderPass begin_pass(const Camera& camera, const vec3& ambient_color = {1, 1, 1});
-
-private:
-  RenderData m_render_data;
-};
+void init();
+void create_framebuffer(TextureHandle texture);
 
 struct STD140Camera
 {
@@ -174,5 +162,7 @@ struct STD140Light
   f32 quadratic;
   f32 _pad;
 };
+
+}
 
 #endif

@@ -227,6 +227,20 @@ vec3 cross(const vec3& va, const vec3& vb)
   };
 }
 
+vec4 vec4::operator*(const vec4& other) const
+{
+  return {x * other.x, y * other.y, z * other.z, w * other.w};
+}
+
+vec4& vec4::operator*=(const vec4& other)
+{
+  x *= other.x;
+  y *= other.y;
+  z *= other.z;
+  w *= other.w;
+  return *this;
+}
+
 mat4 mat4::operator*(const mat4& other) const
 {
   mat4 out = {};
@@ -238,6 +252,19 @@ mat4 mat4::operator*(const mat4& other) const
       {
         out.data[j][i] += data[k][i] * other.data[j][k];
       }
+    }
+  }
+  return out;
+}
+
+vec4 mat4::operator*(const vec4& vec) const
+{
+  vec4 out = {};
+  for (usize i = 0; i < 4; ++i)
+  {
+    for (usize j = 0; j < 4; ++j)
+    {
+      out[i] += data[i][j] * vec[j];
     }
   }
   return out;

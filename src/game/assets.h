@@ -154,7 +154,10 @@ enum class RenderPrimitive
 };
 
 // TODO: change this
-struct RenderData;
+namespace render
+{
+struct Data;
+}
 class Mesh
 {
 public:
@@ -163,7 +166,7 @@ public:
     std::vector<u32>&& indices,
     std::vector<Submesh>&& submeshes,
     RenderPrimitive primitive,
-    RenderData& render_data
+    render::Data& render_data
   );
   Mesh(const Mesh&) = delete;
   Mesh& operator=(const Mesh&) = delete;
@@ -195,7 +198,7 @@ public:
   MeshHandle load_obj(const std::filesystem::path& path);
   TextureHandle load_texture(const std::filesystem::path& path);
   void clear();
-  void bind_render_data(RenderData& render_data);
+  void bind_render_data(render::Data& render_data);
 
   inline constexpr static AssetManager& instance()
   {
@@ -248,7 +251,7 @@ private:
   void load_mtl_file(const std::filesystem::path& path);
 
 private:
-  RenderData* m_render_data;
+  render::Data* m_render_data;
 
   std::vector<Texture> m_textures;
   std::vector<Material> m_materials;

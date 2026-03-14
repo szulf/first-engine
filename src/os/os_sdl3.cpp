@@ -4,7 +4,6 @@
 #include "sdl3/include/SDL3/SDL.h"
 
 #include "gl_functions.h"
-#include <thread>
 
 namespace os
 {
@@ -281,6 +280,7 @@ void Input::clear()
   {
     key.transition_count = 0;
   }
+  lmb.transition_count = 0;
 }
 
 struct SDL3WindowData : public Window::WindowData
@@ -586,6 +586,16 @@ void Window::update()
         m_input.mouse_delta = {e.motion.xrel, e.motion.yrel};
       }
       break;
+      case SDL_EVENT_MOUSE_BUTTON_UP:
+      case SDL_EVENT_MOUSE_BUTTON_DOWN:
+      {
+        if (e.button.button == 1)
+        {
+          m_input.lmb.down = e.button.down;
+          ++m_input.lmb.transition_count;
+        }
+      }
+      break;
     }
   }
 
@@ -595,7 +605,7 @@ void Window::update()
     auto sdlk = sdlk_from_key((Key) i);
     if (sdlk)
     {
-      m_input.keys[i].ended_down = key_states[SDL_GetScancodeFromKey(*sdlk, nullptr)];
+      m_input.keys[i].down = key_states[SDL_GetScancodeFromKey(*sdlk, nullptr)];
     }
   }
 }

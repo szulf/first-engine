@@ -7,23 +7,28 @@
 #include "game/camera.h"
 #include "os/gl_functions.h"
 
-void RenderPass::render_to(TextureHandle texture)
+namespace render
+{
+
+static Data render_data{};
+
+void Pass::render_to(TextureHandle texture)
 {
   ASSERT(
-    m_render_data.framebuffers.contains(texture),
+    render_data.framebuffers.contains(texture),
     "No framebuffer associated with this texture."
   );
   m_flags |= OVERRIDED_FRAMEBUFFER;
-  m_framebuffer = m_render_data.framebuffers[texture];
+  m_framebuffer = render_data.framebuffers[texture];
 }
 
-void RenderPass::override_shader(ShaderHandle shader)
+void Pass::override_shader(ShaderHandle shader)
 {
   m_flags |= OVERRIDED_SHADER;
   m_overidded_shader = shader;
 }
 
-void RenderPass::on_shader_bind(OnShaderBindCallback&& on_bind)
+void Pass::on_shader_bind(OnShaderBindCallback&& on_bind)
 {
   m_on_shader_bind = std::move(on_bind);
 }
@@ -45,12 +50,12 @@ static GLenum gl_primitive(RenderPrimitive primitive)
   }
 }
 
-void RenderPass::finish()
+void Pass::finish()
 {
   auto& assets = AssetManager::instance();
   std::ranges::sort(
     m_cmds_3d,
-    [](const RenderCmd3D& a, const RenderCmd3D& b) -> bool
+    [](const Cmd3D& a, const Cmd3D& b) -> bool
     {
       if (a.material.id != b.material.id)
       {
@@ -81,7 +86,7 @@ void RenderPass::finish()
   camera_std140.view_pos = m_camera.pos();
   camera_std140.proj_view = m_camera.projection() * m_camera.look_at();
   camera_std140.far_plane = m_camera.far_plane();
-  glBindBuffer(GL_UNIFORM_BUFFER, m_render_data.camera_ubo);
+  glBindBuffer(GL_UNIFORM_BUFFER, render_data.camera_ubo);
   glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(camera_std140), &camera_std140);
 
   STD140Light light_std140 = {};
@@ -90,7 +95,7 @@ void RenderPass::finish()
   light_std140.constant = Light::CONSTANT;
   light_std140.linear = Light::LINEAR;
   light_std140.quadratic = Light::QUADRATIC;
-  glBindBuffer(GL_UNIFORM_BUFFER, m_render_data.lights_ubo);
+  glBindBuffer(GL_UNIFORM_BUFFER, render_data.lights_ubo);
   glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(STD140Light), &light_std140);
 
   for (usize cmd_idx = 0; cmd_idx < m_cmds_3d.size();)
@@ -117,14 +122,14 @@ void RenderPass::finish()
       instance_data.push_back(m_cmds_3d[i].instance_data);
     }
 
-    ShaderHandle handle = m_render_data.default_shader;
+    ShaderHandle handle = render_data.default_shader;
     if (m_flags & OVERRIDED_SHADER)
     {
       handle = m_overidded_shader;
     }
     else if (material.specular_exponent != 0.0f)
     {
-      handle = m_render_data.lighting_shader;
+      handle = render_data.lighting_shader;
     }
     auto& shader = assets.get(handle);
 
@@ -140,7 +145,7 @@ void RenderPass::finish()
     shader.set("material.specular_exponent", material.specular_exponent);
     shader.set("material.diffuse_map", material.diffuse_map);
 
-    glBindBuffer(GL_ARRAY_BUFFER, m_render_data.instance_data_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, render_data.instance_data_buffer);
     glBufferSubData(
       GL_ARRAY_BUFFER,
       0,
@@ -164,7 +169,7 @@ void RenderPass::finish()
 
   std::ranges::sort(
     m_cmds_2d,
-    [](const RenderCmd2D& a, const RenderCmd2D& b)
+    [](const Cmd2D& a, const Cmd2D& b)
     {
       if (!f32_equal(a.z_idx, b.z_idx))
       {
@@ -175,15 +180,14 @@ void RenderPass::finish()
   );
 
   camera_std140 = {};
-  m_render_data.camera_2d.update_viewport(m_camera.viewport());
-  camera_std140.view_pos = m_render_data.camera_2d.pos();
-  camera_std140.proj_view =
-    m_render_data.camera_2d.projection() * m_render_data.camera_2d.look_at();
-  camera_std140.far_plane = m_render_data.camera_2d.far_plane();
-  glBindBuffer(GL_UNIFORM_BUFFER, m_render_data.camera_ubo);
+  render_data.camera_2d.update_viewport(m_camera.viewport());
+  camera_std140.view_pos = render_data.camera_2d.pos();
+  camera_std140.proj_view = render_data.camera_2d.projection() * render_data.camera_2d.look_at();
+  camera_std140.far_plane = render_data.camera_2d.far_plane();
+  glBindBuffer(GL_UNIFORM_BUFFER, render_data.camera_ubo);
   glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(camera_std140), &camera_std140);
 
-  const auto& quad = assets.get(m_render_data.quad);
+  const auto& quad = assets.get(render_data.quad);
   for (usize cmd_idx = 0; cmd_idx < m_cmds_2d.size();)
   {
     const auto& cmd = m_cmds_2d[cmd_idx];
@@ -203,12 +207,12 @@ void RenderPass::finish()
       instance_data.push_back(m_cmds_2d[i].instance_data);
     }
 
-    auto& shader = assets.get(m_render_data.default_shader);
+    auto& shader = assets.get(render_data.default_shader);
     shader.use();
     shader.set("material.diffuse", vec3{});
     shader.set("material.diffuse_map", cmd.texture);
 
-    glBindBuffer(GL_ARRAY_BUFFER, m_render_data.instance_data_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, render_data.instance_data_buffer);
     glBufferSubData(
       GL_ARRAY_BUFFER,
       0,
@@ -231,6 +235,33 @@ void RenderPass::finish()
   }
 }
 
+void Pass::append(const Cmd2D& cmd)
+{
+  m_cmds_2d.push_back(cmd);
+}
+
+void Pass::append(const std::vector<Cmd2D>& cmd)
+{
+  m_cmds_2d.insert(m_cmds_2d.end(), cmd.begin(), cmd.end());
+}
+
+void Pass::append(const Cmd3D& cmd)
+{
+
+  m_cmds_3d.push_back(cmd);
+}
+
+void Pass::append(const std::vector<Cmd3D>& cmd)
+{
+  m_cmds_3d.insert(m_cmds_3d.end(), cmd.begin(), cmd.end());
+}
+
+void Pass::set_light(const vec3& pos, const vec3& color)
+{
+  m_light.pos = pos;
+  m_light.color = color;
+}
+
 static mat4 get_transform(const vec3& pos, const vec3& size, f32 rotation)
 {
   mat4 transform{1.0f};
@@ -240,104 +271,42 @@ static mat4 get_transform(const vec3& pos, const vec3& size, f32 rotation)
   return transform;
 }
 
-void RenderPass::draw_mesh(MeshHandle handle, const vec3& pos, f32 rotation, const vec3& tint)
+Cmd2D quad(const vec3& pos, const vec2& size, const vec4& color)
 {
-  auto& mesh = AssetManager::instance().get(handle);
-  for (usize i = 0; i < mesh.submeshes.size(); ++i)
-  {
-    m_cmds_3d.push_back({
-      .material = mesh.submeshes[i].material,
-      .mesh = handle,
-      .submesh_idx = i,
-      .instance_data = {
-        .transform = get_transform(pos, {1.0f, 1.0f, 1.0f}, rotation),
-        .tint = tint,
-      },
-    });
-  }
-}
-
-void RenderPass::draw_cube_wires(const vec3& pos, const vec3& size, const vec3& color)
-{
-  m_cmds_3d.push_back({
-    .material = AssetManager::instance().get(m_render_data.cube_wires).submeshes[0].material,
-    .mesh = m_render_data.cube_wires,
-    .submesh_idx = 0,
-    .instance_data = {
-      .transform = get_transform(pos, size, 0.0f),
-      .tint = color,
-    },
-  });
-}
-
-void RenderPass::draw_ring(const vec3& pos, f32 radius, const vec3& color)
-{
-  auto diameter = 2.0f * radius;
-  m_cmds_3d.push_back({
-    .material = AssetManager::instance().get(m_render_data.ring).submeshes[0].material,
-    .mesh = m_render_data.ring,
-    .submesh_idx = 0,
-    .instance_data = {
-      .transform = get_transform(pos, {diameter, 1.0f, diameter}, 0.0f),
-      .tint = color,
-    },
-  });
-}
-
-void RenderPass::draw_line(const vec3& pos, f32 length, f32 rotation, const vec3& color)
-{
-  m_cmds_3d.push_back({
-    .material = AssetManager::instance().get(m_render_data.line).submeshes[0].material,
-    .mesh = m_render_data.line,
-    .submesh_idx = 0,
-    .instance_data = {
-      .transform = get_transform(pos, {length, 1.0f, length}, rotation),
-      .tint = color,
-    },
-  });
-}
-
-void RenderPass::draw_quad(const vec3& pos, const vec2& size, const vec3& color)
-{
-  m_cmds_2d.push_back({
-    .texture = m_render_data.blank_texture,
+  return {
+    .texture = render_data.blank_texture,
     .z_idx = pos.z,
     .instance_data = {
       .transform = get_transform(pos, {size.x, size.y, 1.0f}, 0.0f),
       .tint = color,
     },
-  });
+  };
 }
 
-void RenderPass::draw_texture(
-  TextureHandle texture,
-  const vec3& pos,
-  const vec2& size,
-  const vec3& tint
-)
+Cmd2D texture(TextureHandle texture, const vec3& pos, const vec2& size, const vec4& tint)
 {
-  m_cmds_2d.push_back({
+  return {
     .texture = texture,
     .z_idx = pos.z,
     .instance_data = {
       .transform = get_transform(pos, {size.x, size.y, 1.0f}, 0.0f),
       .tint = tint,
     },
-  });
+  };
 }
 
-void RenderPass::draw_texture_part(
+Cmd2D texture_part(
   TextureHandle texture,
   const vec3& pos,
   const vec2& size,
   const vec2& in_texture_pos,
   const vec2& in_texture_size,
-  const vec3& tint
+  const vec4& tint
 )
 {
   uvec2 dims = AssetManager::instance().get(texture).dimensions;
   vec2 dims_f32 = {(f32) dims.x, (f32) dims.y};
-  m_cmds_2d.push_back({
+  return {
     .texture = texture,
     .z_idx = pos.z,
     .instance_data = {
@@ -346,13 +315,67 @@ void RenderPass::draw_texture_part(
       .uv_scale = in_texture_size / dims_f32,
       .uv_offset = in_texture_pos / dims_f32,
     },
-  });
+  };
 }
 
-void RenderPass::set_light(const vec3& pos, const vec3& color)
+// NOTE: 3D
+std::vector<Cmd3D> mesh(MeshHandle handle, const vec3& pos, f32 rotation, const vec3& tint)
 {
-  m_light.pos = pos;
-  m_light.color = color;
+  std::vector<Cmd3D> out{};
+  auto& mesh = AssetManager::instance().get(handle);
+  for (usize i = 0; i < mesh.submeshes.size(); ++i)
+  {
+    out.push_back({
+      .material = mesh.submeshes[i].material,
+      .mesh = handle,
+      .submesh_idx = i,
+      .instance_data = {
+        .transform = get_transform(pos, {1.0f, 1.0f, 1.0f}, rotation),
+        .tint = {tint.x, tint.y, tint.z, 1.0f},
+      },
+    });
+  }
+  return out;
+}
+
+Cmd3D cube_wires(const vec3& pos, const vec3& size, const vec3& color)
+{
+  return {
+    .material = AssetManager::instance().get(render_data.cube_wires).submeshes[0].material,
+    .mesh = render_data.cube_wires,
+    .submesh_idx = 0,
+    .instance_data = {
+      .transform = get_transform(pos, size, 0.0f),
+      .tint = {color.x, color.y, color.z, 1.0f},
+    },
+  };
+}
+
+Cmd3D ring(const vec3& pos, f32 radius, const vec3& color)
+{
+  auto diameter = 2.0f * radius;
+  return {
+    .material = AssetManager::instance().get(render_data.ring).submeshes[0].material,
+    .mesh = render_data.ring,
+    .submesh_idx = 0,
+    .instance_data = {
+      .transform = get_transform(pos, {diameter, 1.0f, diameter}, 0.0f),
+      .tint = {color.x, color.y, color.z, 1.0f},
+    },
+  };
+}
+
+Cmd3D line(const vec3& pos, f32 length, f32 rotation, const vec3& color)
+{
+  return {
+    .material = AssetManager::instance().get(render_data.line).submeshes[0].material,
+    .mesh = render_data.line,
+    .submesh_idx = 0,
+    .instance_data = {
+      .transform = get_transform(pos, {length, 1.0f, length}, rotation),
+      .tint = {color.x, color.y, color.z, 1.0f},
+    },
+  };
 }
 
 static constexpr Vertex cube_vertices[] = {
@@ -423,7 +446,6 @@ static constexpr u8 blank_texture_data[] = {0xFF, 0xFF, 0xFF, 0xFF};
 static constexpr uvec2 blank_texture_dimensions = {1, 1};
 
 static MeshHandle static_model_init(
-  RenderData& render_data,
   std::vector<Vertex>&& vertices,
   std::vector<u32>&& indices,
   RenderPrimitive primitive
@@ -443,19 +465,19 @@ static MeshHandle static_model_init(
   );
 }
 
-Renderer::Renderer()
+void init()
 {
   auto& assets = AssetManager::instance();
 
-  m_render_data.camera_2d = Camera{CameraDescription{
+  render_data.camera_2d = Camera{CameraDescription{
     .type = CameraType::ORTHOGRAPHIC,
-    .pos = {0, 0, 5},
+    .pos = {0, 0, 1},
     .yaw = -90,
     .pitch = 0,
     .using_vertical_fov = true,
     .fov = 0.25f * std::numbers::pi_v<f32>,
-    .near_plane = 0.1f,
-    .far_plane = 1000.0f
+    .near_plane = 0.0f,
+    .far_plane = 10.0f
   }};
 
   glEnable(GL_BLEND);
@@ -463,50 +485,46 @@ Renderer::Renderer()
 
   glEnable(GL_DEPTH_TEST);
 
-  glGenBuffers(1, &m_render_data.camera_ubo);
-  glBindBuffer(GL_UNIFORM_BUFFER, m_render_data.camera_ubo);
+  glGenBuffers(1, &render_data.camera_ubo);
+  glBindBuffer(GL_UNIFORM_BUFFER, render_data.camera_ubo);
   glBufferData(GL_UNIFORM_BUFFER, sizeof(STD140Camera), nullptr, GL_DYNAMIC_DRAW);
-  glBindBufferBase(GL_UNIFORM_BUFFER, RenderData::UBO_INDEX_CAMERA, m_render_data.camera_ubo);
+  glBindBufferBase(GL_UNIFORM_BUFFER, Data::UBO_INDEX_CAMERA, render_data.camera_ubo);
 
-  glGenBuffers(1, &m_render_data.lights_ubo);
-  glBindBuffer(GL_UNIFORM_BUFFER, m_render_data.lights_ubo);
+  glGenBuffers(1, &render_data.lights_ubo);
+  glBindBuffer(GL_UNIFORM_BUFFER, render_data.lights_ubo);
   glBufferData(GL_UNIFORM_BUFFER, sizeof(STD140Light), nullptr, GL_DYNAMIC_DRAW);
-  glBindBufferBase(GL_UNIFORM_BUFFER, RenderData::UBO_INDEX_LIGHTS, m_render_data.lights_ubo);
+  glBindBufferBase(GL_UNIFORM_BUFFER, Data::UBO_INDEX_LIGHTS, render_data.lights_ubo);
 
-  glGenBuffers(1, &m_render_data.instance_data_buffer);
-  glBindBuffer(GL_ARRAY_BUFFER, m_render_data.instance_data_buffer);
+  glGenBuffers(1, &render_data.instance_data_buffer);
+  glBindBuffer(GL_ARRAY_BUFFER, render_data.instance_data_buffer);
   glBufferData(GL_ARRAY_BUFFER, MAX_INSTANCES * sizeof(InstanceData), nullptr, GL_STATIC_DRAW);
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-  m_render_data.default_shader = assets.set({"shaders/shader.vert", "shaders/default.frag"});
-  m_render_data.lighting_shader = assets.set({"shaders/shader.vert", "shaders/lighting.frag"});
+  render_data.default_shader = assets.set({"shaders/shader.vert", "shaders/default.frag"});
+  render_data.lighting_shader = assets.set({"shaders/shader.vert", "shaders/lighting.frag"});
 
-  m_render_data.cube_wires = static_model_init(
-    m_render_data,
+  render_data.cube_wires = static_model_init(
     {cube_vertices, cube_vertices + ARRAY_SIZE(cube_vertices)},
     {cube_wires_indices, cube_wires_indices + ARRAY_SIZE(cube_wires_indices)},
     RenderPrimitive::LINE_STRIP
   );
-  m_render_data.ring = static_model_init(
-    m_render_data,
+  render_data.ring = static_model_init(
     {ring_vertices, ring_vertices + ARRAY_SIZE(ring_vertices)},
     {ring_indices, ring_indices + ARRAY_SIZE(ring_indices)},
     RenderPrimitive::LINE_STRIP
   );
-  m_render_data.line = static_model_init(
-    m_render_data,
+  render_data.line = static_model_init(
     {line_vertices, line_vertices + ARRAY_SIZE(line_vertices)},
     {line_indices, line_indices + ARRAY_SIZE(line_indices)},
     RenderPrimitive::LINE_STRIP
   );
-  m_render_data.quad = static_model_init(
-    m_render_data,
+  render_data.quad = static_model_init(
     {quad_vertices, quad_vertices + ARRAY_SIZE(quad_vertices)},
     {quad_indices, quad_indices + ARRAY_SIZE(quad_indices)},
     RenderPrimitive::TRIANGLES
   );
 
-  m_render_data.blank_texture = assets.set(
+  render_data.blank_texture = assets.set(
     Texture{
       Image{blank_texture_data, blank_texture_dimensions},
       WrapOption::REPEAT,
@@ -516,10 +534,10 @@ Renderer::Renderer()
     }
   );
 
-  assets.bind_render_data(m_render_data);
+  assets.bind_render_data(render_data);
 }
 
-void Renderer::create_framebuffer(TextureHandle texture)
+void create_framebuffer(TextureHandle texture)
 {
   u32 id{};
   glGenFramebuffers(1, &id);
@@ -533,10 +551,7 @@ void Renderer::create_framebuffer(TextureHandle texture)
   glDrawBuffer(GL_NONE);
   glReadBuffer(GL_NONE);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  m_render_data.framebuffers.insert_or_assign(texture, id);
+  render_data.framebuffers.insert_or_assign(texture, id);
 }
 
-RenderPass Renderer::begin_pass(const Camera& camera, const vec3& ambient_color)
-{
-  return {m_render_data, camera, ambient_color};
 }

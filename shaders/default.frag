@@ -14,7 +14,7 @@ in VERT_OUT
   vec2 uv;
   vec3 normal;
   vec3 frag_pos;
-  vec3 tint;
+  vec4 tint;
 }
 vert_out;
 
@@ -27,6 +27,6 @@ void main()
   // TODO: this is still not perfect, what if there is no diffuse_map and diffuse color is transparent?
   // so diffuse color is a vec3 lol, but should it really be that?
   vec4 texture_color = texture(material.diffuse_map, vert_out.uv);
-  vec4 object_color = vec4(texture_color.rgb + material.diffuse, texture_color.a) * vec4(vert_out.tint, 1.0f);
+  vec4 object_color = vec4(texture_color.rgb + material.diffuse, texture_color.a) * vert_out.tint;
   color = object_color;
 }

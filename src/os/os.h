@@ -69,11 +69,11 @@ struct KeyState
 {
   inline constexpr bool just_pressed() const
   {
-    return ended_down && transition_count != 0;
+    return down && transition_count != 0;
   }
 
   u32 transition_count;
-  bool ended_down;
+  bool down;
 };
 
 struct Input
@@ -86,6 +86,7 @@ struct Input
   }
 
   EnumArray<Key, KeyState> keys;
+  KeyState lmb;
 
   vec2 mouse_pos;
   vec2 mouse_delta;

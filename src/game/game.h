@@ -10,6 +10,7 @@
 #include "camera.h"
 #include "renderer.h"
 #include "entity.h"
+#include "ui.h"
 
 enum class Action
 {
@@ -51,15 +52,15 @@ private:
 private:
   os::Window& m_window;
 
-  Renderer m_renderer{};
   static constexpr uvec2 SHADOW_MAP_DIMENSIONS = {1024, 1024};
   TextureHandle shadow_map;
   ShaderHandle shadow_depth_shader;
+  static constexpr vec2 CHAR_SIZE = {9, 16};
   TextureHandle font_texture;
 
   SoundSystem m_sound_system;
 
-  Scene m_scene;
+  Scene scene;
   Keymap m_keymap{};
 
   Camera m_gameplay_camera;

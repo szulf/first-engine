@@ -116,12 +116,12 @@ Shader::Shader(const std::filesystem::path& vs_path, const std::filesystem::path
   auto index = glGetUniformBlockIndex(m_id, "Camera");
   if (index != GL_INVALID_INDEX)
   {
-    glUniformBlockBinding(m_id, index, RenderData::UBO_INDEX_CAMERA);
+    glUniformBlockBinding(m_id, index, render::Data::UBO_INDEX_CAMERA);
   }
   index = glGetUniformBlockIndex(m_id, "Lights");
   if (index != GL_INVALID_INDEX)
   {
-    glUniformBlockBinding(m_id, index, RenderData::UBO_INDEX_LIGHTS);
+    glUniformBlockBinding(m_id, index, render::Data::UBO_INDEX_LIGHTS);
   }
 }
 
@@ -139,12 +139,12 @@ Shader::Shader(
   auto index = glGetUniformBlockIndex(m_id, "Camera");
   if (index != GL_INVALID_INDEX)
   {
-    glUniformBlockBinding(m_id, index, RenderData::UBO_INDEX_CAMERA);
+    glUniformBlockBinding(m_id, index, render::Data::UBO_INDEX_CAMERA);
   }
   index = glGetUniformBlockIndex(m_id, "Lights");
   if (index != GL_INVALID_INDEX)
   {
-    glUniformBlockBinding(m_id, index, RenderData::UBO_INDEX_LIGHTS);
+    glUniformBlockBinding(m_id, index, render::Data::UBO_INDEX_LIGHTS);
   }
 }
 
@@ -227,8 +227,8 @@ Texture::Texture(const Image& image) : dimensions{image.dimensions()}, m_type{Te
     WrapOption::REPEAT,
     WrapOption::REPEAT,
     WrapOption::REPEAT,
-    FilterOption::LINEAR,
-    FilterOption::LINEAR
+    FilterOption::NEAREST,
+    FilterOption::NEAREST
   );
 }
 
@@ -377,7 +377,7 @@ Mesh::Mesh(
   std::vector<u32>&& indices_,
   std::vector<Submesh>&& submeshes_,
   RenderPrimitive primitive_,
-  RenderData& render_data_
+  render::Data& render_data_
 )
   : vertices{vertices_}, indices{indices_}, submeshes{submeshes_}, primitive{primitive_}
 {
@@ -425,8 +425,8 @@ Mesh::Mesh(
       4,
       GL_FLOAT,
       GL_FALSE,
-      sizeof(InstanceData),
-      (void*) offsetof(InstanceData, transform)
+      sizeof(render::InstanceData),
+      (void*) offsetof(render::InstanceData, transform)
     );
     glEnableVertexAttribArray(3);
     glVertexAttribPointer(
@@ -434,8 +434,8 @@ Mesh::Mesh(
       4,
       GL_FLOAT,
       GL_FALSE,
-      sizeof(InstanceData),
-      (void*) (offsetof(InstanceData, transform) + sizeof(vec4))
+      sizeof(render::InstanceData),
+      (void*) (offsetof(render::InstanceData, transform) + sizeof(vec4))
     );
     glEnableVertexAttribArray(4);
     glVertexAttribPointer(
@@ -443,8 +443,8 @@ Mesh::Mesh(
       4,
       GL_FLOAT,
       GL_FALSE,
-      sizeof(InstanceData),
-      (void*) (offsetof(InstanceData, transform) + 2 * sizeof(vec4))
+      sizeof(render::InstanceData),
+      (void*) (offsetof(render::InstanceData, transform) + 2 * sizeof(vec4))
     );
     glEnableVertexAttribArray(5);
     glVertexAttribPointer(
@@ -452,8 +452,8 @@ Mesh::Mesh(
       4,
       GL_FLOAT,
       GL_FALSE,
-      sizeof(InstanceData),
-      (void*) (offsetof(InstanceData, transform) + 3 * sizeof(vec4))
+      sizeof(render::InstanceData),
+      (void*) (offsetof(render::InstanceData, transform) + 3 * sizeof(vec4))
     );
     glEnableVertexAttribArray(6);
     // NOTE: entity tint
@@ -462,8 +462,8 @@ Mesh::Mesh(
       4,
       GL_FLOAT,
       GL_FALSE,
-      sizeof(InstanceData),
-      (void*) offsetof(InstanceData, tint)
+      sizeof(render::InstanceData),
+      (void*) offsetof(render::InstanceData, tint)
     );
     glEnableVertexAttribArray(7);
     // NOTE: for rendering parts of a texture
@@ -472,8 +472,8 @@ Mesh::Mesh(
       2,
       GL_FLOAT,
       GL_FALSE,
-      sizeof(InstanceData),
-      (void*) offsetof(InstanceData, uv_scale)
+      sizeof(render::InstanceData),
+      (void*) offsetof(render::InstanceData, uv_scale)
     );
     glEnableVertexAttribArray(8);
     glVertexAttribPointer(
@@ -481,8 +481,8 @@ Mesh::Mesh(
       2,
       GL_FLOAT,
       GL_FALSE,
-      sizeof(InstanceData),
-      (void*) offsetof(InstanceData, uv_offset)
+      sizeof(render::InstanceData),
+      (void*) offsetof(render::InstanceData, uv_offset)
     );
     glEnableVertexAttribArray(9);
 
@@ -791,7 +791,7 @@ void AssetManager::clear()
   m_material_handles.clear();
 }
 
-void AssetManager::bind_render_data(RenderData& render_data)
+void AssetManager::bind_render_data(render::Data& render_data)
 {
   m_render_data = &render_data;
 }

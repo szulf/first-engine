@@ -22,6 +22,8 @@ vec2 bounding_box_from_mesh(MeshHandle handle)
   return {max_corner.x - min_corner.x, max_corner.z - min_corner.z};
 }
 
+// NOTE: not combined with ui bounds checking,
+// because the plan is to change the entity bounds checking algorithm in the future
 bool entities_collide(const Entity& ea, const Entity& eb)
 {
   auto& ax = ea.pos.x;
@@ -181,13 +183,14 @@ Entity::Entity(const std::filesystem::path& path)
   }
 }
 
-Scene::Scene(const std::filesystem::path& path)
+Scene load_scene(const std::filesystem::path& path)
 {
   ASSERT(
     path.extension() == ".gscn",
     "[GSCN] Invalid filepath provided. (path: {}).",
     path.string()
   );
+  Scene scene{};
   std::ifstream file{path};
   ASSERT(!file.fail(), "[GSCN] File reading error. (path: {}).", path.string());
   std::string line{};
@@ -204,21 +207,23 @@ Scene::Scene(const std::filesystem::path& path)
     parser::expect_and_skip(pos, ':');
     if (key == "ambient_color")
     {
-      ambient_color = gfmt_parse_vec3(pos);
+      scene.ambient_color = gfmt_parse_vec3(pos);
       continue;
     }
 
     if (entity_cache.contains(key))
     {
-      entities.push_back(entity_cache[key]);
+      scene.entities.push_back(entity_cache[key]);
     }
     else
     {
       Entity entity{(path.parent_path() / key).concat(".gent")};
       entity_cache.insert_or_assign(key, entity);
-      entities.push_back(entity);
+      scene.entities.push_back(entity);
     }
-    auto& ent = entities[entities.size() - 1];
+    auto& ent = scene.entities[scene.entities.size() - 1];
     ent.prev_pos = ent.rendered_pos = ent.pos = gfmt_parse_vec3(pos);
   }
+
+  return scene;
 }

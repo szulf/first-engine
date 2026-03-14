@@ -10,6 +10,7 @@
 #include "renderer.h"
 #include "entity.h"
 #include "parser.h"
+#include "ui.h"
 
 std::expected<std::string_view, std::string_view> action_to_string(Action action)
 {
@@ -72,26 +73,28 @@ Keymap load_gkey(const std::filesystem::path& path)
 }
 
 Game::Game(os::Window& window, os::Audio& audio)
-  : m_window{window}, m_sound_system{audio}, m_scene{"data/main.gscn"},
-    m_keymap{load_gkey("data/keymap.gkey")}, m_gameplay_camera{CameraDescription{
-                                               .type = CameraType::PERSPECTIVE,
-                                               .pos = {0, 12, 8},
-                                               .yaw = -90,
-                                               .pitch = -55,
-                                               .using_vertical_fov = true,
-                                               .fov = 0.25f * std::numbers::pi_v<f32>,
-                                               .near_plane = 0.1f,
-                                               .far_plane = 1000.0f,
-                                               .viewport = m_window.dimensions(),
-                                             }},
+  : m_window{window}, m_sound_system{audio}, m_keymap{load_gkey("data/keymap.gkey")},
+    m_gameplay_camera{CameraDescription{
+      .type = CameraType::PERSPECTIVE,
+      .pos = {0, 12, 8},
+      .yaw = -90,
+      .pitch = -55,
+      .using_vertical_fov = true,
+      .fov = 0.25f * std::numbers::pi_v<f32>,
+      .near_plane = 0.1f,
+      .far_plane = 1000.0f,
+      .viewport = m_window.dimensions(),
+    }},
     m_debug_camera{m_gameplay_camera}, m_main_camera{&m_gameplay_camera}
 {
-  m_sound_system.play_looped(SoundHandle::TEST_MUSIC, 0.1f);
+  render::init();
+  scene = load_scene("data/main.gscn");
+  // m_sound_system.play_looped(SoundHandle::TEST_MUSIC, 0.1f);
   shadow_map = AssetManager::instance().set(Texture{TextureType::CUBEMAP, SHADOW_MAP_DIMENSIONS});
   shadow_depth_shader = AssetManager::instance().set(
     Shader{"shaders/shadow_depth.vert", "shaders/shadow_depth.frag", "shaders/shadow_depth.geom"}
   );
-  m_renderer.create_framebuffer(shadow_map);
+  render::create_framebuffer(shadow_map);
   // TODO: load this with FilterOption::NEAREST
   font_texture = AssetManager::instance().load_texture("assets/font.png");
 }
@@ -111,19 +114,19 @@ void Game::update_tick(f32 dt)
   }
 
   vec3 acceleration = {};
-  if (action_key(Action::MOVE_FRONT).ended_down)
+  if (action_key(Action::MOVE_FRONT).down)
   {
     acceleration.z += -1.0f;
   }
-  if (action_key(Action::MOVE_BACK).ended_down)
+  if (action_key(Action::MOVE_BACK).down)
   {
     acceleration.z += 1.0f;
   }
-  if (action_key(Action::MOVE_LEFT).ended_down)
+  if (action_key(Action::MOVE_LEFT).down)
   {
     acceleration.x += -1.0f;
   }
-  if (action_key(Action::MOVE_RIGHT).ended_down)
+  if (action_key(Action::MOVE_RIGHT).down)
   {
     acceleration.x += 1.0f;
   }
@@ -134,11 +137,11 @@ void Game::update_tick(f32 dt)
     m_main_camera = &m_debug_camera;
     m_window.hide_mouse_pointer();
 
-    if (action_key(Action::CAMERA_MOVE_UP).ended_down)
+    if (action_key(Action::CAMERA_MOVE_UP).down)
     {
       acceleration.y += 1.0f;
     }
-    if (action_key(Action::CAMERA_MOVE_DOWN).ended_down)
+    if (action_key(Action::CAMERA_MOVE_DOWN).down)
     {
       acceleration.y += -1.0f;
     }
@@ -151,9 +154,9 @@ void Game::update_tick(f32 dt)
     m_main_camera = &m_gameplay_camera;
     m_window.show_mouse_pointer();
 
-    for (usize i = 0; i < m_scene.entities.size(); ++i)
+    for (usize i = 0; i < scene.entities.size(); ++i)
     {
-      auto& entity = m_scene.entities[i];
+      auto& entity = scene.entities[i];
       entity.prev_pos = entity.pos;
       entity.prev_rotation = entity.rotation;
 
@@ -193,9 +196,9 @@ void Game::update_tick(f32 dt)
 
           vec3 collision_normal = {};
           bool collided = false;
-          for (usize collidable_idx = 0; collidable_idx < m_scene.entities.size(); ++collidable_idx)
+          for (usize collidable_idx = 0; collidable_idx < scene.entities.size(); ++collidable_idx)
           {
-            auto& c = m_scene.entities[collidable_idx];
+            auto& c = scene.entities[collidable_idx];
             if (&c == &entity || !c.collidable() || c.pos.y != 0.0f)
             {
               continue;
@@ -269,10 +272,10 @@ void Game::update_tick(f32 dt)
         // NOTE: interactions
         if (action_key(Action::INTERACT).just_pressed())
         {
-          for (usize interactable_idx = 0; interactable_idx < m_scene.entities.size();
+          for (usize interactable_idx = 0; interactable_idx < scene.entities.size();
                ++interactable_idx)
           {
-            auto& interactable = m_scene.entities[interactable_idx];
+            auto& interactable = scene.entities[interactable_idx];
             if (!interactable.interactable())
             {
               continue;
@@ -297,6 +300,8 @@ void Game::update_tick(f32 dt)
       }
     }
   }
+
+  // NOTE: ui
 }
 
 void Game::update_frame(f32 alpha)
@@ -310,9 +315,9 @@ void Game::update_frame(f32 alpha)
   }
   else
   {
-    for (usize i = 0; i < m_scene.entities.size(); ++i)
+    for (usize i = 0; i < scene.entities.size(); ++i)
     {
-      auto& entity = m_scene.entities[i];
+      auto& entity = scene.entities[i];
       entity.rendered_pos = entity.pos * alpha + entity.prev_pos * (1.0f - alpha);
       vec2 prev_rot_vec = {-std::sin(entity.prev_rotation), std::cos(entity.prev_rotation)};
       vec2 rot_vec = {-std::sin(entity.rotation), std::cos(entity.rotation)};
@@ -328,9 +333,9 @@ void Game::render()
   Camera shadow_map_camera{};
   {
     vec3 pos = {};
-    for (usize i = 0; i < m_scene.entities.size(); ++i)
+    for (usize i = 0; i < scene.entities.size(); ++i)
     {
-      auto& entity = m_scene.entities[i];
+      auto& entity = scene.entities[i];
       if (entity.emits_light())
       {
         pos = entity.pos;
@@ -359,7 +364,7 @@ void Game::render()
       light_proj_mat * look_at(c.pos(), c.pos() + vec3{0.0f, 0.0f, -1.0f}, {0.0f, -1.0f, 0.0f}),
     };
 
-    auto pass = m_renderer.begin_pass(shadow_map_camera);
+    render::Pass pass{shadow_map_camera};
     pass.render_to(shadow_map);
     pass.override_shader(shadow_depth_shader);
     pass.on_shader_bind(
@@ -374,12 +379,12 @@ void Game::render()
       }
     );
 
-    for (usize i = 0; i < m_scene.entities.size(); ++i)
+    for (usize i = 0; i < scene.entities.size(); ++i)
     {
-      auto& entity = m_scene.entities[i];
+      auto& entity = scene.entities[i];
       if (entity.controlled_by_player() && entity.renderable())
       {
-        pass.draw_mesh(entity.mesh, entity.rendered_pos, entity.rendered_rotation);
+        pass.append(render::mesh(entity.mesh, entity.rendered_pos, entity.rendered_rotation));
       }
     }
 
@@ -388,7 +393,7 @@ void Game::render()
 
   // NOTE: main draw pass
   {
-    auto pass = m_renderer.begin_pass(*m_main_camera, m_scene.ambient_color);
+    render::Pass pass{*m_main_camera, scene.ambient_color};
     pass.on_shader_bind(
       [&](Shader& shader)
       {
@@ -397,12 +402,14 @@ void Game::render()
       }
     );
 
-    for (usize i = 0; i < m_scene.entities.size(); ++i)
+    for (usize i = 0; i < scene.entities.size(); ++i)
     {
-      const auto& entity = m_scene.entities[i];
+      const auto& entity = scene.entities[i];
       if (entity.renderable())
       {
-        pass.draw_mesh(entity.mesh, entity.rendered_pos, entity.rendered_rotation, entity.tint);
+        pass.append(
+          render::mesh(entity.mesh, entity.rendered_pos, entity.rendered_rotation, entity.tint)
+        );
       }
       if (entity.emits_light())
       {
@@ -415,62 +422,49 @@ void Game::render()
       {
         if (entity.controlled_by_player())
         {
-          pass.draw_line(entity.rendered_pos, 0.6f, entity.rendered_rotation, {1.0f, 0.0f, 0.0f});
+          pass.append(
+            render::line(entity.rendered_pos, 0.6f, entity.rendered_rotation, {1.0f, 0.0f, 0.0f})
+          );
         }
         if (entity.collidable() && f32_equal(entity.pos.y, 0.0f))
         {
-          pass.draw_cube_wires(
-            entity.rendered_pos,
-            {entity.bounding_box.x, 1.0f, entity.bounding_box.y},
-            {0.0f, 1.0f, 0.0f}
+          pass.append(
+            render::cube_wires(
+              entity.rendered_pos,
+              {entity.bounding_box.x, 1.0f, entity.bounding_box.y},
+              {0.0f, 1.0f, 0.0f}
+            )
           );
         }
         if (entity.interactable())
         {
-          pass.draw_ring(entity.rendered_pos, entity.interactable_radius, {1.0f, 1.0f, 0.0f});
+          pass.append(
+            render::ring(entity.rendered_pos, entity.interactable_radius, {1.0f, 1.0f, 0.0f})
+          );
         }
       }
     }
 
-    auto draw_text = [&](vec2 char_size, std::string_view text)
-    {
-      std::vector<vec2> text_parts{};
-      text_parts.resize(text.size());
-      for (usize i = 0; i < text.size(); ++i)
-      {
-        if (std::islower(text[i]))
-        {
-          text_parts[i] = {(f32) (text[i] - 'a'), 1};
-        }
-        else if (std::isupper(text[i]))
-        {
-          text_parts[i] = {(f32) (text[i] - 'A'), 1};
-        }
-        else if (std::isdigit(text[i]))
-        {
-          text_parts[i] = {(f32) (text[i] - '0'), 2};
-        }
-      }
-      for (usize i = 0; i < text_parts.size(); ++i)
-      {
-        pass.draw_texture_part(
-          font_texture,
-          {(0.5f * -char_size.x * (f32) text_parts.size()) + (char_size.x * (f32) i), -480, 2},
-          char_size,
-          {9 * text_parts[i].x, 16 * text_parts[i].y},
-          {9, 16}
-        );
-      }
-    };
-
-    draw_text({27, 48}, "test STRING 123");
-    pass.draw_quad({400.0f, -500.0f, 0.0f}, {128.0f, 512.0f}, {1.0f, 1.0f, 1.0f});
-    pass.draw_quad({15.0f, -500.0f, 0.6f}, {1000.0f, 64.f}, {0.0f, 1.0f, 0.0f});
-    pass.draw_quad({0.0f, 0.0f, 0.0f}, {8.0f, 8.0f}, {1.0f, 0.0f, 0.0f});
-    pass.draw_texture(
-      AssetManager::instance().load_texture("assets/player_texture.png"),
-      {-400.0f, -450.0f, 1.0f},
-      {128.0f, 128.0f}
+    pass.append(
+      render::quad(
+        {(f32) m_window.width() - 64, (f32) m_window.height() - 256, 0.0f},
+        {128.0f, 512.0f},
+        {1.0f, 1.0f, 1.0f, 1.0f}
+      )
+    );
+    pass.append(
+      render::quad(
+        {(f32) m_window.width() * 0.5f, (f32) m_window.height() - 32, 0.6f},
+        {(f32) m_window.width(), 64.f},
+        {0.0f, 1.0f, 0.0f, 1.0f}
+      )
+    );
+    pass.append(
+      render::texture(
+        AssetManager::instance().load_texture("assets/player_texture.png"),
+        {64, (f32) m_window.height() - 64, 0.9f},
+        {128.0f, 128.0f}
+      )
     );
 
     pass.finish();

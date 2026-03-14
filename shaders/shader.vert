@@ -4,7 +4,7 @@ layout(location = 0) in vec3 a_pos;
 layout(location = 1) in vec3 a_normal;
 layout(location = 2) in vec2 a_uv;
 layout(location = 3) in mat4 a_model;
-layout(location = 7) in vec3 a_tint;
+layout(location = 7) in vec4 a_tint;
 layout(location = 8) in vec2 a_uv_scale;
 layout(location = 9) in vec2 a_uv_offset;
 
@@ -13,7 +13,7 @@ out VERT_OUT
   vec2 uv;
   vec3 normal;
   vec3 frag_pos;
-  vec3 tint;
+  vec4 tint;
 }
 vert_out;
 

@@ -25,7 +25,7 @@ in VERT_OUT
   vec2 uv;
   vec3 normal;
   vec3 frag_pos;
-  vec3 tint;
+  vec4 tint;
 }
 vert_out;
 
@@ -50,8 +50,9 @@ layout(std140) uniform Lights
 void main()
 {
   vec3 norm = normalize(vert_out.normal);
+  // TODO: this shouldnt ignore the a component of tint
   vec3 object_color =
-    (vec3(texture(material.diffuse_map, vert_out.uv)) + material.diffuse) * vert_out.tint;
+    (vec3(texture(material.diffuse_map, vert_out.uv)) + material.diffuse) * vert_out.tint.rgb;
 
   float dist = length(light.pos - vert_out.frag_pos);
   float attenuation =

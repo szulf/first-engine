@@ -85,6 +85,9 @@ vec3 cross(const vec3& va, const vec3& vb);
 
 struct vec4
 {
+  vec4 operator*(const vec4& other) const;
+  vec4& operator*=(const vec4& other);
+
   template <std::integral I>
   constexpr inline f32& operator[](I idx)
   {
@@ -131,14 +134,10 @@ struct vec4
 struct mat4
 {
   mat4() {}
-  mat4(f32 v)
-    : data{
-        {{v, 0, 0, 0}, {0, v, 0, 0}, {0, 0, v, 0}, {0, 0, 0, v}}
-  }
-  {
-  }
+  mat4(f32 v) : data{{{v, 0, 0, 0}, {0, v, 0, 0}, {0, 0, v, 0}, {0, 0, 0, v}}} {}
 
   mat4 operator*(const mat4& other) const;
+  vec4 operator*(const vec4& vec) const;
 
   std::array<std::array<f32, 4>, 4> data{};
 };
