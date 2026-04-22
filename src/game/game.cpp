@@ -10,6 +10,7 @@
 #include "renderer.h"
 #include "entity.h"
 #include "parser.h"
+#include "sdl3/src/video/khronos/vulkan/vulkan_core.h"
 #include "ui.h"
 
 std::expected<std::string_view, std::string_view> action_to_string(Action action)
@@ -30,10 +31,10 @@ std::expected<std::string_view, std::string_view> action_to_string(Action action
       return {"camera_move_up"};
     case Action::CAMERA_MOVE_DOWN:
       return {"camera_move_down"};
+    case Action::TOGGLE_DEBUG_MENU:
+      return {"toggle_debug_menu"};
     case Action::TOGGLE_CAMERA_MODE:
       return {"toggle_camera_mode"};
-    case Action::TOGGLE_DISPLAY_BOUNDING_BOXES:
-      return {"toggle_display_bounding_boxes"};
     case Action::COUNT:
     default:
       return std::unexpected{"Invalid action."};
@@ -104,13 +105,15 @@ void Game::update_tick(f32 dt)
   m_gameplay_camera.update_viewport(m_window.dimensions());
   m_debug_camera.update_viewport(m_window.dimensions());
 
+  if (action_key(Action::TOGGLE_DEBUG_MENU).just_pressed())
+  {
+    debug_menu_shown = !debug_menu_shown;
+    debug_menu_drag = false;
+    ui_render_cmds.clear();
+  }
   if (action_key(Action::TOGGLE_CAMERA_MODE).just_pressed())
   {
     m_camera_mode = !m_camera_mode;
-  }
-  if (action_key(Action::TOGGLE_DISPLAY_BOUNDING_BOXES).just_pressed())
-  {
-    m_display_bounding_boxes = !m_display_bounding_boxes;
   }
 
   vec3 acceleration = {};
@@ -205,8 +208,10 @@ void Game::update_tick(f32 dt)
             }
 
             vec3 rounded_pos = {std::round(new_pos.x), 0.0f, std::round(new_pos.z)};
-            if ((c.pos.x > rounded_pos.x + 1.0f || c.pos.x < rounded_pos.x - 1.0f) ||
-                (c.pos.z > rounded_pos.z + 1.0f || c.pos.z < rounded_pos.z - 1.0f))
+            if (
+              (c.pos.x > rounded_pos.x + 1.0f || c.pos.x < rounded_pos.x - 1.0f) ||
+              (c.pos.z > rounded_pos.z + 1.0f || c.pos.z < rounded_pos.z - 1.0f)
+            )
             {
               continue;
             }
@@ -284,8 +289,10 @@ void Game::update_tick(f32 dt)
             f32 dist = vec.length2();
             f32 orientation = std::atan2(-vec.x, vec.z);
             orientation = wrap_to_neg_pi_to_pi(orientation);
-            if (dist < (interactable.interactable_radius * interactable.interactable_radius) &&
-                std::abs(entity.rotation - orientation) < 1.0f)
+            if (
+              dist < (interactable.interactable_radius * interactable.interactable_radius) &&
+              std::abs(entity.rotation - orientation) < 1.0f
+            )
             {
               // TODO: this is light bulb specific behaviour, how do i work with other
               // interactables?
@@ -302,6 +309,47 @@ void Game::update_tick(f32 dt)
   }
 
   // NOTE: ui
+  auto layout = ui_begin_layout(m_window.input(), layout_pos, {1280, 720}, {9, 16}, font_texture);
+  UI_ELEM(
+    layout,
+    {.sizing = {UI_SizingAxis::fill(), UI_SizingAxis::fill()}, .bg_color = {1, 1, 1, 1}}
+  )
+  {
+    UI_ELEM(
+      layout,
+      {.layout_direction = UI_LayoutDirection::VERTICAL,
+       .sizing = {UI_SizingAxis::fixed(300), UI_SizingAxis::fill()},
+       .bg_color = {0.85f, 0.8f, 0.8f, 1}}
+    )
+    {
+      UI_ELEM(layout, {.sizing = {UI_SizingAxis::fill()}, .bg_color = {1, 0, 0, 1}})
+      {
+        UI_ELEM(
+          layout,
+          {.sizing = {UI_SizingAxis::fixed(60), UI_SizingAxis::fixed(60)}, .bg_color = {0, 1, 0, 1}}
+        )
+        {
+        }
+        ui_text(layout, "Test of UI library", 1.5f);
+      }
+      for (i32 i = 0; i < 5; ++i)
+      {
+        UI_ELEM(
+          layout,
+          {.sizing = {UI_SizingAxis::fill(), UI_SizingAxis::fixed(50)}, .bg_color = {0, 0, 1, 1}}
+        )
+        {
+        }
+      }
+    }
+    UI_ELEM(
+      layout,
+      {.sizing = {UI_SizingAxis::fill(), UI_SizingAxis::fill()}, .bg_color = {0.85f, 0.8f, 0.8f, 1}}
+    )
+    {
+    }
+  }
+  ui_render_cmds = ui_end_layout(layout);
 }
 
 void Game::update_frame(f32 alpha)
@@ -445,27 +493,7 @@ void Game::render()
       }
     }
 
-    pass.append(
-      render::quad(
-        {(f32) m_window.width() - 64, (f32) m_window.height() - 256, 0.0f},
-        {128.0f, 512.0f},
-        {1.0f, 1.0f, 1.0f, 1.0f}
-      )
-    );
-    pass.append(
-      render::quad(
-        {(f32) m_window.width() * 0.5f, (f32) m_window.height() - 32, 0.6f},
-        {(f32) m_window.width(), 64.f},
-        {0.0f, 1.0f, 0.0f, 1.0f}
-      )
-    );
-    pass.append(
-      render::texture(
-        AssetManager::instance().load_texture("assets/player_texture.png"),
-        {64, (f32) m_window.height() - 64, 0.9f},
-        {128.0f, 128.0f}
-      )
-    );
+    pass.append(ui_render_cmds);
 
     pass.finish();
   }

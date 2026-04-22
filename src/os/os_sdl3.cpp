@@ -281,6 +281,7 @@ void Input::clear()
     key.transition_count = 0;
   }
   lmb.transition_count = 0;
+  rmb.transition_count = 0;
 }
 
 struct SDL3WindowData : public Window::WindowData
@@ -593,6 +594,11 @@ void Window::update()
         {
           m_input.lmb.down = e.button.down;
           ++m_input.lmb.transition_count;
+        }
+        else if (e.button.button == 3)
+        {
+          m_input.rmb.down = e.button.down;
+          ++m_input.rmb.transition_count;
         }
       }
       break;

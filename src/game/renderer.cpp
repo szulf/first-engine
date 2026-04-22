@@ -271,13 +271,19 @@ static mat4 get_transform(const vec3& pos, const vec3& size, f32 rotation)
   return transform;
 }
 
+// NOTE: 2D
+
 Cmd2D quad(const vec3& pos, const vec2& size, const vec4& color)
 {
   return {
     .texture = render_data.blank_texture,
     .z_idx = pos.z,
     .instance_data = {
-      .transform = get_transform(pos, {size.x, size.y, 1.0f}, 0.0f),
+      .transform = get_transform(
+        {pos.x + (size.x / 2.0f), pos.y + (size.y / 2.0f), pos.z},
+        {size.x, size.y, 1.0f},
+        0.0f
+      ),
       .tint = color,
     },
   };
@@ -289,7 +295,11 @@ Cmd2D texture(TextureHandle texture, const vec3& pos, const vec2& size, const ve
     .texture = texture,
     .z_idx = pos.z,
     .instance_data = {
-      .transform = get_transform(pos, {size.x, size.y, 1.0f}, 0.0f),
+      .transform = get_transform(
+        {pos.x + (size.x / 2.0f), pos.y + (size.y / 2.0f), pos.z},
+        {size.x, size.y, 1.0f},
+        0.0f
+      ),
       .tint = tint,
     },
   };
@@ -310,7 +320,11 @@ Cmd2D texture_part(
     .texture = texture,
     .z_idx = pos.z,
     .instance_data = {
-      .transform = get_transform(pos, {size.x, size.y, 1.0f}, 0.0f),
+      .transform = get_transform(
+        {pos.x + (size.x / 2.0f), pos.y + (size.y / 2.0f), pos.z},
+        {size.x, size.y, 1.0f},
+        0.0f
+      ),
       .tint = tint,
       .uv_scale = in_texture_size / dims_f32,
       .uv_offset = in_texture_pos / dims_f32,
@@ -319,6 +333,7 @@ Cmd2D texture_part(
 }
 
 // NOTE: 3D
+
 std::vector<Cmd3D> mesh(MeshHandle handle, const vec3& pos, f32 rotation, const vec3& tint)
 {
   std::vector<Cmd3D> out{};

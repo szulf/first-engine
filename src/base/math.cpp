@@ -103,6 +103,44 @@ vec2 operator*(f32 scalar, const vec2& vec)
   return vec * scalar;
 }
 
+uvec2 uvec2::operator+(const uvec2& other) const
+{
+  return {x + other.x, y + other.y};
+}
+
+uvec2 uvec2::operator-(const uvec2& other) const
+{
+  return {x - other.x, y - other.y};
+}
+
+uvec2& uvec2::operator+=(u32 scalar)
+{
+  x += scalar;
+  y += scalar;
+  return *this;
+}
+
+uvec2& uvec2::operator+=(const uvec2& other)
+{
+  x += other.x;
+  y += other.y;
+  return *this;
+}
+
+uvec2& uvec2::operator-=(u32 scalar)
+{
+  x -= scalar;
+  y -= scalar;
+  return *this;
+}
+
+uvec2& uvec2::operator-=(const uvec2& other)
+{
+  x -= other.x;
+  y -= other.y;
+  return *this;
+}
+
 f32 vec3::length() const
 {
   return std::hypot(x, y, z);

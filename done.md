@@ -66,3 +66,8 @@
    - get rid of the weird AssetType thingies
    - get rid of render pass types
 2. 2D texture rendering
+3. minimal usable ui
+   - different sizing properties
+   - vertical/horizontal layout directions
+   - text rendering
+   - hover/click detection

@@ -2,11 +2,19 @@
 
 ## SMALL TODOS: (ordered)
 
-3. widget thingy
+4. somewhat usable ui
+   - padding and gaps
+   - child alignment
+   - textures
+5. almost completely usable ui (?)
+   - text wrapping
+   - clipping/scrolling
 
 ---
 
 ## NEXT BIG TODOS: (unordered)
+
+- get rid of c++ bs
 
 - change the interaction mechanic, interaction by key is stupid for my game,
   - i need more interaction by mouse click and the interaction radius would be on the player and

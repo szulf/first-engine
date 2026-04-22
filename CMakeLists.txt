@@ -34,6 +34,8 @@ set(clang_flags_common
   -Wno-old-style-cast -Wno-missing-prototypes -Wno-double-promotion
   -Wno-documentation-unknown-command -Wno-reserved-macro-identifier
   -Wno-gnu-anonymous-struct -Wno-nested-anon-types
+  -Wno-reserved-identifier -Wno-missing-field-initializers
+  -Wno-c2y-extensions
 )
 set(clang_flags_debug
   -g3 -O0
@@ -107,6 +109,7 @@ add_executable(game
   src/game/renderer.h src/game/renderer.cpp
   src/game/parser.h src/game/parser.cpp
   src/game/sound.h src/game/sound.cpp
+  src/game/ui.h src/game/ui.cpp
 )
 target_include_directories(game PRIVATE ${include_dirs})
 target_compile_options(game PRIVATE ${flags})

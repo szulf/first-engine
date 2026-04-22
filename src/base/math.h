@@ -49,6 +49,13 @@ vec2 operator*(f32 scalar, const vec2& vec);
 
 struct uvec2
 {
+  uvec2 operator+(const uvec2& other) const;
+  uvec2 operator-(const uvec2& other) const;
+  uvec2& operator+=(u32 scalar);
+  uvec2& operator+=(const uvec2& other);
+  uvec2& operator-=(u32 scalar);
+  uvec2& operator-=(const uvec2& other);
+
   u32 x{};
   u32 y{};
 };
