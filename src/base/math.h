@@ -94,6 +94,8 @@ struct vec4
 {
   vec4 operator*(const vec4& other) const;
   vec4& operator*=(const vec4& other);
+  bool operator==(const vec4& other) const;
+  bool operator!=(const vec4& other) const;
 
   template <std::integral I>
   constexpr inline f32& operator[](I idx)

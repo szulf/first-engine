@@ -2,13 +2,10 @@
 
 ## SMALL TODOS: (ordered)
 
-4. somewhat usable ui
-   - padding and gaps
-   - child alignment
-   - textures
 5. almost completely usable ui (?)
    - text wrapping
    - clipping/scrolling
+   - round corners
 
 ---
 

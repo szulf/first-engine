@@ -44,11 +44,41 @@ struct UI_Sizing
   UI_SizingAxis height{};
 };
 
+struct UI_Padding
+{
+  u16 top;
+  u16 down;
+  u16 left;
+  u16 right;
+
+  static UI_Padding all(u16 value)
+  {
+    return {value, value, value, value};
+  }
+};
+
+enum class UI_ChildAlignmentAxis
+{
+  START,
+  CENTER,
+  END,
+};
+
+struct UI_ChildAlignment
+{
+  UI_ChildAlignmentAxis x;
+  UI_ChildAlignmentAxis y;
+};
+
 struct UI_ElementConfigNormal
 {
   UI_LayoutDirection layout_direction{};
   UI_Sizing sizing{};
+  UI_Padding padding{};
+  u16 child_gap{};
+  UI_ChildAlignment child_alignment{};
   vec4 bg_color{};
+  std::optional<TextureHandle> texture{};
   bool* hovered{};
   bool* clicked{};
 };
@@ -75,6 +105,8 @@ struct UI_ElementConfig
 
 using UI_ElementIdx = usize;
 
+// TODO: store the first child and next sibling indices
+// to avoid dumb bullshit when iterating children
 struct UI_Element
 {
   UI_ElementConfig config{};

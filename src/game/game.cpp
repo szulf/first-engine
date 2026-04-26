@@ -3,14 +3,15 @@
 #include <cmath>
 #include <fstream>
 #include <string>
+#include <chrono>
 
 #include "base/base.h"
 #include "camera.h"
+#include "game/assets.h"
 #include "os/os.h"
 #include "renderer.h"
 #include "entity.h"
 #include "parser.h"
-#include "sdl3/src/video/khronos/vulkan/vulkan_core.h"
 #include "ui.h"
 
 std::expected<std::string_view, std::string_view> action_to_string(Action action)
@@ -309,47 +310,95 @@ void Game::update_tick(f32 dt)
   }
 
   // NOTE: ui
-  auto layout = ui_begin_layout(m_window.input(), layout_pos, {1280, 720}, {9, 16}, font_texture);
-  UI_ELEM(
-    layout,
-    {.sizing = {UI_SizingAxis::fill(), UI_SizingAxis::fill()}, .bg_color = {1, 1, 1, 1}}
-  )
+  if (debug_menu_shown)
   {
+    auto start = std::chrono::high_resolution_clock::now();
+    auto layout = ui_begin_layout(m_window.input(), layout_pos, {1280, 720}, {9, 16}, font_texture);
     UI_ELEM(
       layout,
-      {.layout_direction = UI_LayoutDirection::VERTICAL,
-       .sizing = {UI_SizingAxis::fixed(300), UI_SizingAxis::fill()},
-       .bg_color = {0.85f, 0.8f, 0.8f, 1}}
+      {.sizing = {UI_SizingAxis::fill(), UI_SizingAxis::fill()},
+       .padding = UI_Padding::all(16),
+       .child_gap = 16,
+       .bg_color = {1, 1, 1, 1}}
     )
     {
-      UI_ELEM(layout, {.sizing = {UI_SizingAxis::fill()}, .bg_color = {1, 0, 0, 1}})
+      UI_ELEM(
+        layout,
+        {.layout_direction = UI_LayoutDirection::VERTICAL,
+         .sizing = {UI_SizingAxis::fit(), UI_SizingAxis::fill()},
+         .padding = UI_Padding::all(16),
+         .child_gap = 16,
+         .child_alignment = {.x = UI_ChildAlignmentAxis::START},
+         .bg_color = {0.85f, 0.8f, 0.8f, 1}}
+      )
       {
         UI_ELEM(
           layout,
-          {.sizing = {UI_SizingAxis::fixed(60), UI_SizingAxis::fixed(60)}, .bg_color = {0, 1, 0, 1}}
+          {.sizing = {UI_SizingAxis::fill()},
+           .padding = UI_Padding::all(16),
+           .child_gap = 16,
+           .child_alignment = {.y = UI_ChildAlignmentAxis::CENTER},
+           .bg_color = {1, 0, 0, 1}}
         )
         {
+          UI_ELEM(
+            layout,
+            {.sizing = {UI_SizingAxis::fixed(60), UI_SizingAxis::fixed(60)},
+             .bg_color = {0, 1, 0, 1}}
+          )
+          {
+          }
+          ui_text(layout, "Test of UI library", 1.5f);
         }
-        ui_text(layout, "Test of UI library", 1.5f);
+        for (i32 i = 0; i < 5; ++i)
+        {
+          UI_ELEM(
+            layout,
+            {.sizing = {.width = UI_SizingAxis::fill()},
+             .child_gap = 10,
+             .child_alignment = {.x = UI_ChildAlignmentAxis::CENTER},
+             .bg_color = {0, 0, 0, 1}}
+          )
+          {
+            UI_ELEM(
+              layout,
+              {.sizing = {UI_SizingAxis::fixed(100), UI_SizingAxis::fixed(50)},
+               .bg_color = {0, 0, 1, 1}}
+            )
+            {
+            }
+            UI_ELEM(
+              layout,
+              {.sizing = {UI_SizingAxis::fixed(20), UI_SizingAxis::fixed(50)},
+               .bg_color = {0, 1, 1, 1}}
+            )
+            {
+            }
+            UI_ELEM(
+              layout,
+              {.sizing = {UI_SizingAxis::fixed(100), UI_SizingAxis::fixed(50)},
+               .bg_color = {1, 0, 1, 1}}
+            )
+            {
+            }
+          }
+        }
       }
-      for (i32 i = 0; i < 5; ++i)
+      UI_ELEM(
+        layout,
+        {.sizing = {UI_SizingAxis::fill(), UI_SizingAxis::fill()},
+         .bg_color = {0.85f, 0.8f, 0.8f, 1}}
+      )
       {
-        UI_ELEM(
-          layout,
-          {.sizing = {UI_SizingAxis::fill(), UI_SizingAxis::fixed(50)}, .bg_color = {0, 0, 1, 1}}
-        )
-        {
-        }
       }
     }
-    UI_ELEM(
-      layout,
-      {.sizing = {UI_SizingAxis::fill(), UI_SizingAxis::fill()}, .bg_color = {0.85f, 0.8f, 0.8f, 1}}
-    )
-    {
-    }
+    ui_render_cmds = ui_end_layout(layout);
+    auto end = std::chrono::high_resolution_clock::now();
+    std::println(
+      "Layout took: {}",
+      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
+    );
   }
-  ui_render_cmds = ui_end_layout(layout);
 }
 
 void Game::update_frame(f32 alpha)

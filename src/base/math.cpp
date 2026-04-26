@@ -279,6 +279,17 @@ vec4& vec4::operator*=(const vec4& other)
   return *this;
 }
 
+bool vec4::operator==(const vec4& other) const
+{
+  return f32_equal(x, other.x) && f32_equal(y, other.y) && f32_equal(z, other.z) &&
+         f32_equal(w, other.w);
+}
+
+bool vec4::operator!=(const vec4& other) const
+{
+  return !(*this == other);
+}
+
 mat4 mat4::operator*(const mat4& other) const
 {
   mat4 out = {};

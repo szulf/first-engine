@@ -71,3 +71,7 @@
    - vertical/horizontal layout directions
    - text rendering
    - hover/click detection
+4. somewhat usable ui
+   - padding and gaps
+   - child alignment
+   - textures

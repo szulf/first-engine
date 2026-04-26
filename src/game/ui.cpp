@@ -1,4 +1,7 @@
 #include "ui.h"
+
+#include <cstdlib>
+
 #include "base/base.h"
 #include "game/renderer.h"
 
@@ -26,9 +29,112 @@ UI_Layout ui_begin_layout(
   return layout;
 }
 
+enum class UI_Axis
+{
+  X,
+  Y,
+};
+
+constexpr static std::array<UI_LayoutDirection, 2> layout_direction_from_axis = []()
+{
+  std::array<UI_LayoutDirection, 2> t{};
+  t[(usize) UI_Axis::X] = UI_LayoutDirection::HORIZONTAL;
+  t[(usize) UI_Axis::Y] = UI_LayoutDirection::VERTICAL;
+  return t;
+}();
+
+constexpr static std::array<UI_Axis, 2> axis_from_layout_direction = []()
+{
+  std::array<UI_Axis, 2> t{};
+  t[(usize) UI_LayoutDirection::HORIZONTAL] = UI_Axis::X;
+  t[(usize) UI_LayoutDirection::VERTICAL] = UI_Axis::Y;
+  return t;
+}();
+
+static UI_SizingAxis& ui_sizing_from_axis(UI_ElementConfigNormal& config, UI_Axis axis)
+{
+  if (axis == UI_Axis::X)
+  {
+    return config.sizing.width;
+  }
+  else if (axis == UI_Axis::Y)
+  {
+    return config.sizing.height;
+  }
+  ASSERT(false, "Invalid axis provided");
+}
+
+static f32& ui_dimension_from_axis(UI_Element& elem, UI_Axis axis)
+{
+  if (axis == UI_Axis::X)
+  {
+    return elem.dimensions.x;
+  }
+  else if (axis == UI_Axis::Y)
+  {
+    return elem.dimensions.y;
+  }
+  ASSERT(false, "Invalid axis provided");
+}
+
+static f32 ui_total_padding_from_axis(UI_ElementConfigNormal& config, UI_Axis axis)
+{
+  if (axis == UI_Axis::X)
+  {
+    return config.padding.left + config.padding.right;
+  }
+  else if (axis == UI_Axis::Y)
+  {
+    return config.padding.top + config.padding.down;
+  }
+  ASSERT(false, "Invalid axis provided");
+}
+
+static void ui_calculate_fit_fixed_sizing_axis(UI_Layout& layout, UI_ElementIdx idx, UI_Axis axis)
+{
+  auto& elem = layout.elements[idx];
+  auto& config = elem.config.normal;
+  auto& sizing = ui_sizing_from_axis(config, axis);
+  switch (sizing.type)
+  {
+    case UI_SizingType::FIXED:
+      ui_dimension_from_axis(elem, axis) = sizing.fixed_px;
+      break;
+    case UI_SizingType::FIT:
+    case UI_SizingType::FILL:
+      for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
+      {
+        auto& child = layout.elements[child_idx];
+        if (child.parent < idx)
+        {
+          break;
+        }
+        if (child.parent != idx)
+        {
+          continue;
+        }
+        if (config.layout_direction == layout_direction_from_axis[(usize) axis])
+        {
+          ui_dimension_from_axis(elem, axis) +=
+            ui_dimension_from_axis(child, axis) + config.child_gap;
+        }
+        else
+        {
+          f32& dim = ui_dimension_from_axis(elem, axis);
+          dim = std::max(dim, ui_dimension_from_axis(child, axis));
+        }
+      }
+      break;
+  }
+  ui_dimension_from_axis(elem, axis) += ui_total_padding_from_axis(config, axis);
+}
+
 // NOTE: here im also calculating fit sizing dimensions for fill sizing
 // because if one element has a fill sizing and the parent has a fit sizing
 // the fill sizing child will just be treated as a fit sizing instead
+// UNLESS the layout direction is of the opposite axis (vertical for x, horizontal for y)
+// then this calculation is just thrown away, and the maximum free parent space is assigned to that
+// axis
 // dont know if that is the 'correct' behavior, but that is what im going with for now
 // the other option is to make the fit sizing parent behave like a fill sizing instead
 // but in my head the fit sizing is supposed to occupy the smallest possible amount of space
@@ -36,6 +142,7 @@ UI_Layout ui_begin_layout(
 // maybe there is some other more 'correct' approach that i cant think of rn idk
 static void ui_calculate_text_fit_fixed_sizing(UI_Layout& layout, UI_ElementIdx idx = 0)
 {
+  bool has_children = false;
   for (UI_ElementIdx i = idx + 1; i < layout.elements.size(); ++i)
   {
     auto& child = layout.elements[i];
@@ -47,71 +154,96 @@ static void ui_calculate_text_fit_fixed_sizing(UI_Layout& layout, UI_ElementIdx 
     {
       continue;
     }
+    has_children = true;
     ui_calculate_text_fit_fixed_sizing(layout, i);
   }
 
   auto& elem = layout.elements[idx];
-  if (elem.config.type == UI_ElementType::NORMAL)
+  switch (elem.config.type)
   {
-    auto& config = elem.config.normal;
-    // TODO: better name and make it an actual function not a lambda?
-    auto calculation = [&layout, &config, &idx](f32& dimension, UI_SizingAxis sizing, bool width)
+    case UI_ElementType::NORMAL:
     {
-      if (sizing.type == UI_SizingType::FIXED)
+      ui_calculate_fit_fixed_sizing_axis(layout, idx, UI_Axis::X);
+      ui_calculate_fit_fixed_sizing_axis(layout, idx, UI_Axis::Y);
+      auto& config = elem.config.normal;
+      if (has_children)
       {
-        dimension = sizing.fixed_px;
+        ui_dimension_from_axis(elem, axis_from_layout_direction[(usize) config.layout_direction]) -=
+          config.child_gap;
       }
-      else if (sizing.type == UI_SizingType::FIT || sizing.type == UI_SizingType::FILL)
-      {
-        for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
-        {
-          auto& child = layout.elements[child_idx];
-          if (child.parent < idx)
-          {
-            break;
-          }
-          if (child.parent != idx)
-          {
-            continue;
-          }
-          switch (config.layout_direction)
-          {
-            case UI_LayoutDirection::HORIZONTAL:
-              if (width)
-              {
-                dimension += child.dimensions.x;
-              }
-              else
-              {
-                dimension = std::max(dimension, child.dimensions.y);
-              }
-              break;
-            case UI_LayoutDirection::VERTICAL:
-              if (width)
-              {
-                dimension = std::max(dimension, child.dimensions.x);
-              }
-              else
-              {
-                dimension += child.dimensions.y;
-              }
-              break;
-          }
-        }
-      }
-    };
-    calculation(elem.dimensions.x, config.sizing.width, true);
-    calculation(elem.dimensions.y, config.sizing.height, false);
-  }
-  else if (elem.config.type == UI_ElementType::TEXT)
-  {
-    auto& config = elem.config.text;
-    elem.dimensions =
-      vec2{layout.char_size.x * (f32) config.text.size(), layout.char_size.y} * config.size;
+    }
+    break;
+
+    case UI_ElementType::TEXT:
+    {
+      auto& config = elem.config.text;
+      elem.dimensions =
+        vec2{layout.char_size.x * (f32) config.text.size(), layout.char_size.y} * config.size;
+    }
+    break;
   }
 }
 
-// NOTE: calculating the dimensions for fill sizing for all the children then recursing into them
+static void ui_calculate_fill_sizing_axis(UI_Layout& layout, UI_ElementIdx idx, UI_Axis axis)
+{
+  auto& elem = layout.elements[idx];
+  auto& config = elem.config.normal;
+  usize fill_child_count{};
+  f32 available_space =
+    ui_dimension_from_axis(elem, axis) - ui_total_padding_from_axis(config, axis);
+  if (config.layout_direction == layout_direction_from_axis[(usize) axis])
+  {
+    for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
+    {
+      auto& child = layout.elements[child_idx];
+      if (child.parent < idx)
+      {
+        break;
+      }
+      if (child.parent != idx)
+      {
+        continue;
+      }
+      if (ui_sizing_from_axis(child.config.normal, axis).type == UI_SizingType::FILL)
+      {
+        ++fill_child_count;
+      }
+      else
+      {
+        available_space -= ui_dimension_from_axis(child, axis);
+      }
+      available_space -= config.child_gap;
+    }
+    available_space += config.child_gap;
+  }
+  for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
+  {
+    auto& child = layout.elements[child_idx];
+    if (child.parent < idx)
+    {
+      break;
+    }
+    if (child.parent != idx || child.config.type == UI_ElementType::TEXT)
+    {
+      continue;
+    }
+    if (ui_sizing_from_axis(child.config.normal, axis).type == UI_SizingType::FILL)
+    {
+      if (config.layout_direction == layout_direction_from_axis[(usize) axis])
+      {
+        if (ui_sizing_from_axis(config, axis).type != UI_SizingType::FIT)
+        {
+          ui_dimension_from_axis(child, axis) = available_space / (f32) fill_child_count;
+        }
+      }
+      else
+      {
+        ui_dimension_from_axis(child, axis) = available_space;
+      }
+    }
+  }
+}
+
 static void ui_calculate_fill_sizing(UI_Layout& layout, UI_ElementIdx idx = 0)
 {
   auto& elem = layout.elements[idx];
@@ -119,110 +251,8 @@ static void ui_calculate_fill_sizing(UI_Layout& layout, UI_ElementIdx idx = 0)
   {
     return;
   }
-  auto& config = elem.config.normal;
-  // TODO: can i somehow collapse these width and height into a single code path?
-  // but in a better way than in ui_calculate_text_fit_fixed_sizing()
-  // NOTE: width
-  if (config.sizing.width.type != UI_SizingType::FIT)
-  {
-    usize fill_child_count{};
-    f32 available_space = elem.dimensions.x;
-    for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
-    {
-      auto& child = layout.elements[child_idx];
-      if (child.parent < idx)
-      {
-        break;
-      }
-      if (child.parent != idx || child.config.type == UI_ElementType::TEXT)
-      {
-        continue;
-      }
-      if (child.config.normal.sizing.width.type == UI_SizingType::FILL)
-      {
-        ++fill_child_count;
-      }
-      else
-      {
-        available_space -= child.dimensions.x;
-      }
-    }
-    for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
-    {
-      auto& child = layout.elements[child_idx];
-      if (child.parent < idx)
-      {
-        break;
-      }
-      if (child.parent != idx || child.config.type == UI_ElementType::TEXT)
-      {
-        continue;
-      }
-      if (child.config.normal.sizing.width.type == UI_SizingType::FILL)
-      {
-        switch (config.layout_direction)
-        {
-          case UI_LayoutDirection::HORIZONTAL:
-            child.dimensions.x = available_space / (f32) fill_child_count;
-            break;
-          case UI_LayoutDirection::VERTICAL:
-            child.dimensions.x = available_space;
-            break;
-        }
-      }
-    }
-  }
-  // NOTE: height
-  if (config.sizing.height.type != UI_SizingType::FIT)
-  {
-    usize fill_child_count{};
-    f32 available_space = elem.dimensions.y;
-    for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
-    {
-      auto& child = layout.elements[child_idx];
-      if (child.parent < idx)
-      {
-        break;
-      }
-      if (child.parent != idx || child.config.type == UI_ElementType::TEXT)
-      {
-        continue;
-      }
-      if (child.config.normal.sizing.height.type == UI_SizingType::FILL)
-      {
-        ++fill_child_count;
-      }
-      else
-      {
-        available_space -= child.dimensions.y;
-      }
-    }
-    for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
-    {
-      auto& child = layout.elements[child_idx];
-      if (child.parent < idx)
-      {
-        break;
-      }
-      if (child.parent != idx || child.config.type == UI_ElementType::TEXT)
-      {
-        continue;
-      }
-      if (child.config.normal.sizing.height.type == UI_SizingType::FILL)
-      {
-        switch (config.layout_direction)
-        {
-          case UI_LayoutDirection::HORIZONTAL:
-            child.dimensions.y = available_space;
-            break;
-          case UI_LayoutDirection::VERTICAL:
-            child.dimensions.y = available_space / (f32) fill_child_count;
-            break;
-        }
-      }
-    }
-  }
-
+  ui_calculate_fill_sizing_axis(layout, idx, UI_Axis::X);
+  ui_calculate_fill_sizing_axis(layout, idx, UI_Axis::Y);
   for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
   {
     auto& child = layout.elements[child_idx];
@@ -238,12 +268,152 @@ static void ui_calculate_fill_sizing(UI_Layout& layout, UI_ElementIdx idx = 0)
   }
 }
 
+static UI_ChildAlignmentAxis
+ui_child_alignment_from_axis(const UI_ElementConfigNormal& config, UI_Axis axis)
+{
+  if (axis == UI_Axis::X)
+  {
+    return config.child_alignment.x;
+  }
+  else if (axis == UI_Axis::Y)
+  {
+    return config.child_alignment.y;
+  }
+  ASSERT(false, "Invalid axis provided");
+}
+
+static f32& ui_pos_from_axis(UI_Element& elem, UI_Axis axis)
+{
+  if (axis == UI_Axis::X)
+  {
+    return elem.pos.x;
+  }
+  else if (axis == UI_Axis::Y)
+  {
+    return elem.pos.y;
+  }
+  ASSERT(false, "Invalid axis provided");
+}
+
+static f32 ui_start_padding_from_axis(UI_ElementConfigNormal& config, UI_Axis axis)
+{
+  if (axis == UI_Axis::X)
+  {
+    return config.padding.left;
+  }
+  else if (axis == UI_Axis::Y)
+  {
+    return config.padding.top;
+  }
+  ASSERT(false, "Invalid axis provided");
+}
+
+static f32 ui_end_padding_from_axis(UI_ElementConfigNormal& config, UI_Axis axis)
+{
+  if (axis == UI_Axis::X)
+  {
+    return config.padding.right;
+  }
+  else if (axis == UI_Axis::Y)
+  {
+    return config.padding.down;
+  }
+  ASSERT(false, "Invalid axis provided");
+}
+
+static void ui_calculate_position_axis(
+  UI_Layout& layout,
+  UI_ElementIdx idx,
+  UI_ElementIdx child_idx,
+  f32& used_space,
+  UI_Axis axis
+)
+{
+  auto& elem = layout.elements[idx];
+  auto& config = elem.config.normal;
+  auto& child = layout.elements[child_idx];
+  if (config.layout_direction == layout_direction_from_axis[(usize) axis])
+  {
+    switch (ui_child_alignment_from_axis(config, axis))
+    {
+      case UI_ChildAlignmentAxis::START:
+        ui_pos_from_axis(child, axis) =
+          ui_pos_from_axis(elem, axis) + ui_start_padding_from_axis(config, axis) + used_space;
+        used_space += ui_dimension_from_axis(child, axis) + config.child_gap;
+        break;
+      case UI_ChildAlignmentAxis::CENTER:
+        ui_pos_from_axis(child, axis) =
+          ui_pos_from_axis(elem, axis) + ui_start_padding_from_axis(config, axis) + used_space;
+        used_space += ui_dimension_from_axis(child, axis) + config.child_gap;
+        break;
+      case UI_ChildAlignmentAxis::END:
+        ui_pos_from_axis(child, axis) =
+          ui_pos_from_axis(elem, axis) + ui_dimension_from_axis(elem, axis) -
+          ui_end_padding_from_axis(config, axis) - ui_dimension_from_axis(child, axis) - used_space;
+        used_space += ui_dimension_from_axis(child, axis) + config.child_gap;
+        break;
+    }
+  }
+  else
+  {
+    switch (ui_child_alignment_from_axis(config, axis))
+    {
+      case UI_ChildAlignmentAxis::START:
+        ui_pos_from_axis(child, axis) =
+          ui_pos_from_axis(elem, axis) + ui_start_padding_from_axis(config, axis);
+        break;
+      case UI_ChildAlignmentAxis::CENTER:
+        ui_pos_from_axis(child, axis) =
+          (ui_pos_from_axis(elem, axis) + ui_start_padding_from_axis(config, axis)) +
+          ((ui_dimension_from_axis(elem, axis) - ui_total_padding_from_axis(config, axis)) * 0.5f) -
+          (ui_dimension_from_axis(child, axis) * 0.5f);
+        break;
+      case UI_ChildAlignmentAxis::END:
+        ui_pos_from_axis(child, axis) =
+          ui_pos_from_axis(elem, axis) + ui_dimension_from_axis(elem, axis) -
+          ui_end_padding_from_axis(config, axis) - ui_dimension_from_axis(child, axis);
+        break;
+    }
+  }
+}
+
+static void
+ui_adjust_centered_position(UI_Layout& layout, UI_ElementIdx idx, f32 used_space, UI_Axis axis)
+{
+  auto& elem = layout.elements[idx];
+  auto& config = elem.config.normal;
+  if (
+    config.layout_direction == layout_direction_from_axis[(usize) axis] &&
+    ui_child_alignment_from_axis(config, axis) == UI_ChildAlignmentAxis::CENTER
+  )
+  {
+    f32 adjust_value = (ui_dimension_from_axis(elem, axis) - used_space) * 0.5f;
+    for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
+    {
+      auto& child = layout.elements[child_idx];
+      if (child.parent < idx)
+      {
+        break;
+      }
+      if (child.parent != idx)
+      {
+        continue;
+      }
+      ui_pos_from_axis(child, axis) += adjust_value;
+    }
+  }
+}
+
 static void ui_calculate_positions(UI_Layout& layout, UI_ElementIdx idx = 0)
 {
   auto& elem = layout.elements[idx];
   if (idx == 0)
   {
     elem.pos = {layout.pos.x, layout.pos.y};
+  }
+  if (elem.config.type == UI_ElementType::TEXT)
+  {
+    return;
   }
   f32 used_space = 0;
   for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
@@ -257,18 +427,21 @@ static void ui_calculate_positions(UI_Layout& layout, UI_ElementIdx idx = 0)
     {
       continue;
     }
-    ASSERT(elem.config.type == UI_ElementType::NORMAL, "text elements dont have children");
-    auto& config = elem.config.normal;
-    switch (config.layout_direction)
+    ui_calculate_position_axis(layout, idx, child_idx, used_space, UI_Axis::X);
+    ui_calculate_position_axis(layout, idx, child_idx, used_space, UI_Axis::Y);
+  }
+  ui_adjust_centered_position(layout, idx, used_space, UI_Axis::X);
+  ui_adjust_centered_position(layout, idx, used_space, UI_Axis::Y);
+  for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
+  {
+    auto& child = layout.elements[child_idx];
+    if (child.parent < idx)
     {
-      case UI_LayoutDirection::HORIZONTAL:
-        child.pos = {elem.pos.x + used_space, elem.pos.y};
-        used_space += child.dimensions.x;
-        break;
-      case UI_LayoutDirection::VERTICAL:
-        child.pos = {elem.pos.x, elem.pos.y + used_space};
-        used_space += child.dimensions.y;
-        break;
+      break;
+    }
+    if (child.parent != idx)
+    {
+      continue;
     }
     ui_calculate_positions(layout, child_idx);
   }
@@ -310,9 +483,27 @@ static void ui_generate_render_cmds(UI_Layout& layout, std::vector<render::Cmd2D
       case UI_ElementType::NORMAL:
       {
         auto& config = elem.config.normal;
-        render_cmds.push_back(
-          render::quad({elem.pos.x, elem.pos.y, layout._z}, elem.dimensions, config.bg_color)
-        );
+        if (config.texture)
+        {
+          // TODO: this is not really the ideal solution,
+          // what if someone really wants to render a fully transparent texture?
+          // (good enough for now tho)
+          auto bg = config.bg_color != vec4{} ? config.bg_color : vec4{1, 1, 1, 1};
+          render_cmds.push_back(
+            render::texture(
+              *config.texture,
+              {elem.pos.x, elem.pos.y, layout._z},
+              elem.dimensions,
+              bg
+            )
+          );
+        }
+        else
+        {
+          render_cmds.push_back(
+            render::quad({elem.pos.x, elem.pos.y, layout._z}, elem.dimensions, config.bg_color)
+          );
+        }
       }
       break;
       case UI_ElementType::TEXT:
