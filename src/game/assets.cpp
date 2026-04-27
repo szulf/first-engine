@@ -485,6 +485,15 @@ Mesh::Mesh(
       (void*) offsetof(render::InstanceData, uv_offset)
     );
     glEnableVertexAttribArray(9);
+    glVertexAttribPointer(
+      10,
+      1,
+      GL_FLOAT,
+      GL_FALSE,
+      sizeof(render::InstanceData),
+      (void*) offsetof(render::InstanceData, corner_radius)
+    );
+    glEnableVertexAttribArray(10);
 
     glVertexAttribDivisor(3, 1);
     glVertexAttribDivisor(4, 1);
@@ -493,6 +502,7 @@ Mesh::Mesh(
     glVertexAttribDivisor(7, 1);
     glVertexAttribDivisor(8, 1);
     glVertexAttribDivisor(9, 1);
+    glVertexAttribDivisor(10, 1);
   }
 
   glBindVertexArray(0);

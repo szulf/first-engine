@@ -1,5 +1,6 @@
 #include "renderer.h"
 
+#include <GL/glcorearb.h>
 #include <algorithm>
 
 #include "base/math.h"
@@ -53,6 +54,7 @@ static GLenum gl_primitive(RenderPrimitive primitive)
 void Pass::finish()
 {
   auto& assets = AssetManager::instance();
+  // NOTE: 3D
   std::ranges::sort(
     m_cmds_3d,
     [](const Cmd3D& a, const Cmd3D& b) -> bool
@@ -167,6 +169,7 @@ void Pass::finish()
     shader.reset_texture_slot();
   }
 
+  // NOTE: 2D
   std::ranges::sort(
     m_cmds_2d,
     [](const Cmd2D& a, const Cmd2D& b)
@@ -193,7 +196,7 @@ void Pass::finish()
     const auto& cmd = m_cmds_2d[cmd_idx];
 
     usize batch_idx = cmd_idx + 1;
-    while ((batch_idx < m_cmds_3d.size() && batch_idx - cmd_idx < MAX_INSTANCES) &&
+    while ((batch_idx < m_cmds_2d.size() && batch_idx - cmd_idx < MAX_INSTANCES) &&
            cmd.texture == m_cmds_2d[batch_idx].texture)
     {
       ++batch_idx;
@@ -207,10 +210,9 @@ void Pass::finish()
       instance_data.push_back(m_cmds_2d[i].instance_data);
     }
 
-    auto& shader = assets.get(render_data.default_shader);
+    auto& shader = assets.get(render_data.quads_shader);
     shader.use();
-    shader.set("material.diffuse", vec3{});
-    shader.set("material.diffuse_map", cmd.texture);
+    shader.set("diffuse_map", cmd.texture);
 
     glBindBuffer(GL_ARRAY_BUFFER, render_data.instance_data_buffer);
     glBufferSubData(
@@ -516,6 +518,7 @@ void init()
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 
   render_data.default_shader = assets.set({"shaders/shader.vert", "shaders/default.frag"});
+  render_data.quads_shader = assets.set({"shaders/quads.vert", "shaders/quads.frag"});
   render_data.lighting_shader = assets.set({"shaders/shader.vert", "shaders/lighting.frag"});
 
   render_data.cube_wires = static_model_init(

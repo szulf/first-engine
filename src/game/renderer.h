@@ -24,6 +24,7 @@ struct Data
 
   ShaderHandle default_shader;
   ShaderHandle lighting_shader;
+  ShaderHandle quads_shader;
 
   MeshHandle cube_wires;
   MeshHandle ring;
@@ -42,6 +43,14 @@ struct InstanceData
   vec4 tint{};
   vec2 uv_scale{1, 1};
   vec2 uv_offset{0, 0};
+  f32 corner_radius{};
+};
+
+struct Cmd2D
+{
+  TextureHandle texture{};
+  f32 z_idx{};
+  InstanceData instance_data{};
 };
 
 struct Cmd3D
@@ -49,13 +58,6 @@ struct Cmd3D
   MaterialHandle material{};
   MeshHandle mesh{};
   usize submesh_idx{};
-  InstanceData instance_data{};
-};
-
-struct Cmd2D
-{
-  TextureHandle texture{};
-  f32 z_idx{};
   InstanceData instance_data{};
 };
 
