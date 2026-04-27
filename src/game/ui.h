@@ -79,6 +79,8 @@ struct UI_ElementConfigNormal
   UI_ChildAlignment child_alignment{};
   vec4 bg_color{};
   std::optional<TextureHandle> texture{};
+  // TODO: should i have a separate corner_radius for each of the corners? (probably yes)
+  f32 corner_radius{};
   bool* hovered{};
   bool* clicked{};
 };

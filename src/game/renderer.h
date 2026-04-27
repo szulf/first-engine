@@ -121,11 +121,12 @@ private:
 
 // NOTE: 2D
 // TODO: commands with the same z-index are rendered wrong
-Cmd2D quad(const vec3& pos, const vec2& size, const vec4& color);
+Cmd2D quad(const vec3& pos, const vec2& size, const vec4& color, f32 corner_radius = 0.0f);
 Cmd2D texture(
   TextureHandle texture,
   const vec3& pos,
   const vec2& size,
+  f32 corner_radius = 0.0f,
   const vec4& tint = {1.0f, 1.0f, 1.0f, 1.0f}
 );
 Cmd2D texture_part(
@@ -134,6 +135,7 @@ Cmd2D texture_part(
   const vec2& size,
   const vec2& in_texture_pos,
   const vec2& in_texture_size,
+  f32 corner_radius = 0.0f,
   const vec4& tint = {1.0f, 1.0f, 1.0f, 1.0f}
 );
 

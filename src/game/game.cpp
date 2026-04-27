@@ -341,10 +341,13 @@ void Game::update_tick(f32 dt)
            .bg_color = {1, 0, 0, 1}}
         )
         {
+          auto player_texture = AssetManager::instance().load_texture("assets/player_texture.png");
           UI_ELEM(
             layout,
             {.sizing = {UI_SizingAxis::fixed(60), UI_SizingAxis::fixed(60)},
-             .bg_color = {0, 1, 0, 1}}
+             .bg_color = {0, 1, 0, 1},
+             .texture = player_texture,
+             .corner_radius = 0.7f}
           )
           {
           }

@@ -494,6 +494,7 @@ static void ui_generate_render_cmds(UI_Layout& layout, std::vector<render::Cmd2D
               *config.texture,
               {elem.pos.x, elem.pos.y, layout._z},
               elem.dimensions,
+              config.corner_radius,
               bg
             )
           );
@@ -501,7 +502,12 @@ static void ui_generate_render_cmds(UI_Layout& layout, std::vector<render::Cmd2D
         else
         {
           render_cmds.push_back(
-            render::quad({elem.pos.x, elem.pos.y, layout._z}, elem.dimensions, config.bg_color)
+            render::quad(
+              {elem.pos.x, elem.pos.y, layout._z},
+              elem.dimensions,
+              config.bg_color,
+              config.corner_radius
+            )
           );
         }
       }
@@ -551,6 +557,7 @@ static void ui_generate_render_cmds(UI_Layout& layout, std::vector<render::Cmd2D
               layout.char_size * config.size,
               layout.char_size * vec2{(f32) text_parts[i].x, (f32) text_parts[i].y},
               layout.char_size,
+              0.0f,
               {1, 1, 1, 1}
             )
           );

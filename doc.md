@@ -11,23 +11,30 @@
 
 ## NEXT BIG TODOS: (unordered)
 
+### Code/Engine:
+
 - get rid of c++ bs
-
-- change the interaction mechanic, interaction by key is stupid for my game,
-  - i need more interaction by mouse click and the interaction radius would be on the player and
-  - not on the interactable entities
-
-- placing/destroying something on the ground
 - debug tools
   - map/entity/keymap editor
   - time scaling
   - system for in game tests
 - profiler
-- inventory system
 - logging
+- multithreading
+  - if i find the need for it
+
+### Game Mechanics:
+
+- change the interaction mechanic, interaction by key is stupid for my game,
+  - i need more interaction by mouse click and the interaction radius would be on the player and
+  - not on the interactable entities
+- placing/destroying something on the ground
+- inventory system
+- better collision detection
+
+### Rendering:
 
 - particles
-
 - more on lighting
   - pcf or other technique for better shadow mapping
   - gamma correction
@@ -37,11 +44,9 @@
   - deferred shading?
   - somehow get rid of the visible rings coming from the light bulb
   - directional light with shadow mapping
+- proper font rendering
 
-- better collision detection
-
-- multithreading
-  - if i find the need for it
+### Misc:
 
 - get rid of sdl3(big future)
 

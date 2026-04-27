@@ -275,8 +275,9 @@ static mat4 get_transform(const vec3& pos, const vec3& size, f32 rotation)
 
 // NOTE: 2D
 
-Cmd2D quad(const vec3& pos, const vec2& size, const vec4& color)
+Cmd2D quad(const vec3& pos, const vec2& size, const vec4& color, f32 corner_radius)
 {
+  ASSERT(corner_radius >= 0.0f && corner_radius <= 1.0f, "Invalid corner_radius range provided");
   return {
     .texture = render_data.blank_texture,
     .z_idx = pos.z,
@@ -287,11 +288,18 @@ Cmd2D quad(const vec3& pos, const vec2& size, const vec4& color)
         0.0f
       ),
       .tint = color,
+      .corner_radius = corner_radius,
     },
   };
 }
 
-Cmd2D texture(TextureHandle texture, const vec3& pos, const vec2& size, const vec4& tint)
+Cmd2D texture(
+  TextureHandle texture,
+  const vec3& pos,
+  const vec2& size,
+  f32 corner_radius,
+  const vec4& tint
+)
 {
   return {
     .texture = texture,
@@ -303,6 +311,7 @@ Cmd2D texture(TextureHandle texture, const vec3& pos, const vec2& size, const ve
         0.0f
       ),
       .tint = tint,
+      .corner_radius = corner_radius,
     },
   };
 }
@@ -313,6 +322,7 @@ Cmd2D texture_part(
   const vec2& size,
   const vec2& in_texture_pos,
   const vec2& in_texture_size,
+  f32 corner_radius,
   const vec4& tint
 )
 {
@@ -330,6 +340,7 @@ Cmd2D texture_part(
       .tint = tint,
       .uv_scale = in_texture_size / dims_f32,
       .uv_offset = in_texture_pos / dims_f32,
+      .corner_radius = corner_radius,
     },
   };
 }
