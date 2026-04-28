@@ -104,17 +104,10 @@ static void ui_calculate_fit_fixed_sizing_axis(UI_Layout& layout, UI_ElementIdx 
       break;
     case UI_SizingType::FIT:
     case UI_SizingType::FILL:
-      for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
+      for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
+           child_idx = layout.elements[child_idx].next_sibling)
       {
         auto& child = layout.elements[child_idx];
-        if (child.parent < idx)
-        {
-          break;
-        }
-        if (child.parent != idx)
-        {
-          continue;
-        }
         if (config.layout_direction == layout_direction_from_axis[(usize) axis])
         {
           ui_dimension_from_axis(elem, axis) +=
@@ -145,22 +138,14 @@ static void ui_calculate_fit_fixed_sizing_axis(UI_Layout& layout, UI_ElementIdx 
 static void ui_calculate_text_fit_fixed_sizing(UI_Layout& layout, UI_ElementIdx idx = 0)
 {
   bool has_children = false;
-  for (UI_ElementIdx i = idx + 1; i < layout.elements.size(); ++i)
+  auto& elem = layout.elements[idx];
+  for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
+       child_idx = layout.elements[child_idx].next_sibling)
   {
-    auto& child = layout.elements[i];
-    if (child.parent < idx)
-    {
-      break;
-    }
-    if (child.parent != idx)
-    {
-      continue;
-    }
     has_children = true;
-    ui_calculate_text_fit_fixed_sizing(layout, i);
+    ui_calculate_text_fit_fixed_sizing(layout, child_idx);
   }
 
-  auto& elem = layout.elements[idx];
   switch (elem.config.type)
   {
     case UI_ElementType::NORMAL:
@@ -195,17 +180,10 @@ static void ui_calculate_fill_sizing_axis(UI_Layout& layout, UI_ElementIdx idx, 
     ui_dimension_from_axis(elem, axis) - ui_total_padding_from_axis(config, axis);
   if (config.layout_direction == layout_direction_from_axis[(usize) axis])
   {
-    for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
+    for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
+         child_idx = layout.elements[child_idx].next_sibling)
     {
       auto& child = layout.elements[child_idx];
-      if (child.parent < idx)
-      {
-        break;
-      }
-      if (child.parent != idx)
-      {
-        continue;
-      }
       if (ui_sizing_from_axis(child.config.normal, axis).type == UI_SizingType::FILL)
       {
         ++fill_child_count;
@@ -218,14 +196,11 @@ static void ui_calculate_fill_sizing_axis(UI_Layout& layout, UI_ElementIdx idx, 
     }
     available_space += config.child_gap;
   }
-  for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
+  for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
+       child_idx = layout.elements[child_idx].next_sibling)
   {
     auto& child = layout.elements[child_idx];
-    if (child.parent < idx)
-    {
-      break;
-    }
-    if (child.parent != idx || child.config.type == UI_ElementType::TEXT)
+    if (child.config.type == UI_ElementType::TEXT)
     {
       continue;
     }
@@ -255,17 +230,9 @@ static void ui_calculate_fill_sizing(UI_Layout& layout, UI_ElementIdx idx = 0)
   }
   ui_calculate_fill_sizing_axis(layout, idx, UI_Axis::X);
   ui_calculate_fill_sizing_axis(layout, idx, UI_Axis::Y);
-  for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
+  for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
+       child_idx = layout.elements[child_idx].next_sibling)
   {
-    auto& child = layout.elements[child_idx];
-    if (child.parent < idx)
-    {
-      break;
-    }
-    if (child.parent != idx)
-    {
-      continue;
-    }
     ui_calculate_fill_sizing(layout, child_idx);
   }
 }
@@ -390,17 +357,10 @@ ui_adjust_centered_position(UI_Layout& layout, UI_ElementIdx idx, f32 used_space
   )
   {
     f32 adjust_value = (ui_dimension_from_axis(elem, axis) - used_space) * 0.5f;
-    for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
+    for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
+         child_idx = layout.elements[child_idx].next_sibling)
     {
       auto& child = layout.elements[child_idx];
-      if (child.parent < idx)
-      {
-        break;
-      }
-      if (child.parent != idx)
-      {
-        continue;
-      }
       ui_pos_from_axis(child, axis) += adjust_value;
     }
   }
@@ -419,17 +379,10 @@ static void ui_calculate_positions(UI_Layout& layout, UI_ElementIdx idx = 0)
   }
   auto& config = elem.config.normal;
   f32 used_space = 0;
-  for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
+  for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
+       child_idx = layout.elements[child_idx].next_sibling)
   {
     auto& child = layout.elements[child_idx];
-    if (child.parent < idx)
-    {
-      break;
-    }
-    if (child.parent != idx)
-    {
-      continue;
-    }
     ui_calculate_position_axis(layout, idx, child_idx, used_space, UI_Axis::X);
     ui_calculate_position_axis(layout, idx, child_idx, used_space, UI_Axis::Y);
     if (config.scroll_value)
@@ -439,17 +392,9 @@ static void ui_calculate_positions(UI_Layout& layout, UI_ElementIdx idx = 0)
   }
   ui_adjust_centered_position(layout, idx, used_space, UI_Axis::X);
   ui_adjust_centered_position(layout, idx, used_space, UI_Axis::Y);
-  for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
+  for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
+       child_idx = layout.elements[child_idx].next_sibling)
   {
-    auto& child = layout.elements[child_idx];
-    if (child.parent < idx)
-    {
-      break;
-    }
-    if (child.parent != idx)
-    {
-      continue;
-    }
     ui_calculate_positions(layout, child_idx);
   }
 }
@@ -485,18 +430,10 @@ static void ui_check_mouse_interactions(UI_Layout& layout)
     if (config.scroll_value)
     {
       f32 max_height{};
-      for (UI_ElementIdx child_idx = (UI_ElementIdx) idx + 1; child_idx < layout.elements.size();
-           ++child_idx)
+      for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
+           child_idx = layout.elements[child_idx].next_sibling)
       {
         auto& child = layout.elements[child_idx];
-        if (child.parent < (UI_ElementIdx) idx)
-        {
-          break;
-        }
-        if (child.parent != (UI_ElementIdx) idx)
-        {
-          continue;
-        }
         switch (config.layout_direction)
         {
           case UI_LayoutDirection::HORIZONTAL:
@@ -640,7 +577,6 @@ static void ui_generate_render_cmds(UI_Layout& layout, std::vector<render::Cmd2D
 std::vector<render::Cmd2D> ui_end_layout(UI_Layout& layout)
 {
   ui_end_element(layout);
-  // TODO: inline these?
   ui_calculate_text_fit_fixed_sizing(layout);
   ui_calculate_fill_sizing(layout);
   ui_calculate_positions(layout);
@@ -650,12 +586,32 @@ std::vector<render::Cmd2D> ui_end_layout(UI_Layout& layout)
   return render_cmds;
 }
 
+static void set_first_child_or_next_sibling(UI_Layout& layout)
+{
+  auto& parent = layout.elements[layout._active_parent];
+  // TODO: i hate this, but currently i dont have a clue what could be better
+  if (parent.first_child == 0)
+  {
+    parent.first_child = layout.elements.size() - 1;
+  }
+  else
+  {
+    UI_Element* prev_sibling{};
+    for (UI_ElementIdx idx = parent.first_child; idx != 0; idx = layout.elements[idx].next_sibling)
+    {
+      prev_sibling = &layout.elements[idx];
+    }
+    prev_sibling->next_sibling = layout.elements.size() - 1;
+  }
+}
+
 void ui_begin_element(UI_Layout& layout, const UI_ElementConfigNormal& config)
 {
   layout.elements.push_back({
-    .config = {.type = UI_ElementType::NORMAL, .normal = config},
     .parent = layout._active_parent,
+    .config = {.type = UI_ElementType::NORMAL, .normal = config},
   });
+  set_first_child_or_next_sibling(layout);
   layout._active_parent = layout.elements.size() - 1;
 }
 
@@ -667,7 +623,8 @@ void ui_end_element(UI_Layout& layout)
 void ui_text(UI_Layout& layout, std::string_view text, f32 size)
 {
   layout.elements.push_back({
-    .config = {.type = UI_ElementType::TEXT, .text = {.text = text, .size = size}},
     .parent = layout._active_parent,
+    .config = {.type = UI_ElementType::TEXT, .text = {.text = text, .size = size}},
   });
+  set_first_child_or_next_sibling(layout);
 }

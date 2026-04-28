@@ -110,12 +110,14 @@ struct UI_ElementConfig
 
 using UI_ElementIdx = usize;
 
-// TODO: store the first child and next sibling indices
-// to avoid dumb bullshit when iterating children
 struct UI_Element
 {
-  UI_ElementConfig config{};
   UI_ElementIdx parent{};
+  // NOTE: if idx == 0 then there is no child
+  UI_ElementIdx first_child{};
+  // NOTE: if idx == 0 then there is no sibling
+  UI_ElementIdx next_sibling{};
+  UI_ElementConfig config{};
   vec2 dimensions{};
   vec2 pos{};
   Rectangle clip_rectangle{};
