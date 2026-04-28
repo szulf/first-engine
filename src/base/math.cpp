@@ -463,3 +463,8 @@ void hash_fnv1(usize& out, const void* data, usize n)
     out *= constants<u64>::FNV_PRIME;
   }
 }
+
+bool operator==(const Rectangle& a, const Rectangle& b)
+{
+  return a.pos == b.pos && a.dimensions == b.dimensions;
+}

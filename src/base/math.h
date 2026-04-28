@@ -161,3 +161,11 @@ mat4 look_at(const vec3& pos, const vec3& target, const vec3& up);
 [[nodiscard]] mat4 rotate(mat4 mat, f32 rad, const vec3& axis);
 
 void hash_fnv1(usize& out, const void* data, usize n);
+
+struct Rectangle
+{
+  vec2 pos{};
+  vec2 dimensions{};
+};
+
+bool operator==(const Rectangle& a, const Rectangle& b);

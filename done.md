@@ -75,3 +75,6 @@
    - padding and gaps
    - child alignment
    - textures
+5. almost completely usable ui
+   - clipping/scrolling
+   - round corners

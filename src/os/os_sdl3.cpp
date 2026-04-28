@@ -282,6 +282,7 @@ void Input::clear()
   }
   lmb.transition_count = 0;
   rmb.transition_count = 0;
+  mouse_scroll = 0;
 }
 
 struct SDL3WindowData : public Window::WindowData
@@ -600,6 +601,11 @@ void Window::update()
           m_input.rmb.down = e.button.down;
           ++m_input.rmb.transition_count;
         }
+      }
+      break;
+      case SDL_EVENT_MOUSE_WHEEL:
+      {
+        m_input.mouse_scroll += e.wheel.integer_y;
       }
       break;
     }

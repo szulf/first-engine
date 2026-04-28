@@ -1,6 +1,8 @@
 #include "ui.h"
 
 #include <cstdlib>
+#include <optional>
+#include <cmath>
 
 #include "base/base.h"
 #include "game/renderer.h"
@@ -415,6 +417,7 @@ static void ui_calculate_positions(UI_Layout& layout, UI_ElementIdx idx = 0)
   {
     return;
   }
+  auto& config = elem.config.normal;
   f32 used_space = 0;
   for (UI_ElementIdx child_idx = idx + 1; child_idx < layout.elements.size(); ++child_idx)
   {
@@ -429,6 +432,10 @@ static void ui_calculate_positions(UI_Layout& layout, UI_ElementIdx idx = 0)
     }
     ui_calculate_position_axis(layout, idx, child_idx, used_space, UI_Axis::X);
     ui_calculate_position_axis(layout, idx, child_idx, used_space, UI_Axis::Y);
+    if (config.scroll_value)
+    {
+      child.pos.y += (f32) *config.scroll_value * SCROLL_SENSITIVITY;
+    }
   }
   ui_adjust_centered_position(layout, idx, used_space, UI_Axis::X);
   ui_adjust_centered_position(layout, idx, used_space, UI_Axis::Y);
@@ -455,29 +462,87 @@ static bool ui_intersects(const vec2& point, const vec2& start, const vec2& dime
 
 static void ui_check_mouse_interactions(UI_Layout& layout)
 {
-  for (const auto& elem : layout.elements)
+  for (i32 idx = (i32) layout.elements.size() - 1; idx >= 0; --idx)
   {
+    auto& elem = layout.elements[(usize) idx];
     if (elem.config.type != UI_ElementType::NORMAL)
     {
       continue;
     }
     auto& config = elem.config.normal;
     bool hovered = ui_intersects(layout.input.mouse_pos, elem.pos, elem.dimensions);
+    // TODO: this is still just wrong
     if (config.clicked)
     {
       *config.clicked = hovered && layout.input.lmb.just_pressed();
+      break;
     }
     if (config.hovered)
     {
       *config.hovered = hovered;
+      break;
+    }
+    if (config.scroll_value)
+    {
+      f32 max_height{};
+      for (UI_ElementIdx child_idx = (UI_ElementIdx) idx + 1; child_idx < layout.elements.size();
+           ++child_idx)
+      {
+        auto& child = layout.elements[child_idx];
+        if (child.parent < (UI_ElementIdx) idx)
+        {
+          break;
+        }
+        if (child.parent != (UI_ElementIdx) idx)
+        {
+          continue;
+        }
+        switch (config.layout_direction)
+        {
+          case UI_LayoutDirection::HORIZONTAL:
+            max_height = std::max(max_height, child.dimensions.y);
+            break;
+          case UI_LayoutDirection::VERTICAL:
+            max_height += child.dimensions.y + config.child_gap;
+            break;
+        }
+      }
+      if (config.layout_direction == UI_LayoutDirection::VERTICAL)
+      {
+        max_height -= config.child_gap;
+      }
+      *config.scroll_value += layout.input.mouse_scroll;
+      *config.scroll_value =
+        std::clamp(*config.scroll_value, (i32) -std::floor(max_height / SCROLL_SENSITIVITY), 0);
+      break;
     }
   }
 }
 
+static Rectangle ui_intersection_rectangle(const Rectangle& a, const Rectangle& b)
+{
+  f32 left = std::max(a.pos.x, b.pos.x);
+  f32 top = std::max(a.pos.y, b.pos.y);
+  f32 right = std::min(a.pos.x + a.dimensions.x, b.pos.x + b.dimensions.x);
+  f32 down = std::min(a.pos.y + a.dimensions.y, b.pos.y + b.dimensions.y);
+
+  if (right > left && down > top)
+  {
+    return {{left, top}, {right - left, down - top}};
+  }
+  return {};
+}
+
 static void ui_generate_render_cmds(UI_Layout& layout, std::vector<render::Cmd2D>& render_cmds)
 {
-  for (const auto& elem : layout.elements)
+  layout.elements[0].clip_rectangle = {layout.elements[0].pos, layout.elements[0].dimensions};
+  // TODO: iterate by children instead?
+  for (UI_ElementIdx idx = 1; idx < layout.elements.size(); ++idx)
   {
+    auto& elem = layout.elements[idx];
+    auto& parent = layout.elements[elem.parent];
+    elem.clip_rectangle =
+      ui_intersection_rectangle({parent.pos, parent.dimensions}, parent.clip_rectangle);
     switch (elem.config.type)
     {
       case UI_ElementType::NORMAL:
@@ -494,8 +559,9 @@ static void ui_generate_render_cmds(UI_Layout& layout, std::vector<render::Cmd2D
               *config.texture,
               {elem.pos.x, elem.pos.y, layout._z},
               elem.dimensions,
-              config.corner_radius,
-              bg
+              {.corner_radius = config.corner_radius,
+               .tint = bg,
+               .clip_rectangle = std::make_optional(elem.clip_rectangle)}
             )
           );
         }
@@ -505,8 +571,9 @@ static void ui_generate_render_cmds(UI_Layout& layout, std::vector<render::Cmd2D
             render::quad(
               {elem.pos.x, elem.pos.y, layout._z},
               elem.dimensions,
-              config.bg_color,
-              config.corner_radius
+              {.corner_radius = config.corner_radius,
+               .tint = config.bg_color,
+               .clip_rectangle = std::make_optional(elem.clip_rectangle)}
             )
           );
         }
@@ -557,8 +624,9 @@ static void ui_generate_render_cmds(UI_Layout& layout, std::vector<render::Cmd2D
               layout.char_size * config.size,
               layout.char_size * vec2{(f32) text_parts[i].x, (f32) text_parts[i].y},
               layout.char_size,
-              0.0f,
-              {1, 1, 1, 1}
+              {.corner_radius = 0.0f,
+               .tint = {1, 1, 1, 1},
+               .clip_rectangle = std::make_optional(elem.clip_rectangle)}
             )
           );
         }

@@ -75,6 +75,8 @@ private:
   vec3 layout_pos{100, 50, 0};
   bool m_camera_mode{};
   bool m_display_bounding_boxes{};
+
+  i32 test_scroll_value;
 };
 
 #endif

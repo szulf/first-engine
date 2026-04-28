@@ -329,7 +329,8 @@ void Game::update_tick(f32 dt)
          .padding = UI_Padding::all(16),
          .child_gap = 16,
          .child_alignment = {.x = UI_ChildAlignmentAxis::START},
-         .bg_color = {0.85f, 0.8f, 0.8f, 1}}
+         .bg_color = {0.85f, 0.8f, 0.8f, 1},
+         .scroll_value = &test_scroll_value}
       )
       {
         UI_ELEM(
@@ -353,7 +354,7 @@ void Game::update_tick(f32 dt)
           }
           ui_text(layout, "Test of UI library", 1.5f);
         }
-        for (i32 i = 0; i < 5; ++i)
+        for (i32 i = 0; i < 20; ++i)
         {
           UI_ELEM(
             layout,

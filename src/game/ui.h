@@ -70,6 +70,8 @@ struct UI_ChildAlignment
   UI_ChildAlignmentAxis y;
 };
 
+#define SCROLL_SENSITIVITY 50
+
 struct UI_ElementConfigNormal
 {
   UI_LayoutDirection layout_direction{};
@@ -83,6 +85,7 @@ struct UI_ElementConfigNormal
   f32 corner_radius{};
   bool* hovered{};
   bool* clicked{};
+  i32* scroll_value{};
 };
 
 enum class UI_ElementType
@@ -115,6 +118,7 @@ struct UI_Element
   UI_ElementIdx parent{};
   vec2 dimensions{};
   vec2 pos{};
+  Rectangle clip_rectangle{};
 };
 
 struct UI_Layout

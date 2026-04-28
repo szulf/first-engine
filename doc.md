@@ -2,10 +2,7 @@
 
 ## SMALL TODOS: (ordered)
 
-5. almost completely usable ui (?)
-   - text wrapping
-   - clipping/scrolling
-   - round corners
+6. usable components
 
 ---
 

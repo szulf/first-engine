@@ -41,6 +41,7 @@ struct InstanceData
 {
   mat4 transform{};
   vec4 tint{};
+  // NOTE: these are only used for 2D
   vec2 uv_scale{1, 1};
   vec2 uv_offset{0, 0};
   f32 corner_radius{};
@@ -51,6 +52,7 @@ struct Cmd2D
   TextureHandle texture{};
   f32 z_idx{};
   InstanceData instance_data{};
+  std::optional<Rectangle> clip_rectangle{};
 };
 
 struct Cmd3D
@@ -120,23 +122,22 @@ private:
 };
 
 // NOTE: 2D
-// TODO: commands with the same z-index are rendered wrong
-Cmd2D quad(const vec3& pos, const vec2& size, const vec4& color, f32 corner_radius = 0.0f);
-Cmd2D texture(
-  TextureHandle texture,
-  const vec3& pos,
-  const vec2& size,
-  f32 corner_radius = 0.0f,
-  const vec4& tint = {1.0f, 1.0f, 1.0f, 1.0f}
-);
+// TODO: commands with the same z-index are rendered wrong, disable depth test?
+struct Options2D
+{
+  f32 corner_radius = 0.0f;
+  vec4 tint = {1, 1, 1, 1};
+  std::optional<Rectangle> clip_rectangle = std::nullopt;
+};
+Cmd2D quad(const vec3& pos, const vec2& size, const Options2D& args = {});
+Cmd2D texture(TextureHandle texture, const vec3& pos, const vec2& size, const Options2D& args = {});
 Cmd2D texture_part(
   TextureHandle texture,
   const vec3& pos,
   const vec2& size,
   const vec2& in_texture_pos,
   const vec2& in_texture_size,
-  f32 corner_radius = 0.0f,
-  const vec4& tint = {1.0f, 1.0f, 1.0f, 1.0f}
+  const Options2D& args = {}
 );
 
 // NOTE: 3D

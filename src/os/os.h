@@ -89,6 +89,7 @@ struct Input
   KeyState lmb;
   KeyState rmb;
 
+  i32 mouse_scroll;
   vec2 mouse_pos;
   vec2 mouse_delta;
 };

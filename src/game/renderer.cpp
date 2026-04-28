@@ -1,6 +1,5 @@
 #include "renderer.h"
 
-#include <GL/glcorearb.h>
 #include <algorithm>
 
 #include "base/math.h"
@@ -55,6 +54,11 @@ void Pass::finish()
 {
   auto& assets = AssetManager::instance();
   // NOTE: 3D
+  glDisable(GL_SCISSOR_TEST);
+  glViewport(0, 0, (GLsizei) m_camera.viewport().x, (GLsizei) m_camera.viewport().y);
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
   std::ranges::sort(
     m_cmds_3d,
     [](const Cmd3D& a, const Cmd3D& b) -> bool
@@ -79,10 +83,6 @@ void Pass::finish()
   {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
-
-  glViewport(0, 0, (GLsizei) m_camera.viewport().x, (GLsizei) m_camera.viewport().y);
-  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   STD140Camera camera_std140 = {};
   camera_std140.view_pos = m_camera.pos();
@@ -170,6 +170,8 @@ void Pass::finish()
   }
 
   // NOTE: 2D
+  glEnable(GL_SCISSOR_TEST);
+
   std::ranges::sort(
     m_cmds_2d,
     [](const Cmd2D& a, const Cmd2D& b)
@@ -197,7 +199,8 @@ void Pass::finish()
 
     usize batch_idx = cmd_idx + 1;
     while ((batch_idx < m_cmds_2d.size() && batch_idx - cmd_idx < MAX_INSTANCES) &&
-           cmd.texture == m_cmds_2d[batch_idx].texture)
+           cmd.texture == m_cmds_2d[batch_idx].texture &&
+           cmd.clip_rectangle == m_cmds_2d[batch_idx].clip_rectangle)
     {
       ++batch_idx;
     }
@@ -223,6 +226,25 @@ void Pass::finish()
     );
 
     quad.use();
+
+    if (cmd.clip_rectangle)
+    {
+      GLint y_clip_pos = std::max(
+        (GLint) (m_camera.viewport().y -
+                 (u32) (cmd.clip_rectangle->pos.y + cmd.clip_rectangle->dimensions.y)),
+        0
+      );
+      glScissor(
+        (GLint) cmd.clip_rectangle->pos.x,
+        y_clip_pos,
+        (GLint) cmd.clip_rectangle->dimensions.x,
+        (GLint) cmd.clip_rectangle->dimensions.y
+      );
+    }
+    else
+    {
+      glScissor(0, 0, (GLint) m_camera.viewport().x, (GLint) m_camera.viewport().y);
+    }
 
     glDrawElementsInstanced(
       gl_primitive(quad.primitive),
@@ -275,44 +297,45 @@ static mat4 get_transform(const vec3& pos, const vec3& size, f32 rotation)
 
 // NOTE: 2D
 
-Cmd2D quad(const vec3& pos, const vec2& size, const vec4& color, f32 corner_radius)
+Cmd2D quad(const vec3& pos, const vec2& size, const Options2D& args)
 {
-  ASSERT(corner_radius >= 0.0f && corner_radius <= 1.0f, "Invalid corner_radius range provided");
+  ASSERT(
+    args.corner_radius >= 0.0f && args.corner_radius <= 1.0f,
+    "Invalid corner_radius range provided"
+  );
   return {
     .texture = render_data.blank_texture,
     .z_idx = pos.z,
-    .instance_data = {
-      .transform = get_transform(
-        {pos.x + (size.x / 2.0f), pos.y + (size.y / 2.0f), pos.z},
-        {size.x, size.y, 1.0f},
-        0.0f
-      ),
-      .tint = color,
-      .corner_radius = corner_radius,
-    },
+    .instance_data =
+      {
+        .transform = get_transform(
+          {pos.x + (size.x / 2.0f), pos.y + (size.y / 2.0f), pos.z},
+          {size.x, size.y, 1.0f},
+          0.0f
+        ),
+        .tint = args.tint,
+        .corner_radius = args.corner_radius,
+      },
+    .clip_rectangle = args.clip_rectangle,
   };
 }
 
-Cmd2D texture(
-  TextureHandle texture,
-  const vec3& pos,
-  const vec2& size,
-  f32 corner_radius,
-  const vec4& tint
-)
+Cmd2D texture(TextureHandle texture, const vec3& pos, const vec2& size, const Options2D& args)
 {
   return {
     .texture = texture,
     .z_idx = pos.z,
-    .instance_data = {
-      .transform = get_transform(
-        {pos.x + (size.x / 2.0f), pos.y + (size.y / 2.0f), pos.z},
-        {size.x, size.y, 1.0f},
-        0.0f
-      ),
-      .tint = tint,
-      .corner_radius = corner_radius,
-    },
+    .instance_data =
+      {
+        .transform = get_transform(
+          {pos.x + (size.x / 2.0f), pos.y + (size.y / 2.0f), pos.z},
+          {size.x, size.y, 1.0f},
+          0.0f
+        ),
+        .tint = args.tint,
+        .corner_radius = args.corner_radius,
+      },
+    .clip_rectangle = args.clip_rectangle,
   };
 }
 
@@ -322,8 +345,7 @@ Cmd2D texture_part(
   const vec2& size,
   const vec2& in_texture_pos,
   const vec2& in_texture_size,
-  f32 corner_radius,
-  const vec4& tint
+  const Options2D& args
 )
 {
   uvec2 dims = AssetManager::instance().get(texture).dimensions;
@@ -331,17 +353,19 @@ Cmd2D texture_part(
   return {
     .texture = texture,
     .z_idx = pos.z,
-    .instance_data = {
-      .transform = get_transform(
-        {pos.x + (size.x / 2.0f), pos.y + (size.y / 2.0f), pos.z},
-        {size.x, size.y, 1.0f},
-        0.0f
-      ),
-      .tint = tint,
-      .uv_scale = in_texture_size / dims_f32,
-      .uv_offset = in_texture_pos / dims_f32,
-      .corner_radius = corner_radius,
-    },
+    .instance_data =
+      {
+        .transform = get_transform(
+          {pos.x + (size.x / 2.0f), pos.y + (size.y / 2.0f), pos.z},
+          {size.x, size.y, 1.0f},
+          0.0f
+        ),
+        .tint = args.tint,
+        .uv_scale = in_texture_size / dims_f32,
+        .uv_offset = in_texture_pos / dims_f32,
+        .corner_radius = args.corner_radius,
+      },
+    .clip_rectangle = args.clip_rectangle,
   };
 }
 
