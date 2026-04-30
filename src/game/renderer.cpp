@@ -53,12 +53,8 @@ static GLenum gl_primitive(RenderPrimitive primitive)
 void Pass::finish()
 {
   auto& assets = AssetManager::instance();
-  // NOTE: 3D
-  glDisable(GL_SCISSOR_TEST);
-  glViewport(0, 0, (GLsizei) m_camera.viewport().x, (GLsizei) m_camera.viewport().y);
-  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+  // NOTE: 3D
   std::ranges::sort(
     m_cmds_3d,
     [](const Cmd3D& a, const Cmd3D& b) -> bool
@@ -83,6 +79,11 @@ void Pass::finish()
   {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
   }
+
+  glDisable(GL_SCISSOR_TEST);
+  glViewport(0, 0, (GLsizei) m_camera.viewport().x, (GLsizei) m_camera.viewport().y);
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   STD140Camera camera_std140 = {};
   camera_std140.view_pos = m_camera.pos();
@@ -170,8 +171,6 @@ void Pass::finish()
   }
 
   // NOTE: 2D
-  glEnable(GL_SCISSOR_TEST);
-
   std::ranges::sort(
     m_cmds_2d,
     [](const Cmd2D& a, const Cmd2D& b)
@@ -183,6 +182,8 @@ void Pass::finish()
       return a.texture.id > b.texture.id;
     }
   );
+
+  glEnable(GL_SCISSOR_TEST);
 
   camera_std140 = {};
   render_data.camera_2d.update_viewport(m_camera.viewport());
