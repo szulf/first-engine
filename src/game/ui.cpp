@@ -404,6 +404,12 @@ static bool ui_intersects(const vec2& point, const vec2& start, const vec2& dime
          (point.y > start.y && point.y < start.y + dimensions.y);
 }
 
+static bool ui_intersects(const Rectangle& a, const Rectangle& b)
+{
+  return a.pos.x < b.pos.x + b.dimensions.x && a.pos.x + a.dimensions.x > b.pos.x &&
+         a.pos.y < b.pos.y + b.dimensions.y && a.pos.y + a.dimensions.y > b.pos.y;
+}
+
 static void ui_calculate_scroll_value(UI_Layout& layout, UI_ElementIdx idx)
 {
   auto& elem = layout.elements[idx];
@@ -499,22 +505,30 @@ static Rectangle ui_intersection_rectangle(const Rectangle& a, const Rectangle& 
   return {};
 }
 
-// TODO: i should not generate render cmds for children that are completely outside of the parent
-static void ui_generate_render_cmds(UI_Layout& layout, std::vector<render::Cmd2D>& render_cmds)
+static void ui_generate_render_cmds(
+  UI_Layout& layout,
+  std::vector<render::Cmd2D>& render_cmds,
+  UI_ElementIdx idx = 0
+)
 {
+  // TODO: not sure where to place this line of code
   layout.elements[0].clip_rectangle = {layout.elements[0].pos, layout.elements[0].dimensions};
-  // TODO: iterate by children instead?
-  for (UI_ElementIdx idx = 1; idx < layout.elements.size(); ++idx)
+  auto& elem = layout.elements[idx];
+  for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
+       child_idx = layout.elements[child_idx].next_sibling)
   {
-    auto& elem = layout.elements[idx];
-    auto& parent = layout.elements[elem.parent];
-    elem.clip_rectangle =
-      ui_intersection_rectangle({parent.pos, parent.dimensions}, parent.clip_rectangle);
-    switch (elem.config.type)
+    auto& child = layout.elements[child_idx];
+    if (!ui_intersects({elem.pos, elem.dimensions}, {child.pos, child.dimensions}))
+    {
+      continue;
+    }
+    child.clip_rectangle =
+      ui_intersection_rectangle({elem.pos, elem.dimensions}, elem.clip_rectangle);
+    switch (child.config.type)
     {
       case UI_ElementType::NORMAL:
       {
-        auto& config = elem.config.normal;
+        auto& config = child.config.normal;
         if (config.texture)
         {
           // TODO: this is not really the ideal solution,
@@ -523,78 +537,71 @@ static void ui_generate_render_cmds(UI_Layout& layout, std::vector<render::Cmd2D
           auto bg = config.bg_color != vec4{} ? config.bg_color : vec4{1, 1, 1, 1};
           render_cmds.push_back(render::texture(
             *config.texture,
-            {elem.pos.x, elem.pos.y, layout._z},
-            elem.dimensions,
+            {child.pos.x, child.pos.y, layout._z},
+            child.dimensions,
             {.corner_radius = config.corner_radius,
              .tint = bg,
-             .clip_rectangle = std::make_optional(elem.clip_rectangle)}
+             .clip_rectangle = std::make_optional(child.clip_rectangle)}
           ));
         }
         else
         {
           render_cmds.push_back(render::quad(
-            {elem.pos.x, elem.pos.y, layout._z},
-            elem.dimensions,
+            {child.pos.x, child.pos.y, layout._z},
+            child.dimensions,
             {.corner_radius = config.corner_radius,
              .tint = config.bg_color,
-             .clip_rectangle = std::make_optional(elem.clip_rectangle)}
+             .clip_rectangle = std::make_optional(child.clip_rectangle)}
           ));
         }
       }
       break;
       case UI_ElementType::TEXT:
       {
-        auto& config = elem.config.text;
-        std::vector<uvec2> text_parts{};
-        text_parts.resize(config.text.size());
+        auto& config = child.config.text;
         for (usize i = 0; i < config.text.size(); ++i)
         {
+          vec2 texture_offset{};
           if (std::islower(config.text[i]))
           {
-            text_parts[i] = {(u32) (config.text[i] - 'a'), 1};
+            texture_offset = {(f32) (config.text[i] - 'a'), 1};
           }
           else if (std::isupper(config.text[i]))
           {
-            text_parts[i] = {(u32) (config.text[i] - 'A'), 1};
+            texture_offset = {(f32) (config.text[i] - 'A'), 1};
           }
           else if (std::isdigit(config.text[i]))
           {
-            text_parts[i] = {(u32) (config.text[i] - '0'), 2};
-          }
-          else if (std::isspace(config.text[i]))
-          {
+            texture_offset = {(f32) (config.text[i] - '0'), 2};
           }
           else if (config.text[i] >= '!' && config.text[i] <= '-')
           {
-            text_parts[i] = {(u32) (config.text[i] - '!'), 3};
+            texture_offset = {(f32) (config.text[i] - '!'), 3};
+          }
+          else if (std::isspace(config.text[i]))
+          {
+            continue;
           }
           else
           {
             ASSERT(false, "Unsupported character '{}' found in drawing", config.text[i]);
           }
-        }
-
-        for (usize i = 0; i < text_parts.size(); ++i)
-        {
-          if (text_parts[i].y == 0)
-          {
-            continue;
-          }
           render_cmds.push_back(render::texture_part(
             layout.font_texture,
-            {elem.pos.x + ((f32) i * layout.char_size.x * config.size), elem.pos.y, layout._z},
+            {child.pos.x + ((f32) i * layout.char_size.x * config.size), child.pos.y, layout._z},
             layout.char_size * config.size,
-            layout.char_size * vec2{(f32) text_parts[i].x, (f32) text_parts[i].y},
+            layout.char_size * texture_offset,
             layout.char_size,
             {.corner_radius = 0.0f,
              .tint = {1, 1, 1, 1},
-             .clip_rectangle = std::make_optional(elem.clip_rectangle)}
+             .clip_rectangle = std::make_optional(child.clip_rectangle)}
           ));
         }
       }
       break;
     }
     layout._z += 0.001f;
+    ui_generate_render_cmds(layout, render_cmds, child_idx);
   }
 }
 
