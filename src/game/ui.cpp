@@ -23,10 +23,11 @@ UI_Layout ui_begin_layout(
   };
   ui_begin_element(
     layout,
-    {.sizing = {
-       UI_SizingAxis::fixed((u16) max_dimensions.x),
-       UI_SizingAxis::fixed((u16) max_dimensions.y),
-     }}
+    {.sizing =
+       {
+         UI_SizingAxis::fixed((u16) max_dimensions.x),
+         UI_SizingAxis::fixed((u16) max_dimensions.y),
+       }}
   );
   return layout;
 }
@@ -351,10 +352,8 @@ ui_adjust_centered_position(UI_Layout& layout, UI_ElementIdx idx, f32 used_space
 {
   auto& elem = layout.elements[idx];
   auto& config = elem.config.normal;
-  if (
-    config.layout_direction == layout_direction_from_axis[(usize) axis] &&
-    ui_child_alignment_from_axis(config, axis) == UI_ChildAlignmentAxis::CENTER
-  )
+  if (config.layout_direction == layout_direction_from_axis[(usize) axis] &&
+      ui_child_alignment_from_axis(config, axis) == UI_ChildAlignmentAxis::CENTER)
   {
     f32 adjust_value = (ui_dimension_from_axis(elem, axis) - used_space) * 0.5f;
     for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
@@ -405,6 +404,44 @@ static bool ui_intersects(const vec2& point, const vec2& start, const vec2& dime
          (point.y > start.y && point.y < start.y + dimensions.y);
 }
 
+static void ui_calculate_scroll_value(UI_Layout& layout, UI_ElementIdx idx)
+{
+  auto& elem = layout.elements[idx];
+  auto& config = elem.config.normal;
+  f32 max_height{};
+  switch (config.layout_direction)
+  {
+    case UI_LayoutDirection::HORIZONTAL:
+    {
+      for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
+           child_idx = layout.elements[child_idx].next_sibling)
+      {
+        auto& child = layout.elements[child_idx];
+        max_height =
+          std::max(max_height, child.dimensions.y + config.padding.top + config.padding.down);
+      }
+    }
+    break;
+    case UI_LayoutDirection::VERTICAL:
+    {
+      for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
+           child_idx = layout.elements[child_idx].next_sibling)
+      {
+        auto& child = layout.elements[child_idx];
+        max_height += child.dimensions.y + config.child_gap;
+      }
+      max_height -= config.child_gap;
+      max_height += config.padding.top + config.padding.down;
+    }
+    break;
+  }
+
+  *config.scroll_value += layout.input.mouse_scroll;
+  // TODO: 0 as the min value is not really correct
+  *config.scroll_value =
+    std::clamp(*config.scroll_value, (i32) -std::floor(max_height / SCROLL_SENSITIVITY), 0);
+}
+
 static void ui_check_mouse_interactions(UI_Layout& layout)
 {
   for (i32 idx = (i32) layout.elements.size() - 1; idx >= 0; --idx)
@@ -416,41 +453,33 @@ static void ui_check_mouse_interactions(UI_Layout& layout)
     }
     auto& config = elem.config.normal;
     bool hovered = ui_intersects(layout.input.mouse_pos, elem.pos, elem.dimensions);
-    // TODO: this is still just wrong
-    if (config.clicked)
-    {
-      *config.clicked = hovered && layout.input.lmb.just_pressed();
-      break;
-    }
     if (config.hovered)
     {
       *config.hovered = hovered;
-      break;
     }
-    if (config.scroll_value)
+    if (config.clicked)
     {
-      f32 max_height{};
-      for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
-           child_idx = layout.elements[child_idx].next_sibling)
+      *config.clicked = hovered && layout.input.lmb.just_pressed();
+    }
+    if (hovered)
+    {
+      if (config.scroll_value)
       {
-        auto& child = layout.elements[child_idx];
-        switch (config.layout_direction)
+        ui_calculate_scroll_value(layout, (UI_ElementIdx) idx);
+      }
+      else
+      {
+        for (UI_ElementIdx parent_idx = elem.parent; parent_idx != 0;
+             parent_idx = layout.elements[parent_idx].parent)
         {
-          case UI_LayoutDirection::HORIZONTAL:
-            max_height = std::max(max_height, child.dimensions.y);
+          auto& parent = layout.elements[parent_idx];
+          if (parent.config.normal.scroll_value)
+          {
+            ui_calculate_scroll_value(layout, parent_idx);
             break;
-          case UI_LayoutDirection::VERTICAL:
-            max_height += child.dimensions.y + config.child_gap;
-            break;
+          }
         }
       }
-      if (config.layout_direction == UI_LayoutDirection::VERTICAL)
-      {
-        max_height -= config.child_gap;
-      }
-      *config.scroll_value += layout.input.mouse_scroll;
-      *config.scroll_value =
-        std::clamp(*config.scroll_value, (i32) -std::floor(max_height / SCROLL_SENSITIVITY), 0);
       break;
     }
   }
@@ -470,6 +499,7 @@ static Rectangle ui_intersection_rectangle(const Rectangle& a, const Rectangle& 
   return {};
 }
 
+// TODO: i should not generate render cmds for children that are completely outside of the parent
 static void ui_generate_render_cmds(UI_Layout& layout, std::vector<render::Cmd2D>& render_cmds)
 {
   layout.elements[0].clip_rectangle = {layout.elements[0].pos, layout.elements[0].dimensions};
@@ -491,28 +521,24 @@ static void ui_generate_render_cmds(UI_Layout& layout, std::vector<render::Cmd2D
           // what if someone really wants to render a fully transparent texture?
           // (good enough for now tho)
           auto bg = config.bg_color != vec4{} ? config.bg_color : vec4{1, 1, 1, 1};
-          render_cmds.push_back(
-            render::texture(
-              *config.texture,
-              {elem.pos.x, elem.pos.y, layout._z},
-              elem.dimensions,
-              {.corner_radius = config.corner_radius,
-               .tint = bg,
-               .clip_rectangle = std::make_optional(elem.clip_rectangle)}
-            )
-          );
+          render_cmds.push_back(render::texture(
+            *config.texture,
+            {elem.pos.x, elem.pos.y, layout._z},
+            elem.dimensions,
+            {.corner_radius = config.corner_radius,
+             .tint = bg,
+             .clip_rectangle = std::make_optional(elem.clip_rectangle)}
+          ));
         }
         else
         {
-          render_cmds.push_back(
-            render::quad(
-              {elem.pos.x, elem.pos.y, layout._z},
-              elem.dimensions,
-              {.corner_radius = config.corner_radius,
-               .tint = config.bg_color,
-               .clip_rectangle = std::make_optional(elem.clip_rectangle)}
-            )
-          );
+          render_cmds.push_back(render::quad(
+            {elem.pos.x, elem.pos.y, layout._z},
+            elem.dimensions,
+            {.corner_radius = config.corner_radius,
+             .tint = config.bg_color,
+             .clip_rectangle = std::make_optional(elem.clip_rectangle)}
+          ));
         }
       }
       break;
@@ -554,18 +580,16 @@ static void ui_generate_render_cmds(UI_Layout& layout, std::vector<render::Cmd2D
           {
             continue;
           }
-          render_cmds.push_back(
-            render::texture_part(
-              layout.font_texture,
-              {elem.pos.x + ((f32) i * layout.char_size.x * config.size), elem.pos.y, layout._z},
-              layout.char_size * config.size,
-              layout.char_size * vec2{(f32) text_parts[i].x, (f32) text_parts[i].y},
-              layout.char_size,
-              {.corner_radius = 0.0f,
-               .tint = {1, 1, 1, 1},
-               .clip_rectangle = std::make_optional(elem.clip_rectangle)}
-            )
-          );
+          render_cmds.push_back(render::texture_part(
+            layout.font_texture,
+            {elem.pos.x + ((f32) i * layout.char_size.x * config.size), elem.pos.y, layout._z},
+            layout.char_size * config.size,
+            layout.char_size * vec2{(f32) text_parts[i].x, (f32) text_parts[i].y},
+            layout.char_size,
+            {.corner_radius = 0.0f,
+             .tint = {1, 1, 1, 1},
+             .clip_rectangle = std::make_optional(elem.clip_rectangle)}
+          ));
         }
       }
       break;

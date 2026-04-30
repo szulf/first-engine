@@ -5,7 +5,7 @@
 #include "os/os.h"
 #include "game/game.h"
 
-static constexpr i32 TPS{20};
+static constexpr i32 TPS{60};
 static constexpr std::chrono::milliseconds DT{
   std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds{1}) / TPS
 };

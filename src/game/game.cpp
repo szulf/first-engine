@@ -209,10 +209,8 @@ void Game::update_tick(f32 dt)
             }
 
             vec3 rounded_pos = {std::round(new_pos.x), 0.0f, std::round(new_pos.z)};
-            if (
-              (c.pos.x > rounded_pos.x + 1.0f || c.pos.x < rounded_pos.x - 1.0f) ||
-              (c.pos.z > rounded_pos.z + 1.0f || c.pos.z < rounded_pos.z - 1.0f)
-            )
+            if ((c.pos.x > rounded_pos.x + 1.0f || c.pos.x < rounded_pos.x - 1.0f) ||
+                (c.pos.z > rounded_pos.z + 1.0f || c.pos.z < rounded_pos.z - 1.0f))
             {
               continue;
             }
@@ -290,10 +288,8 @@ void Game::update_tick(f32 dt)
             f32 dist = vec.length2();
             f32 orientation = std::atan2(-vec.x, vec.z);
             orientation = wrap_to_neg_pi_to_pi(orientation);
-            if (
-              dist < (interactable.interactable_radius * interactable.interactable_radius) &&
-              std::abs(entity.rotation - orientation) < 1.0f
-            )
+            if (dist < (interactable.interactable_radius * interactable.interactable_radius) &&
+                std::abs(entity.rotation - orientation) < 1.0f)
             {
               // TODO: this is light bulb specific behaviour, how do i work with other
               // interactables?
@@ -367,7 +363,8 @@ void Game::update_tick(f32 dt)
             UI_ELEM(
               layout,
               {.sizing = {UI_SizingAxis::fixed(100), UI_SizingAxis::fixed(50)},
-               .bg_color = {0, 0, 1, 1}}
+               .bg_color = test_hover_value ? vec4{1, 0, 0, 1} : vec4{0, 0, 1, 1},
+               .hovered = &test_hover_value}
             )
             {
             }
@@ -529,13 +526,11 @@ void Game::render()
         }
         if (entity.collidable() && f32_equal(entity.pos.y, 0.0f))
         {
-          pass.append(
-            render::cube_wires(
-              entity.rendered_pos,
-              {entity.bounding_box.x, 1.0f, entity.bounding_box.y},
-              {0.0f, 1.0f, 0.0f}
-            )
-          );
+          pass.append(render::cube_wires(
+            entity.rendered_pos,
+            {entity.bounding_box.x, 1.0f, entity.bounding_box.y},
+            {0.0f, 1.0f, 0.0f}
+          ));
         }
         if (entity.interactable())
         {
