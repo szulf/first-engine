@@ -6,6 +6,9 @@
 #include "os/os.h"
 #include "renderer.h"
 
+// NOTE: possibly im doing way too many iterations over the whole data set
+// so if ever performance becomes an issue i could look at that
+
 enum class UI_LayoutDirection
 {
   HORIZONTAL,
@@ -83,8 +86,8 @@ struct UI_ElementConfigNormal
   std::optional<TextureHandle> texture{};
   // TODO: should i have a separate corner_radius for each of the corners? (probably yes)
   f32 corner_radius{};
-  bool* hovered{};
   bool* clicked{};
+  bool* hovered{};
   i32* scroll_value{};
 };
 
@@ -108,10 +111,20 @@ struct UI_ElementConfig
   };
 };
 
+using UI_ElementId = usize;
+
+// TODO: could probably save the render_cmds vector here
+struct UI_System
+{
+  // NOTE: this is the intersection of the elements rectangle and its clip rectangle
+  std::unordered_map<UI_ElementId, Rectangle> last_frame_states{};
+};
+
 using UI_ElementIdx = usize;
 
 struct UI_Element
 {
+  UI_ElementId id{};
   UI_ElementIdx parent{};
   // NOTE: if idx == 0 then there is no child
   UI_ElementIdx first_child{};
@@ -125,9 +138,11 @@ struct UI_Element
 
 struct UI_Layout
 {
+  UI_System& system;
   const os::Input& input;
   std::vector<UI_Element> elements{};
   vec3 pos{};
+  vec2 max_dimensions{};
 
   vec2 char_size{};
   TextureHandle font_texture{};
@@ -138,6 +153,7 @@ struct UI_Layout
 };
 
 UI_Layout ui_begin_layout(
+  UI_System& system,
   const os::Input& input,
   const vec3& pos,
   const vec2& max_dimensions,
@@ -146,10 +162,14 @@ UI_Layout ui_begin_layout(
 );
 std::vector<render::Cmd2D> ui_end_layout(UI_Layout& layout);
 
-void ui_begin_element(UI_Layout& layout, const UI_ElementConfigNormal& config);
-void ui_end_element(UI_Layout& layout);
-#define UI_ELEM(layout, ...)                                                                       \
-  for ((layout)._element = (ui_begin_element((layout), __VA_ARGS__), false); !(layout)._element;   \
-       (layout)._element = true, ui_end_element((layout)))
+// TODO: would love to split state options and config normal,
+// but have no clue how to pass that from the macro
+void ui_begin_element(UI_Layout& layout, const char* id, const UI_ElementConfigNormal& config);
+void ui_end_element(UI_Layout& layout, const UI_ElementConfigNormal& config);
+#define UI_AUTO_ID nullptr
+#define UI_ELEM(layout, id, ...)                                                                   \
+  for ((layout)._element = (ui_begin_element((layout), (id), __VA_ARGS__), false);                 \
+       !(layout)._element;                                                                         \
+       (layout)._element = true, ui_end_element((layout), __VA_ARGS__))
 
 void ui_text(UI_Layout& layout, std::string_view text, f32 size);

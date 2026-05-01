@@ -309,9 +309,11 @@ void Game::update_tick(f32 dt)
   if (debug_menu_shown)
   {
     auto start = std::chrono::high_resolution_clock::now();
-    auto layout = ui_begin_layout(m_window.input(), layout_pos, {1280, 720}, {9, 16}, font_texture);
+    auto layout =
+      ui_begin_layout(ui_system, m_window.input(), layout_pos, {1280, 720}, {9, 16}, font_texture);
     UI_ELEM(
       layout,
+      UI_AUTO_ID,
       {.sizing = {UI_SizingAxis::fill(), UI_SizingAxis::fill()},
        .padding = UI_Padding::all(16),
        .child_gap = 16,
@@ -320,6 +322,7 @@ void Game::update_tick(f32 dt)
     {
       UI_ELEM(
         layout,
+        UI_AUTO_ID,
         {.layout_direction = UI_LayoutDirection::VERTICAL,
          .sizing = {UI_SizingAxis::fit(), UI_SizingAxis::fill()},
          .padding = UI_Padding::all(16),
@@ -331,6 +334,7 @@ void Game::update_tick(f32 dt)
       {
         UI_ELEM(
           layout,
+          UI_AUTO_ID,
           {.sizing = {UI_SizingAxis::fill()},
            .padding = UI_Padding::all(16),
            .child_gap = 16,
@@ -341,6 +345,7 @@ void Game::update_tick(f32 dt)
           auto player_texture = AssetManager::instance().load_texture("assets/player_texture.png");
           UI_ELEM(
             layout,
+            UI_AUTO_ID,
             {.sizing = {UI_SizingAxis::fixed(60), UI_SizingAxis::fixed(60)},
              .bg_color = {0, 1, 0, 1},
              .texture = player_texture,
@@ -354,6 +359,7 @@ void Game::update_tick(f32 dt)
         {
           UI_ELEM(
             layout,
+            UI_AUTO_ID,
             {.sizing = {.width = UI_SizingAxis::fill()},
              .child_gap = 10,
              .child_alignment = {.x = UI_ChildAlignmentAxis::CENTER},
@@ -362,6 +368,7 @@ void Game::update_tick(f32 dt)
           {
             UI_ELEM(
               layout,
+              UI_AUTO_ID,
               {.sizing = {UI_SizingAxis::fixed(100), UI_SizingAxis::fixed(50)},
                .bg_color = test_hover_value ? vec4{1, 0, 0, 1} : vec4{0, 0, 1, 1},
                .hovered = &test_hover_value}
@@ -370,6 +377,7 @@ void Game::update_tick(f32 dt)
             }
             UI_ELEM(
               layout,
+              UI_AUTO_ID,
               {.sizing = {UI_SizingAxis::fixed(20), UI_SizingAxis::fixed(50)},
                .bg_color = {0, 1, 1, 1}}
             )
@@ -377,6 +385,7 @@ void Game::update_tick(f32 dt)
             }
             UI_ELEM(
               layout,
+              UI_AUTO_ID,
               {.sizing = {UI_SizingAxis::fixed(100), UI_SizingAxis::fixed(50)},
                .bg_color = {1, 0, 1, 1}}
             )
@@ -387,6 +396,7 @@ void Game::update_tick(f32 dt)
       }
       UI_ELEM(
         layout,
+        UI_AUTO_ID,
         {.sizing = {UI_SizingAxis::fill(), UI_SizingAxis::fill()},
          .bg_color = {0.85f, 0.8f, 0.8f, 1}}
       )

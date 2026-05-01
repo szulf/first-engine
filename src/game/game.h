@@ -10,6 +10,7 @@
 #include "camera.h"
 #include "renderer.h"
 #include "entity.h"
+#include "ui.h"
 
 enum class Action
 {
@@ -60,6 +61,7 @@ private:
   std::vector<render::Cmd2D> ui_render_cmds{};
 
   SoundSystem m_sound_system;
+  UI_System ui_system{};
 
   Scene scene;
   Keymap m_keymap{};

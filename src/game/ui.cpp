@@ -8,6 +8,7 @@
 #include "game/renderer.h"
 
 UI_Layout ui_begin_layout(
+  UI_System& system,
   const os::Input& input,
   const vec3& pos,
   const vec2& max_dimensions,
@@ -16,19 +17,14 @@ UI_Layout ui_begin_layout(
 )
 {
   UI_Layout layout = {
+    .system = system,
     .input = input,
     .pos = pos,
+    .max_dimensions = max_dimensions,
     .char_size = char_size,
     .font_texture = font_texture,
   };
-  ui_begin_element(
-    layout,
-    {.sizing =
-       {
-         UI_SizingAxis::fixed((u16) max_dimensions.x),
-         UI_SizingAxis::fixed((u16) max_dimensions.y),
-       }}
-  );
+  ui_begin_element(layout, nullptr, {});
   return layout;
 }
 
@@ -125,17 +121,10 @@ static void ui_calculate_fit_fixed_sizing_axis(UI_Layout& layout, UI_ElementIdx 
   ui_dimension_from_axis(elem, axis) += ui_total_padding_from_axis(config, axis);
 }
 
-// NOTE: here im also calculating fit sizing dimensions for fill sizing
-// because if one element has a fill sizing and the parent has a fit sizing
-// the fill sizing child will just be treated as a fit sizing instead
-// UNLESS the layout direction is of the opposite axis (vertical for x, horizontal for y)
-// then this calculation is just thrown away, and the maximum free parent space is assigned to that
-// axis
-// dont know if that is the 'correct' behavior, but that is what im going with for now
-// the other option is to make the fit sizing parent behave like a fill sizing instead
-// but in my head the fit sizing is supposed to occupy the smallest possible amount of space
-// so the current approach makes more sense
-// maybe there is some other more 'correct' approach that i cant think of rn idk
+// NOTE: fill sizing elements are treated as fit sizing when
+// the parent has a fit sizing on the same axis
+// and the current layout direction corresponds to that axis (horizontal for x, vertical for y)
+// NOT SURE if that is the 'correct' behaviour but it makes sense to me
 static void ui_calculate_text_fit_fixed_sizing(UI_Layout& layout, UI_ElementIdx idx = 0)
 {
   bool has_children = false;
@@ -443,12 +432,11 @@ static void ui_calculate_scroll_value(UI_Layout& layout, UI_ElementIdx idx)
   }
 
   *config.scroll_value += layout.input.mouse_scroll;
-  // TODO: 0 as the min value is not really correct
   *config.scroll_value =
     std::clamp(*config.scroll_value, (i32) -std::floor(max_height / SCROLL_SENSITIVITY), 0);
 }
 
-static void ui_check_mouse_interactions(UI_Layout& layout)
+static void ui_handle_scroll(UI_Layout& layout)
 {
   for (i32 idx = (i32) layout.elements.size() - 1; idx >= 0; --idx)
   {
@@ -458,16 +446,7 @@ static void ui_check_mouse_interactions(UI_Layout& layout)
       continue;
     }
     auto& config = elem.config.normal;
-    bool hovered = ui_intersects(layout.input.mouse_pos, elem.pos, elem.dimensions);
-    if (config.hovered)
-    {
-      *config.hovered = hovered;
-    }
-    if (config.clicked)
-    {
-      *config.clicked = hovered && layout.input.lmb.just_pressed();
-    }
-    if (hovered)
+    if (ui_intersects(layout.input.mouse_pos, elem.pos, elem.dimensions))
     {
       if (config.scroll_value)
       {
@@ -529,6 +508,15 @@ static void ui_generate_render_cmds(
       case UI_ElementType::NORMAL:
       {
         auto& config = child.config.normal;
+        // TODO: this is not really render cmd generation, not sure if it belongs here
+        // TODO: not sure if i really want to save it only if it currently was being queried for
+        if (config.clicked || config.hovered)
+        {
+          layout.system.last_frame_states.insert_or_assign(
+            child.id,
+            ui_intersection_rectangle({child.pos, child.dimensions}, child.clip_rectangle)
+          );
+        }
         if (config.texture)
         {
           // TODO: this is not really the ideal solution,
@@ -607,20 +595,26 @@ static void ui_generate_render_cmds(
 
 std::vector<render::Cmd2D> ui_end_layout(UI_Layout& layout)
 {
-  ui_end_element(layout);
+  ui_end_element(
+    layout,
+    {.sizing =
+       {UI_SizingAxis::fixed((u16) layout.max_dimensions.x),
+        UI_SizingAxis::fixed((u16) layout.max_dimensions.y)}}
+  );
+  layout.system.last_frame_states.clear();
   ui_calculate_text_fit_fixed_sizing(layout);
   ui_calculate_fill_sizing(layout);
   ui_calculate_positions(layout);
-  ui_check_mouse_interactions(layout);
+  ui_handle_scroll(layout);
   std::vector<render::Cmd2D> render_cmds{};
   ui_generate_render_cmds(layout, render_cmds);
   return render_cmds;
 }
 
+// TODO: i hate this, but currently i dont have a clue what could be better
 static void set_first_child_or_next_sibling(UI_Layout& layout)
 {
   auto& parent = layout.elements[layout._active_parent];
-  // TODO: i hate this, but currently i dont have a clue what could be better
   if (parent.first_child == 0)
   {
     parent.first_child = layout.elements.size() - 1;
@@ -636,18 +630,41 @@ static void set_first_child_or_next_sibling(UI_Layout& layout)
   }
 }
 
-void ui_begin_element(UI_Layout& layout, const UI_ElementConfigNormal& config)
+void ui_begin_element(
+  UI_Layout& layout,
+  const char* string_id,
+  const UI_ElementConfigNormal& config
+)
 {
+  UI_ElementId id = string_id ? std::hash<const char*>{}(string_id)
+                              : std::hash<UI_ElementIdx>{}(layout.elements.size());
+  if (layout.system.last_frame_states.contains(id))
+  {
+    auto& last_rect = layout.system.last_frame_states[id];
+    bool hovered = ui_intersects(layout.input.mouse_pos, last_rect.pos, last_rect.dimensions);
+    if (config.hovered)
+    {
+      *config.hovered = hovered;
+    }
+    if (config.clicked)
+    {
+      *config.clicked = hovered && layout.input.lmb.just_pressed();
+    }
+  }
   layout.elements.push_back({
+    .id = id,
     .parent = layout._active_parent,
-    .config = {.type = UI_ElementType::NORMAL, .normal = config},
+    .config = {.type = UI_ElementType::NORMAL},
   });
   set_first_child_or_next_sibling(layout);
   layout._active_parent = layout.elements.size() - 1;
 }
 
-void ui_end_element(UI_Layout& layout)
+void ui_end_element(UI_Layout& layout, const UI_ElementConfigNormal& config)
 {
+  auto& elem = layout.elements[layout._active_parent];
+  ASSERT(elem.config.type == UI_ElementType::NORMAL, "Cannot close a not normal element");
+  elem.config.normal = config;
   layout._active_parent = layout.elements[layout._active_parent].parent;
 }
 
