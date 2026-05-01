@@ -113,11 +113,11 @@ struct UI_ElementConfig
 
 using UI_ElementId = usize;
 
-// TODO: could probably save the render_cmds vector here
 struct UI_System
 {
   // NOTE: this is the intersection of the elements rectangle and its clip rectangle
   std::unordered_map<UI_ElementId, Rectangle> last_frame_states{};
+  std::vector<render::Cmd2D> render_cmds{};
 };
 
 using UI_ElementIdx = usize;
@@ -160,7 +160,7 @@ UI_Layout ui_begin_layout(
   const vec2& char_size,
   TextureHandle font_texture
 );
-std::vector<render::Cmd2D> ui_end_layout(UI_Layout& layout);
+void ui_end_layout(UI_Layout& layout);
 
 // TODO: would love to split state options and config normal,
 // but have no clue how to pass that from the macro

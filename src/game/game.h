@@ -58,8 +58,6 @@ private:
   static constexpr uvec2 CHAR_SIZE = {9, 16};
   TextureHandle font_texture;
 
-  std::vector<render::Cmd2D> ui_render_cmds{};
-
   SoundSystem m_sound_system;
   UI_System ui_system{};
 

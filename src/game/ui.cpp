@@ -484,11 +484,7 @@ static Rectangle ui_intersection_rectangle(const Rectangle& a, const Rectangle& 
   return {};
 }
 
-static void ui_generate_render_cmds(
-  UI_Layout& layout,
-  std::vector<render::Cmd2D>& render_cmds,
-  UI_ElementIdx idx = 0
-)
+static void ui_generate_render_cmds(UI_Layout& layout, UI_ElementIdx idx = 0)
 {
   // TODO: not sure where to place this line of code
   layout.elements[0].clip_rectangle = {layout.elements[0].pos, layout.elements[0].dimensions};
@@ -523,7 +519,7 @@ static void ui_generate_render_cmds(
           // what if someone really wants to render a fully transparent texture?
           // (good enough for now tho)
           auto bg = config.bg_color != vec4{} ? config.bg_color : vec4{1, 1, 1, 1};
-          render_cmds.push_back(render::texture(
+          layout.system.render_cmds.push_back(render::texture(
             *config.texture,
             {child.pos.x, child.pos.y, layout._z},
             child.dimensions,
@@ -534,7 +530,7 @@ static void ui_generate_render_cmds(
         }
         else
         {
-          render_cmds.push_back(render::quad(
+          layout.system.render_cmds.push_back(render::quad(
             {child.pos.x, child.pos.y, layout._z},
             child.dimensions,
             {.corner_radius = config.corner_radius,
@@ -574,7 +570,7 @@ static void ui_generate_render_cmds(
           {
             ASSERT(false, "Unsupported character '{}' found in drawing", config.text[i]);
           }
-          render_cmds.push_back(render::texture_part(
+          layout.system.render_cmds.push_back(render::texture_part(
             layout.font_texture,
             {child.pos.x + ((f32) i * layout.char_size.x * config.size), child.pos.y, layout._z},
             layout.char_size * config.size,
@@ -589,11 +585,11 @@ static void ui_generate_render_cmds(
       break;
     }
     layout._z += 0.001f;
-    ui_generate_render_cmds(layout, render_cmds, child_idx);
+    ui_generate_render_cmds(layout, child_idx);
   }
 }
 
-std::vector<render::Cmd2D> ui_end_layout(UI_Layout& layout)
+void ui_end_layout(UI_Layout& layout)
 {
   ui_end_element(
     layout,
@@ -606,9 +602,8 @@ std::vector<render::Cmd2D> ui_end_layout(UI_Layout& layout)
   ui_calculate_fill_sizing(layout);
   ui_calculate_positions(layout);
   ui_handle_scroll(layout);
-  std::vector<render::Cmd2D> render_cmds{};
-  ui_generate_render_cmds(layout, render_cmds);
-  return render_cmds;
+  layout.system.render_cmds.clear();
+  ui_generate_render_cmds(layout);
 }
 
 // TODO: i hate this, but currently i dont have a clue what could be better

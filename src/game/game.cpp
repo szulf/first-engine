@@ -110,7 +110,7 @@ void Game::update_tick(f32 dt)
   {
     debug_menu_shown = !debug_menu_shown;
     debug_menu_drag = false;
-    ui_render_cmds.clear();
+    ui_system.render_cmds.clear();
   }
   if (action_key(Action::TOGGLE_CAMERA_MODE).just_pressed())
   {
@@ -403,7 +403,7 @@ void Game::update_tick(f32 dt)
       {
       }
     }
-    ui_render_cmds = ui_end_layout(layout);
+    ui_end_layout(layout);
     auto end = std::chrono::high_resolution_clock::now();
     std::println(
       "Layout took: {}",
@@ -551,7 +551,7 @@ void Game::render()
       }
     }
 
-    pass.append(ui_render_cmds);
+    pass.append(ui_system.render_cmds);
 
     pass.finish();
   }
