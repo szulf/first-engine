@@ -86,8 +86,6 @@ struct UI_ElementConfigNormal
   std::optional<TextureHandle> texture{};
   // TODO: should i have a separate corner_radius for each of the corners? (probably yes)
   f32 corner_radius{};
-  bool* clicked{};
-  bool* hovered{};
   i32* scroll_value{};
 };
 
@@ -111,20 +109,27 @@ struct UI_ElementConfig
   };
 };
 
-using UI_ElementId = usize;
+using UI_ElementId = const char*;
+using UI_ElementIdInternal = usize;
 
 struct UI_System
 {
   // NOTE: this is the intersection of the elements rectangle and its clip rectangle
-  std::unordered_map<UI_ElementId, Rectangle> last_frame_states{};
+  std::unordered_map<UI_ElementIdInternal, Rectangle> last_frame_states{};
   std::vector<render::Cmd2D> render_cmds{};
+};
+
+struct UI_StateOptions
+{
+  bool* clicked{};
+  bool* hovered{};
 };
 
 using UI_ElementIdx = usize;
 
 struct UI_Element
 {
-  UI_ElementId id{};
+  UI_ElementIdInternal id{};
   UI_ElementIdx parent{};
   // NOTE: if idx == 0 then there is no child
   UI_ElementIdx first_child{};
@@ -162,14 +167,12 @@ UI_Layout ui_begin_layout(
 );
 void ui_end_layout(UI_Layout& layout);
 
-// TODO: would love to split state options and config normal,
-// but have no clue how to pass that from the macro
-void ui_begin_element(UI_Layout& layout, const char* id, const UI_ElementConfigNormal& config);
-void ui_end_element(UI_Layout& layout, const UI_ElementConfigNormal& config);
 #define UI_AUTO_ID nullptr
-#define UI_ELEM(layout, id, ...)                                                                   \
-  for ((layout)._element = (ui_begin_element((layout), (id), __VA_ARGS__), false);                 \
-       !(layout)._element;                                                                         \
-       (layout)._element = true, ui_end_element((layout), __VA_ARGS__))
+void ui_begin_element(
+  UI_Layout& layout,
+  UI_ElementId id,
+  const UI_StateOptions& state_options = {}
+);
+void ui_end_element(UI_Layout& layout, const UI_ElementConfigNormal& config = {});
 
 void ui_text(UI_Layout& layout, std::string_view text, f32 size);

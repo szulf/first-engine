@@ -505,14 +505,10 @@ static void ui_generate_render_cmds(UI_Layout& layout, UI_ElementIdx idx = 0)
       {
         auto& config = child.config.normal;
         // TODO: this is not really render cmd generation, not sure if it belongs here
-        // TODO: not sure if i really want to save it only if it currently was being queried for
-        if (config.clicked || config.hovered)
-        {
-          layout.system.last_frame_states.insert_or_assign(
-            child.id,
-            ui_intersection_rectangle({child.pos, child.dimensions}, child.clip_rectangle)
-          );
-        }
+        layout.system.last_frame_states.insert_or_assign(
+          child.id,
+          ui_intersection_rectangle({child.pos, child.dimensions}, child.clip_rectangle)
+        );
         if (config.texture)
         {
           // TODO: this is not really the ideal solution,
@@ -625,29 +621,25 @@ static void set_first_child_or_next_sibling(UI_Layout& layout)
   }
 }
 
-void ui_begin_element(
-  UI_Layout& layout,
-  const char* string_id,
-  const UI_ElementConfigNormal& config
-)
+void ui_begin_element(UI_Layout& layout, UI_ElementId id, const UI_StateOptions& state_options)
 {
-  UI_ElementId id = string_id ? std::hash<const char*>{}(string_id)
-                              : std::hash<UI_ElementIdx>{}(layout.elements.size());
-  if (layout.system.last_frame_states.contains(id))
+  UI_ElementIdInternal id_internal =
+    id ? std::hash<UI_ElementId>{}(id) : std::hash<UI_ElementIdx>{}(layout.elements.size());
+  if (layout.system.last_frame_states.contains(id_internal))
   {
-    auto& last_rect = layout.system.last_frame_states[id];
+    auto& last_rect = layout.system.last_frame_states[id_internal];
     bool hovered = ui_intersects(layout.input.mouse_pos, last_rect.pos, last_rect.dimensions);
-    if (config.hovered)
+    if (state_options.hovered)
     {
-      *config.hovered = hovered;
+      *state_options.hovered = hovered;
     }
-    if (config.clicked)
+    if (state_options.clicked)
     {
-      *config.clicked = hovered && layout.input.lmb.just_pressed();
+      *state_options.clicked = hovered && layout.input.lmb.just_pressed();
     }
   }
   layout.elements.push_back({
-    .id = id,
+    .id = id_internal,
     .parent = layout._active_parent,
     .config = {.type = UI_ElementType::NORMAL},
   });

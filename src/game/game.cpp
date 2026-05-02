@@ -311,97 +311,92 @@ void Game::update_tick(f32 dt)
     auto start = std::chrono::high_resolution_clock::now();
     auto layout =
       ui_begin_layout(ui_system, m_window.input(), layout_pos, {1280, 720}, {9, 16}, font_texture);
-    UI_ELEM(
-      layout,
-      UI_AUTO_ID,
-      {.sizing = {UI_SizingAxis::fill(), UI_SizingAxis::fill()},
-       .padding = UI_Padding::all(16),
-       .child_gap = 16,
-       .bg_color = {1, 1, 1, 1}}
-    )
     {
-      UI_ELEM(
+      ui_begin_element(layout, UI_AUTO_ID);
+      defer(ui_end_element(
         layout,
-        UI_AUTO_ID,
-        {.layout_direction = UI_LayoutDirection::VERTICAL,
-         .sizing = {UI_SizingAxis::fit(), UI_SizingAxis::fill()},
+        {.sizing = {UI_SizingAxis::fill(), UI_SizingAxis::fill()},
          .padding = UI_Padding::all(16),
          .child_gap = 16,
-         .child_alignment = {.x = UI_ChildAlignmentAxis::START},
-         .bg_color = {0.85f, 0.8f, 0.8f, 1},
-         .scroll_value = &test_scroll_value}
-      )
+         .bg_color = {1, 1, 1, 1}}
+      ));
+
       {
-        UI_ELEM(
+        ui_begin_element(layout, UI_AUTO_ID);
+        defer(ui_end_element(
           layout,
-          UI_AUTO_ID,
-          {.sizing = {UI_SizingAxis::fill()},
+          {.layout_direction = UI_LayoutDirection::VERTICAL,
+           .sizing = {UI_SizingAxis::fit(), UI_SizingAxis::fill()},
            .padding = UI_Padding::all(16),
            .child_gap = 16,
-           .child_alignment = {.y = UI_ChildAlignmentAxis::CENTER},
-           .bg_color = {1, 0, 0, 1}}
-        )
+           .child_alignment = {UI_ChildAlignmentAxis::START},
+           .bg_color = {0.85f, 0.8f, 0.8f, 1},
+           .scroll_value = &test_scroll_value}
+        ));
+
         {
-          auto player_texture = AssetManager::instance().load_texture("assets/player_texture.png");
-          UI_ELEM(
+          ui_begin_element(layout, UI_AUTO_ID);
+          defer(ui_end_element(
             layout,
-            UI_AUTO_ID,
+            {.sizing = {UI_SizingAxis::fill()},
+             .padding = UI_Padding::all(16),
+             .child_gap = 16,
+             .child_alignment = {.y = UI_ChildAlignmentAxis::CENTER},
+             .bg_color = {1, 0, 0, 1}}
+          ));
+
+          auto player_texture = AssetManager::instance().load_texture("assets/player_texture.png");
+          ui_begin_element(layout, UI_AUTO_ID);
+          ui_end_element(
+            layout,
             {.sizing = {UI_SizingAxis::fixed(60), UI_SizingAxis::fixed(60)},
              .bg_color = {0, 1, 0, 1},
              .texture = player_texture,
              .corner_radius = 0.7f}
-          )
-          {
-          }
+          );
           ui_text(layout, "Test of UI library", 1.5f);
         }
+
         for (i32 i = 0; i < 20; ++i)
         {
-          UI_ELEM(
+          ui_begin_element(layout, UI_AUTO_ID);
+          defer(ui_end_element(
             layout,
-            UI_AUTO_ID,
-            {.sizing = {.width = UI_SizingAxis::fill()},
+            {.sizing = {UI_SizingAxis::fill()},
              .child_gap = 10,
-             .child_alignment = {.x = UI_ChildAlignmentAxis::CENTER},
+             .child_alignment = {UI_ChildAlignmentAxis::CENTER},
              .bg_color = {0, 0, 0, 1}}
-          )
-          {
-            UI_ELEM(
-              layout,
-              UI_AUTO_ID,
-              {.sizing = {UI_SizingAxis::fixed(100), UI_SizingAxis::fixed(50)},
-               .bg_color = test_hover_value ? vec4{1, 0, 0, 1} : vec4{0, 0, 1, 1},
-               .hovered = &test_hover_value}
-            )
-            {
-            }
-            UI_ELEM(
-              layout,
-              UI_AUTO_ID,
-              {.sizing = {UI_SizingAxis::fixed(20), UI_SizingAxis::fixed(50)},
-               .bg_color = {0, 1, 1, 1}}
-            )
-            {
-            }
-            UI_ELEM(
-              layout,
-              UI_AUTO_ID,
-              {.sizing = {UI_SizingAxis::fixed(100), UI_SizingAxis::fixed(50)},
-               .bg_color = {1, 0, 1, 1}}
-            )
-            {
-            }
-          }
+          ));
+
+          ui_begin_element(layout, UI_AUTO_ID, {.hovered = &test_hover_value});
+          ui_end_element(
+            layout,
+            {.sizing = {UI_SizingAxis::fixed(100), UI_SizingAxis::fixed(50)},
+             .bg_color = test_hover_value ? vec4{1, 0, 0, 1} : vec4{0, 0, 1, 1}}
+          );
+
+          ui_begin_element(layout, UI_AUTO_ID);
+          ui_end_element(
+            layout,
+            {.sizing = {UI_SizingAxis::fixed(20), UI_SizingAxis::fixed(50)},
+             .bg_color = {0, 1, 1, 1}}
+          );
+
+          ui_begin_element(layout, UI_AUTO_ID);
+          ui_end_element(
+            layout,
+            {.sizing = {UI_SizingAxis::fixed(100), UI_SizingAxis::fixed(50)},
+             .bg_color = {1, 0, 1, 1}}
+          );
         }
       }
-      UI_ELEM(
+
+      ui_begin_element(layout, UI_AUTO_ID);
+      ui_end_element(
         layout,
-        UI_AUTO_ID,
         {.sizing = {UI_SizingAxis::fill(), UI_SizingAxis::fill()},
          .bg_color = {0.85f, 0.8f, 0.8f, 1}}
-      )
-      {
-      }
+      );
     }
     ui_end_layout(layout);
     auto end = std::chrono::high_resolution_clock::now();
