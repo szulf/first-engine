@@ -7,7 +7,7 @@
 
 #include "base/base.h"
 #include "camera.h"
-#include "game/assets.h"
+#include "assets.h"
 #include "os/os.h"
 #include "renderer.h"
 #include "entity.h"
@@ -309,99 +309,113 @@ void Game::update_tick(f32 dt)
   if (debug_menu_shown)
   {
     auto start = std::chrono::high_resolution_clock::now();
-    auto layout =
-      ui_begin_layout(ui_system, m_window.input(), layout_pos, {1280, 720}, {9, 16}, font_texture);
+    auto layout = ui_begin_layout(
+      ui_system,
+      m_window.input(),
+      debug_menu_pos,
+      {1280, 720},
+      CHAR_SIZE,
+      font_texture
+    );
     {
       ui_begin_element(layout, UI_AUTO_ID);
-      defer(ui_end_element(
-        layout,
-        {.sizing = {UI_SizingAxis::fill(), UI_SizingAxis::fill()},
-         .padding = UI_Padding::all(16),
-         .child_gap = 16,
-         .bg_color = {1, 1, 1, 1}}
-      ));
+      defer(ui_end_element(layout, {.layout_direction = UI_LayoutDirection::VERTICAL}));
 
+      {
+        bool titlebar_clicked = false;
+        ui_begin_element(layout, UI_AUTO_ID, {.clicked = &titlebar_clicked});
+        defer(ui_end_element(
+          layout,
+          {.sizing = {UI_SizingAxis::fill(), UI_SizingAxis::fit()},
+           .padding = UI_Padding::all(4),
+           .child_gap = 4,
+           .child_alignment = {.y = UI_ChildAlignmentAxis::CENTER},
+           .bg_color = {0, 0, 0, 0.5f}}
+        ));
+
+        {
+          bool collapser_clicked = false;
+          ui_begin_element(layout, UI_AUTO_ID, {.clicked = &collapser_clicked});
+          defer(ui_end_element(
+            layout,
+            {.sizing = {UI_SizingAxis::fixed(16), UI_SizingAxis::fixed(16)},
+             .child_alignment = {UI_ChildAlignmentAxis::CENTER, UI_ChildAlignmentAxis::CENTER},
+             .bg_color = {0.5f, 0.5f, 0.5f, 1}}
+          ));
+          if (debug_menu_open)
+          {
+            ui_text(layout, "v", 1.0f);
+          }
+          else
+          {
+            ui_text(layout, "-", 1.0f);
+          }
+          if (collapser_clicked)
+          {
+            debug_menu_open = !debug_menu_open;
+          }
+        }
+
+        ui_text(layout, "debug window (F1)", 1.0f);
+
+        if (titlebar_clicked)
+        {
+          debug_menu_drag = true;
+          debug_menu_drag_offset = m_window.input().mouse_pos - vec2{layout.pos.x, layout.pos.y};
+        }
+        if (debug_menu_drag && m_window.input().lmb.down)
+        {
+          vec2 new_pos = m_window.input().mouse_pos - debug_menu_drag_offset;
+          debug_menu_pos.x = new_pos.x;
+          debug_menu_pos.y = new_pos.y;
+        }
+        if (debug_menu_drag && !m_window.input().lmb.down)
+        {
+          debug_menu_drag = false;
+        }
+      }
+
+      if (debug_menu_open)
       {
         ui_begin_element(layout, UI_AUTO_ID);
         defer(ui_end_element(
           layout,
           {.layout_direction = UI_LayoutDirection::VERTICAL,
-           .sizing = {UI_SizingAxis::fit(), UI_SizingAxis::fill()},
-           .padding = UI_Padding::all(16),
-           .child_gap = 16,
-           .child_alignment = {UI_ChildAlignmentAxis::START},
-           .bg_color = {0.85f, 0.8f, 0.8f, 1},
-           .scroll_value = &test_scroll_value}
+           .padding = UI_Padding::all(4),
+           .child_gap = 4,
+           .bg_color = {0.2f, 0.2f, 0.2f, 0.5f}}
         ));
 
+        auto checkbox = [](UI_Layout& layout, UI_ElementId id, bool& value, std::string_view text)
         {
+          bool checkbox_test = false;
           ui_begin_element(layout, UI_AUTO_ID);
           defer(ui_end_element(
             layout,
-            {.sizing = {UI_SizingAxis::fill()},
-             .padding = UI_Padding::all(16),
-             .child_gap = 16,
-             .child_alignment = {.y = UI_ChildAlignmentAxis::CENTER},
-             .bg_color = {1, 0, 0, 1}}
+            {.layout_direction = UI_LayoutDirection::HORIZONTAL, .child_gap = 4}
           ));
 
-          auto player_texture = AssetManager::instance().load_texture("assets/player_texture.png");
-          ui_begin_element(layout, UI_AUTO_ID);
+          ui_begin_element(layout, id, {.clicked = &checkbox_test});
           ui_end_element(
             layout,
-            {.sizing = {UI_SizingAxis::fixed(60), UI_SizingAxis::fixed(60)},
-             .bg_color = {0, 1, 0, 1},
-             .texture = player_texture,
-             .corner_radius = 0.7f}
+            {.sizing = {UI_SizingAxis::fixed(16), UI_SizingAxis::fixed(16)},
+             .bg_color = value ? vec4{1, 1, 1, 1} : vec4{0.4f, 0.4f, 0.4f, 1},
+             .corner_radius = 0.5f}
           );
-          ui_text(layout, "Test of UI library", 1.5f);
-        }
-
-        for (i32 i = 0; i < 20; ++i)
-        {
-          ui_begin_element(layout, UI_AUTO_ID);
-          defer(ui_end_element(
-            layout,
-            {.sizing = {UI_SizingAxis::fill()},
-             .child_gap = 10,
-             .child_alignment = {UI_ChildAlignmentAxis::CENTER},
-             .bg_color = {0, 0, 0, 1}}
-          ));
-
-          ui_begin_element(layout, UI_AUTO_ID, {.hovered = &test_hover_value});
-          ui_end_element(
-            layout,
-            {.sizing = {UI_SizingAxis::fixed(100), UI_SizingAxis::fixed(50)},
-             .bg_color = test_hover_value ? vec4{1, 0, 0, 1} : vec4{0, 0, 1, 1}}
-          );
-
-          ui_begin_element(layout, UI_AUTO_ID);
-          ui_end_element(
-            layout,
-            {.sizing = {UI_SizingAxis::fixed(20), UI_SizingAxis::fixed(50)},
-             .bg_color = {0, 1, 1, 1}}
-          );
-
-          ui_begin_element(layout, UI_AUTO_ID);
-          ui_end_element(
-            layout,
-            {.sizing = {UI_SizingAxis::fixed(100), UI_SizingAxis::fixed(50)},
-             .bg_color = {1, 0, 1, 1}}
-          );
-        }
+          if (checkbox_test)
+          {
+            value = !value;
+          }
+          ui_text(layout, text, 1.0f);
+        };
+        checkbox(layout, UI_AUTO_ID, m_display_bounding_boxes, "display bounding boxes");
+        checkbox(layout, UI_AUTO_ID, m_camera_mode, "debug camera (F2)");
       }
-
-      ui_begin_element(layout, UI_AUTO_ID);
-      ui_end_element(
-        layout,
-        {.sizing = {UI_SizingAxis::fill(), UI_SizingAxis::fill()},
-         .bg_color = {0.85f, 0.8f, 0.8f, 1}}
-      );
     }
     ui_end_layout(layout);
     auto end = std::chrono::high_resolution_clock::now();
     std::println(
-      "Layout took: {}",
+      "layout took: {}",
       std::chrono::duration_cast<std::chrono::microseconds>(end - start)
     );
   }

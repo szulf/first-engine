@@ -8,7 +8,6 @@
 
 #include "sound.h"
 #include "camera.h"
-#include "renderer.h"
 #include "entity.h"
 #include "ui.h"
 
@@ -55,7 +54,7 @@ private:
   static constexpr uvec2 SHADOW_MAP_DIMENSIONS = {1024, 1024};
   TextureHandle shadow_map;
   ShaderHandle shadow_depth_shader;
-  static constexpr uvec2 CHAR_SIZE = {9, 16};
+  static constexpr vec2 CHAR_SIZE = {9, 16};
   TextureHandle font_texture;
 
   SoundSystem m_sound_system;
@@ -70,9 +69,11 @@ private:
 
   // TODO: can i somehow get rid of these flags?
   bool debug_menu_shown{};
-  // bool debug_menu_open{true};
+  bool debug_menu_open{true};
   bool debug_menu_drag{};
-  vec3 layout_pos{100, 50, 0};
+  vec3 debug_menu_pos{100, 50, 0};
+  vec2 debug_menu_drag_offset{};
+
   bool m_camera_mode{};
   bool m_display_bounding_boxes{};
 

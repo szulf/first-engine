@@ -629,6 +629,8 @@ void ui_begin_element(UI_Layout& layout, UI_ElementId id, const UI_StateOptions&
   {
     auto& last_rect = layout.system.last_frame_states[id_internal];
     bool hovered = ui_intersects(layout.input.mouse_pos, last_rect.pos, last_rect.dimensions);
+    // TODO: this should first check if any of the children are on top of this position,
+    // before setting the value
     if (state_options.hovered)
     {
       *state_options.hovered = hovered;
