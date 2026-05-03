@@ -7,7 +7,13 @@
 #include "base/base.h"
 #include "game/renderer.h"
 
+void ui_system_update(UI_System& system)
+{
+  system.render_cmds.clear();
+}
+
 UI_Layout ui_begin_layout(
+  UI_Id id,
   UI_System& system,
   const os::Input& input,
   const vec3& pos,
@@ -16,7 +22,10 @@ UI_Layout ui_begin_layout(
   TextureHandle font_texture
 )
 {
+  UI_IdInternal id_internal = id ? std::hash<UI_Id>{}(id) : std::hash<usize>{}(system.next_auto_id);
+  ++system.next_auto_id;
   UI_Layout layout = {
+    .id = id_internal,
     .system = system,
     .input = input,
     .pos = pos,
@@ -505,7 +514,7 @@ static void ui_generate_render_cmds(UI_Layout& layout, UI_ElementIdx idx = 0)
       {
         auto& config = child.config.normal;
         // TODO: this is not really render cmd generation, not sure if it belongs here
-        layout.system.last_frame_map.insert_or_assign(child.id, child_idx);
+        layout.system.last_frame_data[layout.id].id_map.insert_or_assign(child.id, child_idx);
         if (config.texture)
         {
           // TODO: this is not really the ideal solution,
@@ -594,10 +603,9 @@ void ui_end_layout(UI_Layout& layout)
   ui_calculate_fill_sizing(layout);
   ui_calculate_positions(layout);
   ui_handle_scroll(layout);
-  layout.system.render_cmds.clear();
-  layout.system.last_frame_map.clear();
+  layout.system.last_frame_data[layout.id].id_map.clear();
   ui_generate_render_cmds(layout);
-  layout.system.last_frame_elements = layout.elements;
+  layout.system.last_frame_data[layout.id].elements = layout.elements;
 }
 
 // TODO: i hate this, but currently i dont have a clue what could be better
@@ -619,14 +627,14 @@ static void set_first_child_or_next_sibling(UI_Layout& layout)
   }
 }
 
-void ui_begin_element(UI_Layout& layout, UI_ElementId id, const UI_StateOptions& state_options)
+void ui_begin_element(UI_Layout& layout, UI_Id id, const UI_StateOptions& state_options)
 {
-  UI_ElementIdInternal id_internal =
-    id ? std::hash<UI_ElementId>{}(id) : std::hash<UI_ElementIdx>{}(layout.elements.size());
-  if (layout.system.last_frame_map.contains(id_internal))
+  UI_IdInternal id_internal =
+    id ? std::hash<UI_Id>{}(id) : std::hash<UI_ElementIdx>{}(layout.elements.size());
+  if (layout.system.last_frame_data[layout.id].id_map.contains(id_internal))
   {
-    auto& idx = layout.system.last_frame_map[id_internal];
-    auto& elem = layout.system.last_frame_elements.at(idx);
+    auto& idx = layout.system.last_frame_data[layout.id].id_map[id_internal];
+    auto& elem = layout.system.last_frame_data[layout.id].elements[idx];
     Rectangle interaction_rect =
       ui_intersection_rectangle({elem.pos, elem.dimensions}, elem.clip_rectangle);
     bool hovered =
@@ -635,9 +643,9 @@ void ui_begin_element(UI_Layout& layout, UI_ElementId id, const UI_StateOptions&
     if (hovered)
     {
       for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
-           child_idx = layout.system.last_frame_elements[child_idx].next_sibling)
+           child_idx = layout.system.last_frame_data[layout.id].elements[child_idx].next_sibling)
       {
-        auto& child = layout.system.last_frame_elements[child_idx];
+        auto& child = layout.system.last_frame_data[layout.id].elements[child_idx];
         if (child.config.type != UI_ElementType::NORMAL)
         {
           continue;

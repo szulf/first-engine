@@ -116,12 +116,12 @@ struct UI_StateOptions
 };
 
 using UI_ElementIdx = usize;
-using UI_ElementId = const char*;
-using UI_ElementIdInternal = usize;
+using UI_Id = const char*;
+using UI_IdInternal = usize;
 
 struct UI_Element
 {
-  UI_ElementIdInternal id{};
+  UI_IdInternal id{};
   UI_ElementIdx parent{};
   // NOTE: if idx == 0 then there is no child
   UI_ElementIdx first_child{};
@@ -133,16 +133,24 @@ struct UI_Element
   Rectangle clip_rectangle{};
 };
 
-// TODO: allow for more than a single layout per frame
 struct UI_System
 {
   std::vector<render::Cmd2D> render_cmds{};
-  std::vector<UI_Element> last_frame_elements{};
-  std::unordered_map<UI_ElementIdInternal, UI_ElementIdx> last_frame_map{};
+  struct LastFrameData
+  {
+    std::unordered_map<UI_IdInternal, UI_ElementIdx> id_map{};
+    std::vector<UI_Element> elements{};
+  };
+  usize next_auto_id{1};
+  std::unordered_map<UI_IdInternal, LastFrameData> last_frame_data{};
 };
+
+// NOTE: needs to be called once every frame, before the first ui_begin_layout
+void ui_system_update(UI_System& system);
 
 struct UI_Layout
 {
+  UI_IdInternal id{};
   UI_System& system;
   const os::Input& input;
   std::vector<UI_Element> elements{};
@@ -159,6 +167,7 @@ struct UI_Layout
 
 // TODO: sometimes i dont want to pass max_dimensions
 UI_Layout ui_begin_layout(
+  UI_Id id,
   UI_System& system,
   const os::Input& input,
   const vec3& pos,
@@ -169,11 +178,7 @@ UI_Layout ui_begin_layout(
 void ui_end_layout(UI_Layout& layout);
 
 #define UI_AUTO_ID nullptr
-void ui_begin_element(
-  UI_Layout& layout,
-  UI_ElementId id,
-  const UI_StateOptions& state_options = {}
-);
+void ui_begin_element(UI_Layout& layout, UI_Id id, const UI_StateOptions& state_options = {});
 void ui_end_element(UI_Layout& layout, const UI_ElementConfigNormal& config = {});
 
 void ui_text(UI_Layout& layout, std::string_view text, f32 size);

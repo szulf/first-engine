@@ -76,9 +76,6 @@ private:
 
   bool m_camera_mode{};
   bool m_display_bounding_boxes{};
-
-  i32 test_scroll_value{};
-  bool test_hover_value{};
 };
 
 #endif

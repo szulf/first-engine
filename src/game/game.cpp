@@ -110,7 +110,6 @@ void Game::update_tick(f32 dt)
   {
     debug_menu_shown = !debug_menu_shown;
     debug_menu_drag = false;
-    ui_system.render_cmds.clear();
   }
   if (action_key(Action::TOGGLE_CAMERA_MODE).just_pressed())
   {
@@ -306,10 +305,12 @@ void Game::update_tick(f32 dt)
   }
 
   // NOTE: ui
+  ui_system_update(ui_system);
   if (debug_menu_shown)
   {
     auto start = std::chrono::high_resolution_clock::now();
     auto layout = ui_begin_layout(
+      "debug menu",
       ui_system,
       m_window.input(),
       debug_menu_pos,
@@ -386,7 +387,7 @@ void Game::update_tick(f32 dt)
            .bg_color = {0.2f, 0.2f, 0.2f, 0.5f}}
         ));
 
-        auto checkbox = [](UI_Layout& layout, UI_ElementId id, bool& value, std::string_view text)
+        auto checkbox = [](UI_Layout& layout, UI_Id id, bool& value, std::string_view text)
         {
           bool checkbox_test = false;
           ui_begin_element(layout, UI_AUTO_ID);
