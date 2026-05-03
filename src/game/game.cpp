@@ -308,7 +308,6 @@ void Game::update_tick(f32 dt)
   ui_system_update(ui_system);
   if (debug_menu_shown)
   {
-    auto start = std::chrono::high_resolution_clock::now();
     auto layout = ui_begin_layout(
       "debug menu",
       ui_system,
@@ -414,11 +413,6 @@ void Game::update_tick(f32 dt)
       }
     }
     ui_end_layout(layout);
-    auto end = std::chrono::high_resolution_clock::now();
-    std::println(
-      "layout took: {}",
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-    );
   }
 }
 
