@@ -2,8 +2,6 @@
 
 ## SMALL TODOS: (ordered)
 
-6. usable components
-
 ---
 
 ## NEXT BIG TODOS: (unordered)
@@ -19,6 +17,8 @@
 - logging
 - multithreading
   - if i find the need for it
+- more ui improvements
+  - animations
 
 ### Game Mechanics:
 

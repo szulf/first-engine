@@ -505,10 +505,7 @@ static void ui_generate_render_cmds(UI_Layout& layout, UI_ElementIdx idx = 0)
       {
         auto& config = child.config.normal;
         // TODO: this is not really render cmd generation, not sure if it belongs here
-        layout.system.last_frame_states.insert_or_assign(
-          child.id,
-          ui_intersection_rectangle({child.pos, child.dimensions}, child.clip_rectangle)
-        );
+        layout.system.last_frame_map.insert_or_assign(child.id, child_idx);
         if (config.texture)
         {
           // TODO: this is not really the ideal solution,
@@ -593,13 +590,14 @@ void ui_end_layout(UI_Layout& layout)
        {UI_SizingAxis::fixed((u16) layout.max_dimensions.x),
         UI_SizingAxis::fixed((u16) layout.max_dimensions.y)}}
   );
-  layout.system.last_frame_states.clear();
   ui_calculate_text_fit_fixed_sizing(layout);
   ui_calculate_fill_sizing(layout);
   ui_calculate_positions(layout);
   ui_handle_scroll(layout);
   layout.system.render_cmds.clear();
+  layout.system.last_frame_map.clear();
   ui_generate_render_cmds(layout);
+  layout.system.last_frame_elements = layout.elements;
 }
 
 // TODO: i hate this, but currently i dont have a clue what could be better
@@ -625,19 +623,47 @@ void ui_begin_element(UI_Layout& layout, UI_ElementId id, const UI_StateOptions&
 {
   UI_ElementIdInternal id_internal =
     id ? std::hash<UI_ElementId>{}(id) : std::hash<UI_ElementIdx>{}(layout.elements.size());
-  if (layout.system.last_frame_states.contains(id_internal))
+  if (layout.system.last_frame_map.contains(id_internal))
   {
-    auto& last_rect = layout.system.last_frame_states[id_internal];
-    bool hovered = ui_intersects(layout.input.mouse_pos, last_rect.pos, last_rect.dimensions);
-    // TODO: this should first check if any of the children are on top of this position,
-    // before setting the value
-    if (state_options.hovered)
+    auto& idx = layout.system.last_frame_map[id_internal];
+    auto& elem = layout.system.last_frame_elements.at(idx);
+    Rectangle interaction_rect =
+      ui_intersection_rectangle({elem.pos, elem.dimensions}, elem.clip_rectangle);
+    bool hovered =
+      ui_intersects(layout.input.mouse_pos, interaction_rect.pos, interaction_rect.dimensions);
+    bool nothing_on_top = true;
+    if (hovered)
     {
-      *state_options.hovered = hovered;
+      for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
+           child_idx = layout.system.last_frame_elements[child_idx].next_sibling)
+      {
+        auto& child = layout.system.last_frame_elements[child_idx];
+        if (child.config.type != UI_ElementType::NORMAL)
+        {
+          continue;
+        }
+        auto child_interaction_rect =
+          ui_intersection_rectangle({child.pos, child.dimensions}, child.clip_rectangle);
+        if (ui_intersects(
+              layout.input.mouse_pos,
+              child_interaction_rect.pos,
+              child_interaction_rect.dimensions
+            ))
+        {
+          nothing_on_top = false;
+        }
+      }
     }
-    if (state_options.clicked)
+    if (nothing_on_top)
     {
-      *state_options.clicked = hovered && layout.input.lmb.just_pressed();
+      if (state_options.hovered)
+      {
+        *state_options.hovered = hovered;
+      }
+      if (state_options.clicked)
+      {
+        *state_options.clicked = hovered && layout.input.lmb.just_pressed();
+      }
     }
   }
   layout.elements.push_back({

@@ -109,16 +109,6 @@ struct UI_ElementConfig
   };
 };
 
-using UI_ElementId = const char*;
-using UI_ElementIdInternal = usize;
-
-struct UI_System
-{
-  // NOTE: this is the intersection of the elements rectangle and its clip rectangle
-  std::unordered_map<UI_ElementIdInternal, Rectangle> last_frame_states{};
-  std::vector<render::Cmd2D> render_cmds{};
-};
-
 struct UI_StateOptions
 {
   bool* clicked{};
@@ -126,6 +116,8 @@ struct UI_StateOptions
 };
 
 using UI_ElementIdx = usize;
+using UI_ElementId = const char*;
+using UI_ElementIdInternal = usize;
 
 struct UI_Element
 {
@@ -139,6 +131,14 @@ struct UI_Element
   vec2 dimensions{};
   vec2 pos{};
   Rectangle clip_rectangle{};
+};
+
+// TODO: allow for more than a single layout per frame
+struct UI_System
+{
+  std::vector<render::Cmd2D> render_cmds{};
+  std::vector<UI_Element> last_frame_elements{};
+  std::unordered_map<UI_ElementIdInternal, UI_ElementIdx> last_frame_map{};
 };
 
 struct UI_Layout
