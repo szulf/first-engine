@@ -11,7 +11,6 @@
 #include "renderer.h"
 #include "entity.h"
 #include "parser.h"
-#include "sdl3/include/SDL3/SDL_gpu.h"
 #include "ui.h"
 
 std::expected<std::string_view, std::string_view> action_to_string(Action action)
@@ -59,7 +58,7 @@ Keymap load_gkey(const std::filesystem::path& path)
     auto action = parser::word(pos);
     parser::expect_and_skip(pos, ':');
     auto key_str = parser::word(pos);
-    auto key = os::string_to_key(key_str);
+    auto key = os_string_to_key(key_str);
     ASSERT(key, "Invalid key string. ({})", key.error());
     for (usize i = 0; i < ACTION_COUNT; ++i)
     {
@@ -74,7 +73,7 @@ Keymap load_gkey(const std::filesystem::path& path)
   return keymap;
 }
 
-Game::Game(os::Window& window, os::Audio& audio)
+Game::Game(OS_Window& window, OS_Audio& audio)
   : m_window{window}, m_sound_system{audio}, m_keymap{load_gkey("data/keymap.gkey")},
     m_gameplay_camera{CameraDescription{
       .type = CameraType::PERSPECTIVE,
@@ -85,7 +84,7 @@ Game::Game(os::Window& window, os::Audio& audio)
       .fov = 0.25f * std::numbers::pi_v<f32>,
       .near_plane = 0.1f,
       .far_plane = 1000.0f,
-      .viewport = m_window.dimensions(),
+      .viewport = m_window.dimensions,
     }},
     m_debug_camera{m_gameplay_camera}, m_main_camera{&m_gameplay_camera}
 {
@@ -103,15 +102,15 @@ Game::Game(os::Window& window, os::Audio& audio)
 
 void Game::update_tick(f32 dt)
 {
-  m_gameplay_camera.update_viewport(m_window.dimensions());
-  m_debug_camera.update_viewport(m_window.dimensions());
+  m_gameplay_camera.update_viewport(m_window.dimensions);
+  m_debug_camera.update_viewport(m_window.dimensions);
 
-  if (action_key(ACTION_TOGGLE_DEBUG_MENU).just_pressed())
+  if (os_key_just_pressed(action_key(ACTION_TOGGLE_DEBUG_MENU)))
   {
     debug_menu_shown = !debug_menu_shown;
     debug_menu_drag = false;
   }
-  if (action_key(ACTION_TOGGLE_CAMERA_MODE).just_pressed())
+  if (os_key_just_pressed(action_key(ACTION_TOGGLE_CAMERA_MODE)))
   {
     m_camera_mode = !m_camera_mode;
   }
@@ -138,7 +137,8 @@ void Game::update_tick(f32 dt)
   if (m_camera_mode)
   {
     m_main_camera = &m_debug_camera;
-    m_window.hide_mouse_pointer();
+    os_hide_mouse_pointer();
+    os_window_center_mouse_pointer(m_window);
 
     if (action_key(ACTION_CAMERA_MOVE_UP).down)
     {
@@ -155,7 +155,7 @@ void Game::update_tick(f32 dt)
   else
   {
     m_main_camera = &m_gameplay_camera;
-    m_window.show_mouse_pointer();
+    os_show_mouse_pointer();
 
     for (usize i = 0; i < scene.entities.size(); ++i)
     {
@@ -273,7 +273,7 @@ void Game::update_tick(f32 dt)
         }
 
         // NOTE: interactions
-        if (action_key(ACTION_INTERACT).just_pressed())
+        if (os_key_just_pressed(action_key(ACTION_INTERACT)))
         {
           for (usize interactable_idx = 0; interactable_idx < scene.entities.size();
                ++interactable_idx)
@@ -311,7 +311,7 @@ void Game::update_tick(f32 dt)
     auto layout = ui_begin_layout(
       "debug menu",
       ui_system,
-      m_window.input(),
+      m_window.input,
       debug_menu_pos,
       {1280, 720},
       CHAR_SIZE,
@@ -361,15 +361,15 @@ void Game::update_tick(f32 dt)
         if (titlebar_clicked)
         {
           debug_menu_drag = true;
-          debug_menu_drag_offset = m_window.input().mouse_pos - vec2{layout.pos.x, layout.pos.y};
+          debug_menu_drag_offset = m_window.input.mouse_pos - vec2{layout.pos.x, layout.pos.y};
         }
-        if (debug_menu_drag && m_window.input().lmb.down)
+        if (debug_menu_drag && m_window.input.lmb.down)
         {
-          vec2 new_pos = m_window.input().mouse_pos - debug_menu_drag_offset;
+          vec2 new_pos = m_window.input.mouse_pos - debug_menu_drag_offset;
           debug_menu_pos.x = new_pos.x;
           debug_menu_pos.y = new_pos.y;
         }
-        if (debug_menu_drag && !m_window.input().lmb.down)
+        if (debug_menu_drag && !m_window.input.lmb.down)
         {
           debug_menu_drag = false;
         }
@@ -420,7 +420,7 @@ void Game::update_frame(f32 alpha)
 {
   if (m_camera_mode)
   {
-    vec2 offset = m_window.input().mouse_delta * Camera::SENSITIVITY;
+    vec2 offset = m_window.input.mouse_delta * Camera::SENSITIVITY;
     m_debug_camera.look_around(offset);
 
     m_debug_camera.update(alpha);

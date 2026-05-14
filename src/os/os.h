@@ -2,180 +2,119 @@
 #define OS_H
 
 #include <expected>
-#include <memory>
 #include <string>
 #include <string_view>
 
 #include "base/base.h"
 #include "base/math.h"
 
-namespace os
-{
+void os_init();
+void os_shutdown();
 
-void init();
-void shutdown();
+void os_show_mouse_pointer();
+void os_hide_mouse_pointer();
 
-enum Key
+enum OS_Key
 {
-  KEY_A,
-  KEY_B,
-  KEY_C,
-  KEY_D,
-  KEY_E,
-  KEY_F,
-  KEY_G,
-  KEY_H,
-  KEY_I,
-  KEY_J,
-  KEY_K,
-  KEY_L,
-  KEY_M,
-  KEY_N,
-  KEY_O,
-  KEY_P,
-  KEY_Q,
-  KEY_R,
-  KEY_S,
-  KEY_T,
-  KEY_U,
-  KEY_V,
-  KEY_W,
-  KEY_X,
-  KEY_Y,
-  KEY_Z,
-  KEY_F1,
-  KEY_F2,
-  KEY_F3,
-  KEY_F4,
-  KEY_F5,
-  KEY_F6,
-  KEY_F7,
-  KEY_F8,
-  KEY_F9,
-  KEY_F10,
-  KEY_F11,
-  KEY_F12,
-  KEY_SPACE,
-  KEY_LSHIFT,
-  KEY_COUNT,
+  OS_KEY_A,
+  OS_KEY_B,
+  OS_KEY_C,
+  OS_KEY_D,
+  OS_KEY_E,
+  OS_KEY_F,
+  OS_KEY_G,
+  OS_KEY_H,
+  OS_KEY_I,
+  OS_KEY_J,
+  OS_KEY_K,
+  OS_KEY_L,
+  OS_KEY_M,
+  OS_KEY_N,
+  OS_KEY_O,
+  OS_KEY_P,
+  OS_KEY_Q,
+  OS_KEY_R,
+  OS_KEY_S,
+  OS_KEY_T,
+  OS_KEY_U,
+  OS_KEY_V,
+  OS_KEY_W,
+  OS_KEY_X,
+  OS_KEY_Y,
+  OS_KEY_Z,
+  OS_KEY_F1,
+  OS_KEY_F2,
+  OS_KEY_F3,
+  OS_KEY_F4,
+  OS_KEY_F5,
+  OS_KEY_F6,
+  OS_KEY_F7,
+  OS_KEY_F8,
+  OS_KEY_F9,
+  OS_KEY_F10,
+  OS_KEY_F11,
+  OS_KEY_F12,
+  OS_KEY_SPACE,
+  OS_KEY_LSHIFT,
+  OS_KEY_COUNT,
 };
 
-std::expected<std::string_view, std::string_view> key_to_string(Key key);
-std::expected<Key, std::string_view> string_to_key(std::string_view str);
+std::expected<std::string_view, std::string_view> os_key_to_string(OS_Key key);
+std::expected<OS_Key, std::string_view> os_string_to_key(std::string_view str);
 
-struct KeyState
+struct OS_KeyState
 {
-  inline constexpr bool just_pressed() const
-  {
-    return down && transition_count != 0;
-  }
-
   u32 transition_count;
   bool down;
 };
 
-struct Input
+inline bool os_key_just_pressed(const OS_KeyState& key)
 {
-  void clear();
+  return key.down && key.transition_count != 0;
+}
 
-  inline constexpr KeyState& key(Key key)
-  {
-    return keys[key];
-  }
-
-  KeyState keys[KEY_COUNT];
-  KeyState lmb;
-  KeyState rmb;
+struct OS_Input
+{
+  OS_KeyState keys[OS_KEY_COUNT];
+  OS_KeyState lmb;
+  OS_KeyState rmb;
 
   i32 mouse_scroll;
   vec2 mouse_pos;
   vec2 mouse_delta;
 };
 
-class Window
+void os_input_clear(OS_Input& input);
+
+struct OS_Window
 {
-public:
-  struct WindowData
-  {
-    virtual ~WindowData() {}
-  };
-
-public:
-  Window(std::string_view name, uvec2 dimensions);
-  Window(const Window&) = delete;
-  Window& operator=(const Window&) = delete;
-  Window(Window&& other);
-  Window& operator=(Window&& other);
-  ~Window();
-
-  void update();
-  void swap_buffers();
-  void hide_mouse_pointer();
-  void show_mouse_pointer();
-
-  [[nodiscard]] inline constexpr bool running() const noexcept
-  {
-    return m_running;
-  }
-  [[nodiscard]] inline constexpr Input& input() noexcept
-  {
-    return m_input;
-  }
-  [[nodiscard]] inline constexpr u32 width() const noexcept
-  {
-    return m_dimensions.x;
-  }
-  [[nodiscard]] inline constexpr u32 height() const noexcept
-  {
-    return m_dimensions.y;
-  }
-  [[nodiscard]] inline constexpr uvec2 dimensions() const noexcept
-  {
-    return m_dimensions;
-  }
-  [[nodiscard]] inline constexpr WindowData* window_data() const noexcept
-  {
-    return m_window_data.get();
-  }
-
-private:
-  std::string m_name{};
-  bool m_running{};
-  uvec2 m_dimensions{};
-  Input m_input{};
-  std::unique_ptr<WindowData> m_window_data{};
+  std::string name{};
+  bool running{};
+  uvec2 dimensions{};
+  OS_Input input{};
+  struct PlatformData;
+  PlatformData* platform_data{};
 };
 
-struct AudioDescription
+std::expected<OS_Window, std::string_view>
+os_window_open(std::string_view name, const uvec2& dimensions);
+void os_window_close(OS_Window& window);
+
+void os_window_update(OS_Window& window);
+void os_window_swap_buffers(OS_Window& window);
+void os_window_center_mouse_pointer(OS_Window& window);
+
+struct OS_Audio
 {
-  u32 sample_rate{48'000};
-  u32 channels{2};
-  u32 bit_count{16};
+  struct PlatformData;
+  PlatformData* platform_data{};
 };
 
-class Audio
-{
-public:
-  struct AudioData
-  {
-    virtual ~AudioData() {}
-  };
+std::expected<OS_Audio, std::string_view>
+os_audio_init(u32 sample_rate = 48000, u32 channels = 2, u32 bit_count = 16);
+void os_audio_uninit(OS_Audio& audio);
 
-public:
-  Audio(AudioDescription desc = {});
-  Audio(const Audio&) = delete;
-  Audio& operator=(const Audio&) = delete;
-  Audio(Audio&& other);
-  Audio& operator=(Audio&& other);
-  ~Audio();
-
-  u32 get_queued() const;
-  void push(std::span<i16> buffer);
-
-private:
-  std::unique_ptr<AudioData> m_audio_data{};
-};
-
-}
+u32 os_audio_get_queued(const OS_Audio& audio);
+void os_audio_push(OS_Audio& audio, std::span<i16> buffer);
 
 #endif

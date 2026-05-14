@@ -1,6 +1,7 @@
 #include "sound.h"
 #include "base/base.h"
 #include "base/spsc_queue.h"
+#include "os/os.h"
 
 #include <fstream>
 #include <cmath>
@@ -115,8 +116,10 @@ SoundData load_wav(const std::filesystem::path& path)
   ctx.out.frames = data_size / (sizeof(i16) * channels);
   return ctx.out;
 }
-SoundSystem::SoundSystem(os::Audio& audio) : m_audio{audio}
+
+SoundSystem::SoundSystem(OS_Audio& audio) : m_audio{audio}
 {
+  m_cmds = spsc_queue_init<SoundCmd>(1024);
   {
     SoundData sound{};
     sound.frames = (u32) (48'000 * 0.3f);
@@ -169,7 +172,7 @@ void SoundSystem::sound_loop(std::stop_token st)
 {
   while (!st.stop_requested())
   {
-    auto queued = m_audio.get_queued();
+    auto queued = os_audio_get_queued(m_audio);
 
     // TODO: definitely has one buffer of delay(around 10ms), keeping for now like mixing
     if (queued <= BYTES_PER_BUFFER)
@@ -265,7 +268,7 @@ void SoundSystem::sound_loop(std::stop_token st)
         }
       }
 
-      m_audio.push(mix_buffer);
+      os_audio_push(m_audio, mix_buffer);
     }
     else
     {

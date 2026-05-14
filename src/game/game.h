@@ -28,13 +28,13 @@ enum Action
 
 struct Keymap
 {
-  os::Key map[ACTION_COUNT]{};
+  OS_Key map[ACTION_COUNT]{};
 };
 
 class Game
 {
 public:
-  Game(os::Window& window, os::Audio& audio);
+  Game(OS_Window& window, OS_Audio& audio);
   Game(const Game&) = delete;
   Game& operator=(const Game&) = delete;
   Game(Game&&) = delete;
@@ -45,13 +45,13 @@ public:
   void render();
 
 private:
-  inline constexpr os::KeyState& action_key(Action action)
+  inline constexpr OS_KeyState& action_key(Action action)
   {
-    return m_window.input().key(m_keymap.map[action]);
+    return m_window.input.keys[m_keymap.map[action]];
   }
 
 private:
-  os::Window& m_window;
+  OS_Window& m_window;
 
   static constexpr uvec2 SHADOW_MAP_DIMENSIONS = {1024, 1024};
   TextureHandle shadow_map;

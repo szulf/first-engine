@@ -13,26 +13,34 @@ static constexpr f32 DT_F32{(f32) DT.count() / (f32) std::milli::den};
 
 i32 main()
 {
-  os::init();
-  os::Window window{"game", {1280, 720}};
-  os::Audio audio{};
-  Game game{window, audio};
+  os_init();
+  defer(os_shutdown());
+
+  auto window = os_window_open("game", {1280, 720});
+  ASSERT(window, "Failed to create window");
+  defer(os_window_close(*window));
+
+  auto audio = os_audio_init();
+  ASSERT(audio, "Failed to init audio");
+  defer(os_audio_uninit(*audio));
+
+  Game game{*window, *audio};
 
   auto current_time = std::chrono::high_resolution_clock::now();
   std::chrono::nanoseconds accumulator{};
-  while (window.running())
+  while (window->running)
   {
     auto new_time = std::chrono::high_resolution_clock::now();
     auto frame_time = new_time - current_time;
     current_time = new_time;
     accumulator += frame_time;
 
-    window.update();
+    os_window_update(*window);
 
     while (accumulator >= DT)
     {
       game.update_tick(DT_F32);
-      window.input().clear();
+      os_input_clear(window->input);
       accumulator -= DT;
     }
 
@@ -46,7 +54,7 @@ i32 main()
     //   ((f32) (end_time - current_time).count() / (f32) std::nano::den) * (f32) std::milli::den
     // );
 
-    window.swap_buffers();
+    os_window_swap_buffers(*window);
   }
 
   return 0;

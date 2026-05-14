@@ -6,6 +6,7 @@
 
 #include "base/base.h"
 #include "game/renderer.h"
+#include "os/os.h"
 
 void ui_system_update(UI_System& system)
 {
@@ -15,7 +16,7 @@ void ui_system_update(UI_System& system)
 UI_Layout ui_begin_layout(
   UI_Id id,
   UI_System& system,
-  const os::Input& input,
+  const OS_Input& input,
   const vec3& pos,
   const vec2& max_dimensions,
   const vec2& char_size,
@@ -670,7 +671,7 @@ void ui_begin_element(UI_Layout& layout, UI_Id id, const UI_StateOptions& state_
       }
       if (state_options.clicked)
       {
-        *state_options.clicked = hovered && layout.input.lmb.just_pressed();
+        *state_options.clicked = hovered && os_key_just_pressed(layout.input.lmb);
       }
     }
   }

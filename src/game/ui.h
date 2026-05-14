@@ -152,7 +152,7 @@ struct UI_Layout
 {
   UI_IdInternal id{};
   UI_System& system;
-  const os::Input& input;
+  const OS_Input& input;
   std::vector<UI_Element> elements{};
   vec3 pos{};
   vec2 max_dimensions{};
@@ -169,7 +169,7 @@ struct UI_Layout
 UI_Layout ui_begin_layout(
   UI_Id id,
   UI_System& system,
-  const os::Input& input,
+  const OS_Input& input,
   const vec3& pos,
   const vec2& max_dimensions,
   const vec2& char_size,

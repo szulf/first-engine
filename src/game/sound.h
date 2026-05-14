@@ -51,11 +51,12 @@ struct SoundSource
 class SoundSystem
 {
 public:
-  SoundSystem(os::Audio& audio);
+  SoundSystem(OS_Audio& audio);
   ~SoundSystem()
   {
     m_thread.request_stop();
     m_thread.join();
+    spsc_queue_uninit(m_cmds);
   }
 
   void play_once(SoundHandle sound, f32 volume = 1.0f);
@@ -72,9 +73,9 @@ public:
 private:
   std::jthread m_thread{};
 
-  os::Audio& m_audio;
+  OS_Audio& m_audio;
 
-  SPSCQueue<SoundCmd> m_cmds{1024};
+  SPSCQueue<SoundCmd> m_cmds{};
   SoundData m_sound_data[SOUND_HANDLE_COUNT]{};
   std::vector<SoundSource> m_active_sources{};
 
