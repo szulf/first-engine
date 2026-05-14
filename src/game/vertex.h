@@ -17,7 +17,7 @@ struct std::hash<Vertex>
 {
   std::size_t operator()(const Vertex& v) const
   {
-    usize h = constants<u64>::FNV_OFFSET;
+    usize h = FNV_OFFSET;
     hash_fnv1(h, &v.pos.x, sizeof(v.pos.x));
     hash_fnv1(h, &v.pos.y, sizeof(v.pos.y));
     hash_fnv1(h, &v.pos.z, sizeof(v.pos.z));

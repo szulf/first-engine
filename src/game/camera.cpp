@@ -63,8 +63,8 @@ void Camera::update_vectors()
   m_front.x = std::cos(radians(m_yaw)) * std::cos(radians(m_pitch));
   m_front.y = std::sin(radians(m_pitch));
   m_front.z = std::sin(radians(m_yaw)) * std::cos(radians(m_pitch));
-  m_front = m_front.normalize();
+  m_front = normalize(m_front);
 
-  m_right = cross(m_front, WORLD_UP).normalize();
-  m_up = cross(m_right, m_front).normalize();
+  m_right = normalize(cross(m_front, WORLD_UP));
+  m_up = normalize(cross(m_right, m_front));
 }

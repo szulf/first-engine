@@ -3,7 +3,6 @@
 #include <cmath>
 #include <fstream>
 #include <string>
-#include <chrono>
 
 #include "base/base.h"
 #include "camera.h"
@@ -12,31 +11,32 @@
 #include "renderer.h"
 #include "entity.h"
 #include "parser.h"
+#include "sdl3/include/SDL3/SDL_gpu.h"
 #include "ui.h"
 
 std::expected<std::string_view, std::string_view> action_to_string(Action action)
 {
   switch (action)
   {
-    case Action::MOVE_FRONT:
+    case ACTION_MOVE_FRONT:
       return {"move_front"};
-    case Action::MOVE_BACK:
+    case ACTION_MOVE_BACK:
       return {"move_back"};
-    case Action::MOVE_LEFT:
+    case ACTION_MOVE_LEFT:
       return {"move_left"};
-    case Action::MOVE_RIGHT:
+    case ACTION_MOVE_RIGHT:
       return {"move_right"};
-    case Action::INTERACT:
+    case ACTION_INTERACT:
       return {"interact"};
-    case Action::CAMERA_MOVE_UP:
+    case ACTION_CAMERA_MOVE_UP:
       return {"camera_move_up"};
-    case Action::CAMERA_MOVE_DOWN:
+    case ACTION_CAMERA_MOVE_DOWN:
       return {"camera_move_down"};
-    case Action::TOGGLE_DEBUG_MENU:
+    case ACTION_TOGGLE_DEBUG_MENU:
       return {"toggle_debug_menu"};
-    case Action::TOGGLE_CAMERA_MODE:
+    case ACTION_TOGGLE_CAMERA_MODE:
       return {"toggle_camera_mode"};
-    case Action::COUNT:
+    case ACTION_COUNT:
     default:
       return std::unexpected{"Invalid action."};
   }
@@ -61,13 +61,13 @@ Keymap load_gkey(const std::filesystem::path& path)
     auto key_str = parser::word(pos);
     auto key = os::string_to_key(key_str);
     ASSERT(key, "Invalid key string. ({})", key.error());
-    for (usize i = 0; i < keymap.size(); ++i)
+    for (usize i = 0; i < ACTION_COUNT; ++i)
     {
       auto action_str = action_to_string((Action) i);
       ASSERT(action_str, "Invalid action. ({})", action_str.error());
       if (action == action_str)
       {
-        keymap[(Action) i] = *key;
+        keymap.map[i] = *key;
       }
     }
   }
@@ -106,45 +106,45 @@ void Game::update_tick(f32 dt)
   m_gameplay_camera.update_viewport(m_window.dimensions());
   m_debug_camera.update_viewport(m_window.dimensions());
 
-  if (action_key(Action::TOGGLE_DEBUG_MENU).just_pressed())
+  if (action_key(ACTION_TOGGLE_DEBUG_MENU).just_pressed())
   {
     debug_menu_shown = !debug_menu_shown;
     debug_menu_drag = false;
   }
-  if (action_key(Action::TOGGLE_CAMERA_MODE).just_pressed())
+  if (action_key(ACTION_TOGGLE_CAMERA_MODE).just_pressed())
   {
     m_camera_mode = !m_camera_mode;
   }
 
   vec3 acceleration = {};
-  if (action_key(Action::MOVE_FRONT).down)
+  if (action_key(ACTION_MOVE_FRONT).down)
   {
     acceleration.z += -1.0f;
   }
-  if (action_key(Action::MOVE_BACK).down)
+  if (action_key(ACTION_MOVE_BACK).down)
   {
     acceleration.z += 1.0f;
   }
-  if (action_key(Action::MOVE_LEFT).down)
+  if (action_key(ACTION_MOVE_LEFT).down)
   {
     acceleration.x += -1.0f;
   }
-  if (action_key(Action::MOVE_RIGHT).down)
+  if (action_key(ACTION_MOVE_RIGHT).down)
   {
     acceleration.x += 1.0f;
   }
-  acceleration = acceleration.normalize();
+  acceleration = normalize(acceleration);
 
   if (m_camera_mode)
   {
     m_main_camera = &m_debug_camera;
     m_window.hide_mouse_pointer();
 
-    if (action_key(Action::CAMERA_MOVE_UP).down)
+    if (action_key(ACTION_CAMERA_MOVE_UP).down)
     {
       acceleration.y += 1.0f;
     }
-    if (action_key(Action::CAMERA_MOVE_DOWN).down)
+    if (action_key(ACTION_CAMERA_MOVE_DOWN).down)
     {
       acceleration.y += -1.0f;
     }
@@ -184,10 +184,10 @@ void Game::update_tick(f32 dt)
           acceleration *= PLAYER_MOVEMENT_SPEED;
 
           static const f32 friction_coefficient = 0.35f;
-          static const f32 normal_force = PLAYER_MASS * constants<f32>::G;
+          static const f32 normal_force = PLAYER_MASS * G_F32;
           static const f32 friction_magnitude = friction_coefficient * normal_force;
 
-          vec3 friction_dir = -entity.velocity.normalize();
+          vec3 friction_dir = -normalize(entity.velocity);
           vec3 friction_force = friction_dir * friction_magnitude;
 
           vec3 drag = -3.0f * entity.velocity;
@@ -268,12 +268,12 @@ void Game::update_tick(f32 dt)
           if (collided)
           {
             entity.velocity -= dot(entity.velocity, collision_normal) * collision_normal;
-            m_sound_system.play_once(SoundHandle::SINE, 0.1f);
+            m_sound_system.play_once(SOUND_HANDLE_SINE, 0.1f);
           }
         }
 
         // NOTE: interactions
-        if (action_key(Action::INTERACT).just_pressed())
+        if (action_key(ACTION_INTERACT).just_pressed())
         {
           for (usize interactable_idx = 0; interactable_idx < scene.entities.size();
                ++interactable_idx)
@@ -284,7 +284,7 @@ void Game::update_tick(f32 dt)
               continue;
             }
             auto vec = interactable.pos - entity.pos;
-            f32 dist = vec.length2();
+            f32 dist = length2(vec);
             f32 orientation = std::atan2(-vec.x, vec.z);
             orientation = wrap_to_neg_pi_to_pi(orientation);
             if (dist < (interactable.interactable_radius * interactable.interactable_radius) &&
@@ -295,8 +295,8 @@ void Game::update_tick(f32 dt)
               interactable.flags ^= Entity::EMITS_LIGHT;
               interactable.tint =
                 interactable.emits_light() ? LIGHT_BULB_ON_TINT : LIGHT_BULB_OFF_TINT;
-              m_sound_system.play_once(SoundHandle::SHOTGUN, 0.1f);
-              m_sound_system.stop_looped(SoundHandle::TEST_MUSIC);
+              m_sound_system.play_once(SOUND_HANDLE_SHOTGUN, 0.1f);
+              m_sound_system.stop_looped(SOUND_HANDLE_TEST_MUSIC);
             }
           }
         }

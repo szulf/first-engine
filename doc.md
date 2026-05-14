@@ -1,6 +1,9 @@
-## BIG TODO: basic ui
+## BIG TODO: get rid of c++ bs
 
 ## SMALL TODOS: (ordered)
+
+1. better apis
+2. better errors than std::string_view
 
 ---
 
@@ -8,7 +11,6 @@
 
 ### Code/Engine:
 
-- get rid of c++ bs
 - debug tools
   - map/entity/keymap editor
   - time scaling

@@ -22,88 +22,88 @@ std::expected<std::string_view, std::string_view> key_to_string(Key key)
 {
   switch (key)
   {
-    case Key::A:
+    case KEY_A:
       return {"A"};
-    case Key::B:
+    case KEY_B:
       return {"B"};
-    case Key::C:
+    case KEY_C:
       return {"C"};
-    case Key::D:
+    case KEY_D:
       return {"D"};
-    case Key::E:
+    case KEY_E:
       return {"E"};
-    case Key::F:
+    case KEY_F:
       return {"F"};
-    case Key::G:
+    case KEY_G:
       return {"G"};
-    case Key::H:
+    case KEY_H:
       return {"H"};
-    case Key::I:
+    case KEY_I:
       return {"I"};
-    case Key::J:
+    case KEY_J:
       return {"J"};
-    case Key::K:
+    case KEY_K:
       return {"K"};
-    case Key::L:
+    case KEY_L:
       return {"L"};
-    case Key::M:
+    case KEY_M:
       return {"M"};
-    case Key::N:
+    case KEY_N:
       return {"N"};
-    case Key::O:
+    case KEY_O:
       return {"O"};
-    case Key::P:
+    case KEY_P:
       return {"P"};
-    case Key::Q:
+    case KEY_Q:
       return {"Q"};
-    case Key::R:
+    case KEY_R:
       return {"R"};
-    case Key::S:
+    case KEY_S:
       return {"S"};
-    case Key::T:
+    case KEY_T:
       return {"T"};
-    case Key::U:
+    case KEY_U:
       return {"U"};
-    case Key::V:
+    case KEY_V:
       return {"V"};
-    case Key::W:
+    case KEY_W:
       return {"W"};
-    case Key::X:
+    case KEY_X:
       return {"X"};
-    case Key::Y:
+    case KEY_Y:
       return {"Y"};
-    case Key::Z:
+    case KEY_Z:
       return {"Z"};
-    case Key::F1:
+    case KEY_F1:
       return {"F1"};
-    case Key::F2:
+    case KEY_F2:
       return {"F2"};
-    case Key::F3:
+    case KEY_F3:
       return {"F3"};
-    case Key::F4:
+    case KEY_F4:
       return {"F4"};
-    case Key::F5:
+    case KEY_F5:
       return {"F5"};
-    case Key::F6:
+    case KEY_F6:
       return {"F6"};
-    case Key::F7:
+    case KEY_F7:
       return {"F7"};
-    case Key::F8:
+    case KEY_F8:
       return {"F8"};
-    case Key::F9:
+    case KEY_F9:
       return {"F9"};
-    case Key::F10:
+    case KEY_F10:
       return {"F10"};
-    case Key::F11:
+    case KEY_F11:
       return {"F11"};
-    case Key::F12:
+    case KEY_F12:
       return {"F12"};
-    case Key::SPACE:
+    case KEY_SPACE:
       return {"SPACE"};
-    case Key::LSHIFT:
+    case KEY_LSHIFT:
       return {"LSHIFT"};
     default:
-    case Key::COUNT:
+    case KEY_COUNT:
       return std::unexpected{"Invalid key."};
   }
 }
@@ -112,163 +112,163 @@ std::expected<Key, std::string_view> string_to_key(std::string_view str)
 {
   if (str == "A")
   {
-    return {Key::A};
+    return {KEY_A};
   }
   else if (str == "B")
   {
-    return {Key::B};
+    return {KEY_B};
   }
   else if (str == "C")
   {
-    return {Key::C};
+    return {KEY_C};
   }
   else if (str == "D")
   {
-    return {Key::D};
+    return {KEY_D};
   }
   else if (str == "E")
   {
-    return {Key::E};
+    return {KEY_E};
   }
   else if (str == "F")
   {
-    return {Key::F};
+    return {KEY_F};
   }
   else if (str == "G")
   {
-    return {Key::G};
+    return {KEY_G};
   }
   else if (str == "H")
   {
-    return {Key::H};
+    return {KEY_H};
   }
   else if (str == "I")
   {
-    return {Key::I};
+    return {KEY_I};
   }
   else if (str == "J")
   {
-    return {Key::J};
+    return {KEY_J};
   }
   else if (str == "K")
   {
-    return {Key::K};
+    return {KEY_K};
   }
   else if (str == "L")
   {
-    return {Key::L};
+    return {KEY_L};
   }
   else if (str == "M")
   {
-    return {Key::M};
+    return {KEY_M};
   }
   else if (str == "N")
   {
-    return {Key::N};
+    return {KEY_N};
   }
   else if (str == "O")
   {
-    return {Key::O};
+    return {KEY_O};
   }
   else if (str == "P")
   {
-    return {Key::P};
+    return {KEY_P};
   }
   else if (str == "Q")
   {
-    return {Key::Q};
+    return {KEY_Q};
   }
   else if (str == "R")
   {
-    return {Key::R};
+    return {KEY_R};
   }
   else if (str == "S")
   {
-    return {Key::S};
+    return {KEY_S};
   }
   else if (str == "T")
   {
-    return {Key::T};
+    return {KEY_T};
   }
   else if (str == "U")
   {
-    return {Key::U};
+    return {KEY_U};
   }
   else if (str == "V")
   {
-    return {Key::V};
+    return {KEY_V};
   }
   else if (str == "W")
   {
-    return {Key::W};
+    return {KEY_W};
   }
   else if (str == "X")
   {
-    return {Key::X};
+    return {KEY_X};
   }
   else if (str == "Y")
   {
-    return {Key::Y};
+    return {KEY_Y};
   }
   else if (str == "Z")
   {
-    return {Key::Z};
+    return {KEY_Z};
   }
   else if (str == "F1")
   {
-    return {Key::F1};
+    return {KEY_F1};
   }
   else if (str == "F2")
   {
-    return {Key::F2};
+    return {KEY_F2};
   }
   else if (str == "F3")
   {
-    return {Key::F3};
+    return {KEY_F3};
   }
   else if (str == "F4")
   {
-    return {Key::F4};
+    return {KEY_F4};
   }
   else if (str == "F5")
   {
-    return {Key::F5};
+    return {KEY_F5};
   }
   else if (str == "F6")
   {
-    return {Key::F6};
+    return {KEY_F6};
   }
   else if (str == "F7")
   {
-    return {Key::F7};
+    return {KEY_F7};
   }
   else if (str == "F8")
   {
-    return {Key::F8};
+    return {KEY_F8};
   }
   else if (str == "F9")
   {
-    return {Key::F9};
+    return {KEY_F9};
   }
   else if (str == "F10")
   {
-    return {Key::F10};
+    return {KEY_F10};
   }
   else if (str == "F11")
   {
-    return {Key::F11};
+    return {KEY_F11};
   }
   else if (str == "F12")
   {
-    return {Key::F12};
+    return {KEY_F12};
   }
   else if (str == "SPACE")
   {
-    return {Key::SPACE};
+    return {KEY_SPACE};
   }
   else if (str == "LSHIFT")
   {
-    return {Key::LSHIFT};
+    return {KEY_LSHIFT};
   }
 
   return std::unexpected{"Invalid key string"};
@@ -380,87 +380,87 @@ static std::expected<SDL_Keycode, std::string_view> sdlk_from_key(Key key)
 {
   switch (key)
   {
-    case Key::A:
+    case KEY_A:
       return {SDLK_A};
-    case Key::B:
+    case KEY_B:
       return {SDLK_B};
-    case Key::C:
+    case KEY_C:
       return {SDLK_C};
-    case Key::D:
+    case KEY_D:
       return {SDLK_D};
-    case Key::E:
+    case KEY_E:
       return {SDLK_E};
-    case Key::F:
+    case KEY_F:
       return {SDLK_F};
-    case Key::G:
+    case KEY_G:
       return {SDLK_G};
-    case Key::H:
+    case KEY_H:
       return {SDLK_H};
-    case Key::I:
+    case KEY_I:
       return {SDLK_I};
-    case Key::J:
+    case KEY_J:
       return {SDLK_J};
-    case Key::K:
+    case KEY_K:
       return {SDLK_K};
-    case Key::L:
+    case KEY_L:
       return {SDLK_L};
-    case Key::M:
+    case KEY_M:
       return {SDLK_M};
-    case Key::N:
+    case KEY_N:
       return {SDLK_N};
-    case Key::O:
+    case KEY_O:
       return {SDLK_O};
-    case Key::P:
+    case KEY_P:
       return {SDLK_P};
-    case Key::Q:
+    case KEY_Q:
       return {SDLK_Q};
-    case Key::R:
+    case KEY_R:
       return {SDLK_R};
-    case Key::S:
+    case KEY_S:
       return {SDLK_S};
-    case Key::T:
+    case KEY_T:
       return {SDLK_T};
-    case Key::U:
+    case KEY_U:
       return {SDLK_U};
-    case Key::V:
+    case KEY_V:
       return {SDLK_V};
-    case Key::W:
+    case KEY_W:
       return {SDLK_W};
-    case Key::X:
+    case KEY_X:
       return {SDLK_X};
-    case Key::Y:
+    case KEY_Y:
       return {SDLK_Y};
-    case Key::Z:
+    case KEY_Z:
       return {SDLK_Z};
-    case Key::F1:
+    case KEY_F1:
       return {SDLK_F1};
-    case Key::F2:
+    case KEY_F2:
       return {SDLK_F2};
-    case Key::F3:
+    case KEY_F3:
       return {SDLK_F3};
-    case Key::F4:
+    case KEY_F4:
       return {SDLK_F4};
-    case Key::F5:
+    case KEY_F5:
       return {SDLK_F5};
-    case Key::F6:
+    case KEY_F6:
       return {SDLK_F6};
-    case Key::F7:
+    case KEY_F7:
       return {SDLK_F7};
-    case Key::F8:
+    case KEY_F8:
       return {SDLK_F8};
-    case Key::F9:
+    case KEY_F9:
       return {SDLK_F9};
-    case Key::F10:
+    case KEY_F10:
       return {SDLK_F10};
-    case Key::F11:
+    case KEY_F11:
       return {SDLK_F11};
-    case Key::F12:
+    case KEY_F12:
       return {SDLK_F12};
-    case Key::SPACE:
+    case KEY_SPACE:
       return {SDLK_SPACE};
-    case Key::LSHIFT:
+    case KEY_LSHIFT:
       return {SDLK_LSHIFT};
-    case Key::COUNT:
+    case KEY_COUNT:
     default:
       return std::unexpected{"Invalid key provided"};
   }
@@ -471,85 +471,85 @@ static std::expected<Key, std::string_view> key_from_sdlk(SDL_Keycode sdlk)
   switch (sdlk)
   {
     case SDLK_A:
-      return {Key::A};
+      return {KEY_A};
     case SDLK_B:
-      return {Key::B};
+      return {KEY_B};
     case SDLK_C:
-      return {Key::C};
+      return {KEY_C};
     case SDLK_D:
-      return {Key::D};
+      return {KEY_D};
     case SDLK_E:
-      return {Key::E};
+      return {KEY_E};
     case SDLK_F:
-      return {Key::F};
+      return {KEY_F};
     case SDLK_G:
-      return {Key::G};
+      return {KEY_G};
     case SDLK_H:
-      return {Key::H};
+      return {KEY_H};
     case SDLK_I:
-      return {Key::I};
+      return {KEY_I};
     case SDLK_J:
-      return {Key::J};
+      return {KEY_J};
     case SDLK_K:
-      return {Key::K};
+      return {KEY_K};
     case SDLK_L:
-      return {Key::L};
+      return {KEY_L};
     case SDLK_M:
-      return {Key::M};
+      return {KEY_M};
     case SDLK_N:
-      return {Key::N};
+      return {KEY_N};
     case SDLK_O:
-      return {Key::O};
+      return {KEY_O};
     case SDLK_P:
-      return {Key::P};
+      return {KEY_P};
     case SDLK_Q:
-      return {Key::Q};
+      return {KEY_Q};
     case SDLK_R:
-      return {Key::R};
+      return {KEY_R};
     case SDLK_S:
-      return {Key::S};
+      return {KEY_S};
     case SDLK_T:
-      return {Key::T};
+      return {KEY_T};
     case SDLK_U:
-      return {Key::U};
+      return {KEY_U};
     case SDLK_V:
-      return {Key::V};
+      return {KEY_V};
     case SDLK_W:
-      return {Key::W};
+      return {KEY_W};
     case SDLK_X:
-      return {Key::X};
+      return {KEY_X};
     case SDLK_Y:
-      return {Key::Y};
+      return {KEY_Y};
     case SDLK_Z:
-      return {Key::Z};
+      return {KEY_Z};
     case SDLK_F1:
-      return {Key::F1};
+      return {KEY_F1};
     case SDLK_F2:
-      return {Key::F2};
+      return {KEY_F2};
     case SDLK_F3:
-      return {Key::F3};
+      return {KEY_F3};
     case SDLK_F4:
-      return {Key::F4};
+      return {KEY_F4};
     case SDLK_F5:
-      return {Key::F5};
+      return {KEY_F5};
     case SDLK_F6:
-      return {Key::F6};
+      return {KEY_F6};
     case SDLK_F7:
-      return {Key::F7};
+      return {KEY_F7};
     case SDLK_F8:
-      return {Key::F8};
+      return {KEY_F8};
     case SDLK_F9:
-      return {Key::F9};
+      return {KEY_F9};
     case SDLK_F10:
-      return {Key::F10};
+      return {KEY_F10};
     case SDLK_F11:
-      return {Key::F11};
+      return {KEY_F11};
     case SDLK_F12:
-      return {Key::F12};
+      return {KEY_F12};
     case SDLK_SPACE:
-      return {Key::SPACE};
+      return {KEY_SPACE};
     case SDLK_LSHIFT:
-      return {Key::LSHIFT};
+      return {KEY_LSHIFT};
   }
   return std::unexpected{"Invalid key provided"};
 }
@@ -612,7 +612,7 @@ void Window::update()
   }
 
   const bool* key_states = SDL_GetKeyboardState(nullptr);
-  for (usize i = 0; i < m_input.keys.size(); ++i)
+  for (usize i = 0; i < KEY_COUNT; ++i)
   {
     auto sdlk = sdlk_from_key((Key) i);
     if (sdlk)

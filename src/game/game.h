@@ -2,7 +2,6 @@
 #define GAME_H
 
 #include "base/base.h"
-#include "base/enum_array.h"
 
 #include "os/os.h"
 
@@ -11,23 +10,26 @@
 #include "entity.h"
 #include "ui.h"
 
-enum class Action
+enum Action
 {
-  MOVE_FRONT,
-  MOVE_BACK,
-  MOVE_LEFT,
-  MOVE_RIGHT,
-  INTERACT,
+  ACTION_MOVE_FRONT,
+  ACTION_MOVE_BACK,
+  ACTION_MOVE_LEFT,
+  ACTION_MOVE_RIGHT,
+  ACTION_INTERACT,
 
-  CAMERA_MOVE_UP,
-  CAMERA_MOVE_DOWN,
-  TOGGLE_DEBUG_MENU,
-  TOGGLE_CAMERA_MODE,
+  ACTION_CAMERA_MOVE_UP,
+  ACTION_CAMERA_MOVE_DOWN,
+  ACTION_TOGGLE_DEBUG_MENU,
+  ACTION_TOGGLE_CAMERA_MODE,
 
-  COUNT,
+  ACTION_COUNT,
 };
 
-using Keymap = EnumArray<Action, os::Key>;
+struct Keymap
+{
+  os::Key map[ACTION_COUNT]{};
+};
 
 class Game
 {
@@ -45,7 +47,7 @@ public:
 private:
   inline constexpr os::KeyState& action_key(Action action)
   {
-    return m_window.input().key(m_keymap[action]);
+    return m_window.input().key(m_keymap.map[action]);
   }
 
 private:

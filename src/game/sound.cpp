@@ -1,5 +1,6 @@
 #include "sound.h"
 #include "base/base.h"
+#include "base/spsc_queue.h"
 
 #include <fstream>
 #include <cmath>
@@ -60,8 +61,7 @@ SoundData load_wav(const std::filesystem::path& path)
     std::ifstream file{path, std::ios::binary};
     if (file.fail())
     {
-      throw std::runtime_error{
-        std::format("[WAV] Failed to open file. (path: {}).", path.string())
+      throw std::runtime_error{std::format("[WAV] Failed to open file. (path: {}).", path.string())
       };
     }
     ctx.buffer.resize(std::filesystem::file_size(path));
@@ -135,12 +135,12 @@ SoundSystem::SoundSystem(os::Audio& audio) : m_audio{audio}
       sound.samples[frame * 2 + 0] = sample;
       sound.samples[frame * 2 + 1] = sample;
     }
-    m_sound_data[SoundHandle::SINE] = std::move(sound);
+    m_sound_data[SOUND_HANDLE_SINE] = std::move(sound);
   }
 
-  m_sound_data[SoundHandle::SHOTGUN] = load_wav("assets/shotgun.wav");
+  m_sound_data[SOUND_HANDLE_SHOTGUN] = load_wav("assets/shotgun.wav");
 
-  m_sound_data[SoundHandle::TEST_MUSIC] = load_wav("assets/music.wav");
+  m_sound_data[SOUND_HANDLE_TEST_MUSIC] = load_wav("assets/music.wav");
 
   m_thread = std::jthread(
     [&](std::stop_token st)
@@ -152,17 +152,17 @@ SoundSystem::SoundSystem(os::Audio& audio) : m_audio{audio}
 
 void SoundSystem::play_once(SoundHandle sound, f32 volume)
 {
-  m_cmds.push({.type = SoundCmdType::PLAY_ONCE, .sound = sound, .volume = volume});
+  spsc_queue_push(m_cmds, {.type = SOUND_CMD_PLAY_ONCE, .sound = sound, .volume = volume});
 }
 
 void SoundSystem::play_looped(SoundHandle sound, f32 volume)
 {
-  m_cmds.push({.type = SoundCmdType::START_LOOP, .sound = sound, .volume = volume});
+  spsc_queue_push(m_cmds, {.type = SOUND_CMD_START_LOOP, .sound = sound, .volume = volume});
 }
 
 void SoundSystem::stop_looped(SoundHandle sound)
 {
-  m_cmds.push({.type = SoundCmdType::END_LOOP, .sound = sound});
+  spsc_queue_push(m_cmds, {.type = SOUND_CMD_END_LOOP, .sound = sound});
 }
 
 void SoundSystem::sound_loop(std::stop_token st)
@@ -175,11 +175,11 @@ void SoundSystem::sound_loop(std::stop_token st)
     if (queued <= BYTES_PER_BUFFER)
     {
       SoundCmd cmd{};
-      while (m_cmds.consume_one(cmd))
+      while (spsc_queue_consume_one(m_cmds, cmd))
       {
         switch (cmd.type)
         {
-          case SoundCmdType::PLAY_ONCE:
+          case SOUND_CMD_PLAY_ONCE:
           {
             m_active_sources.push_back({
               .handle = cmd.sound,
@@ -188,7 +188,7 @@ void SoundSystem::sound_loop(std::stop_token st)
             });
           }
           break;
-          case SoundCmdType::START_LOOP:
+          case SOUND_CMD_START_LOOP:
           {
             m_active_sources.push_back({
               .handle = cmd.sound,
@@ -197,7 +197,7 @@ void SoundSystem::sound_loop(std::stop_token st)
             });
           }
           break;
-          case SoundCmdType::END_LOOP:
+          case SOUND_CMD_END_LOOP:
           {
             auto it = std::ranges::find_if(
               m_active_sources,

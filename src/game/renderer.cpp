@@ -289,8 +289,8 @@ void Pass::set_light(const vec3& pos, const vec3& color)
 
 static mat4 get_transform(const vec3& pos, const vec3& size, f32 rotation)
 {
-  mat4 transform{1.0f};
-  transform = rotate(transform, rotation, {0.0f, 1.0f, 0.0f});
+  auto transform = unit_matrix();
+  transform = rotate(transform, rotation, {0, 1, 0});
   transform = translate(transform, pos);
   transform = scale(transform, size);
   return transform;
@@ -382,10 +382,11 @@ std::vector<Cmd3D> mesh(MeshHandle handle, const vec3& pos, f32 rotation, const 
       .material = mesh.submeshes[i].material,
       .mesh = handle,
       .submesh_idx = i,
-      .instance_data = {
-        .transform = get_transform(pos, {1.0f, 1.0f, 1.0f}, rotation),
-        .tint = {tint.x, tint.y, tint.z, 1.0f},
-      },
+      .instance_data =
+        {
+          .transform = get_transform(pos, {1.0f, 1.0f, 1.0f}, rotation),
+          .tint = {tint.x, tint.y, tint.z, 1.0f},
+        },
     });
   }
   return out;
@@ -397,10 +398,11 @@ Cmd3D cube_wires(const vec3& pos, const vec3& size, const vec3& color)
     .material = AssetManager::instance().get(render_data.cube_wires).submeshes[0].material,
     .mesh = render_data.cube_wires,
     .submesh_idx = 0,
-    .instance_data = {
-      .transform = get_transform(pos, size, 0.0f),
-      .tint = {color.x, color.y, color.z, 1.0f},
-    },
+    .instance_data =
+      {
+        .transform = get_transform(pos, size, 0.0f),
+        .tint = {color.x, color.y, color.z, 1.0f},
+      },
   };
 }
 
@@ -411,10 +413,11 @@ Cmd3D ring(const vec3& pos, f32 radius, const vec3& color)
     .material = AssetManager::instance().get(render_data.ring).submeshes[0].material,
     .mesh = render_data.ring,
     .submesh_idx = 0,
-    .instance_data = {
-      .transform = get_transform(pos, {diameter, 1.0f, diameter}, 0.0f),
-      .tint = {color.x, color.y, color.z, 1.0f},
-    },
+    .instance_data =
+      {
+        .transform = get_transform(pos, {diameter, 1.0f, diameter}, 0.0f),
+        .tint = {color.x, color.y, color.z, 1.0f},
+      },
   };
 }
 
@@ -424,10 +427,11 @@ Cmd3D line(const vec3& pos, f32 length, f32 rotation, const vec3& color)
     .material = AssetManager::instance().get(render_data.line).submeshes[0].material,
     .mesh = render_data.line,
     .submesh_idx = 0,
-    .instance_data = {
-      .transform = get_transform(pos, {length, 1.0f, length}, rotation),
-      .tint = {color.x, color.y, color.z, 1.0f},
-    },
+    .instance_data =
+      {
+        .transform = get_transform(pos, {length, 1.0f, length}, rotation),
+        .tint = {color.x, color.y, color.z, 1.0f},
+      },
   };
 }
 
@@ -507,15 +511,13 @@ static MeshHandle static_model_init(
   Material material = {};
   material.diffuse_color = {1.0f, 1.0f, 1.0f};
   auto material_handle = AssetManager::instance().set(std::move(material));
-  return AssetManager::instance().set(
-    Mesh{
-      std::move(vertices),
-      std::move(indices),
-      {{0, indices.size(), material_handle}},
-      primitive,
-      render_data
-    }
-  );
+  return AssetManager::instance().set(Mesh{
+    std::move(vertices),
+    std::move(indices),
+    {{0, indices.size(), material_handle}},
+    primitive,
+    render_data
+  });
 }
 
 void init()
@@ -578,15 +580,13 @@ void init()
     RenderPrimitive::TRIANGLES
   );
 
-  render_data.blank_texture = assets.set(
-    Texture{
-      Image{blank_texture_data, blank_texture_dimensions},
-      WrapOption::REPEAT,
-      WrapOption::REPEAT,
-      FilterOption::NEAREST,
-      FilterOption::NEAREST
-    }
-  );
+  render_data.blank_texture = assets.set(Texture{
+    Image{blank_texture_data, blank_texture_dimensions},
+    WrapOption::REPEAT,
+    WrapOption::REPEAT,
+    FilterOption::NEAREST,
+    FilterOption::NEAREST
+  });
 
   assets.bind_render_data(render_data);
 }

@@ -35,7 +35,7 @@ set(clang_flags_common
   -Wno-documentation-unknown-command -Wno-reserved-macro-identifier
   -Wno-gnu-anonymous-struct -Wno-nested-anon-types
   -Wno-reserved-identifier -Wno-missing-field-initializers
-  -Wno-c2y-extensions
+  -Wno-c2y-extensions -Wno-missing-braces
 )
 set(clang_flags_debug
   -g3 -O0
@@ -45,8 +45,12 @@ set(clang_flags_release
 )
 
 set(compiler_clang "$<CXX_COMPILER_ID:Clang>")
+set(compiler_gcc "$<CXX_COMPILER_ID:GNU>")
+set(compiler_msvc "$<CXX_COMPILER_ID:MSVC>")
 set(compiler_definitions
   "$<${compiler_clang}:COMPILER_CLANG>"
+  "$<${compiler_gcc}:COMPILER_GCC>"
+  "$<${compiler_msvc}:COMPILER_MSVC>"
 )
 
 set(os_linux "$<PLATFORM_ID:Linux>")
@@ -83,7 +87,6 @@ include(vendor/vendor.cmake)
 add_library(base STATIC
   src/base/base.h
   src/base/math.h src/base/math.cpp
-  src/base/enum_array.h
   src/base/spsc_queue.h
 )
 target_compile_options(base PRIVATE ${flags})

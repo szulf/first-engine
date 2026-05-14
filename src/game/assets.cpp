@@ -192,7 +192,7 @@ void Shader::set(std::string_view name, const vec3& value)
 
 void Shader::set(std::string_view name, const mat4& value)
 {
-  glUniformMatrix4fv(glGetUniformLocation(m_id, name.data()), 1, false, value.data[0].data());
+  glUniformMatrix4fv(glGetUniformLocation(m_id, name.data()), 1, false, value.data[0]);
 }
 
 void Shader::set(std::string_view name, TextureHandle handle)
@@ -769,15 +769,13 @@ MeshHandle AssetManager::load_obj(const std::filesystem::path& path)
     }
   }
 
-  return set(
-    Mesh{
-      std::move(ctx.vertices),
-      std::move(ctx.indices),
-      std::move(ctx.submeshes),
-      RenderPrimitive::TRIANGLES,
-      *m_render_data
-    }
-  );
+  return set(Mesh{
+    std::move(ctx.vertices),
+    std::move(ctx.indices),
+    std::move(ctx.submeshes),
+    RenderPrimitive::TRIANGLES,
+    *m_render_data
+  });
 }
 
 TextureHandle AssetManager::load_texture(const std::filesystem::path& path)

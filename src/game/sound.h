@@ -5,18 +5,16 @@
 #include <filesystem>
 
 #include "base/base.h"
-#include "base/enum_array.h"
 #include "base/spsc_queue.h"
 
 #include "os/os.h"
 
-enum class SoundHandle
+enum SoundHandle
 {
-  SINE,
-  SHOTGUN,
-  TEST_MUSIC,
-
-  COUNT,
+  SOUND_HANDLE_SINE,
+  SOUND_HANDLE_SHOTGUN,
+  SOUND_HANDLE_TEST_MUSIC,
+  SOUND_HANDLE_COUNT,
 };
 
 // NOTE: assumes 48'000 sample rate, 2 channels and i16 encoding
@@ -28,11 +26,11 @@ struct SoundData
 
 SoundData load_wav(const std::filesystem::path& path);
 
-enum class SoundCmdType
+enum SoundCmdType
 {
-  PLAY_ONCE,
-  START_LOOP,
-  END_LOOP,
+  SOUND_CMD_PLAY_ONCE,
+  SOUND_CMD_START_LOOP,
+  SOUND_CMD_END_LOOP,
 };
 
 struct SoundCmd
@@ -77,7 +75,7 @@ private:
   os::Audio& m_audio;
 
   SPSCQueue<SoundCmd> m_cmds{1024};
-  EnumArray<SoundHandle, SoundData> m_sound_data{};
+  SoundData m_sound_data[SOUND_HANDLE_COUNT]{};
   std::vector<SoundSource> m_active_sources{};
 
   static constexpr u32 FRAMES = 512;

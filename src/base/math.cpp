@@ -18,232 +18,232 @@ f32 radians(f32 deg)
   return deg * 0.01745329251994329576923690768489f;
 }
 
-vec2 vec2::operator-() const
+vec2 operator-(const vec2& v)
 {
-  return {-x, -y};
+  return {-v.x, -v.y};
 }
 
-vec2 vec2::operator+(const vec2& other) const
+vec2 operator+(const vec2& a, const vec2& b)
 {
-  return {x + other.x, y + other.y};
+  return {a.x + b.x, a.y + b.y};
 }
 
-vec2 vec2::operator-(const vec2& other) const
+vec2 operator-(const vec2& a, const vec2& b)
 {
-  return {x - other.x, y - other.y};
+  return {a.x - b.x, a.y - b.y};
 }
 
-vec2 vec2::operator*(f32 scalar) const
+vec2 operator*(const vec2& v, f32 scalar)
 {
-  return {x * scalar, y * scalar};
+  return {v.x * scalar, v.y * scalar};
 }
 
-vec2 vec2::operator*(const vec2& other) const
+vec2 operator*(f32 scalar, const vec2& v)
 {
-  return {x * other.x, y * other.y};
+  return {v.x * scalar, v.y * scalar};
 }
 
-vec2 vec2::operator/(f32 scalar) const
+vec2 operator*(const vec2& a, const vec2& b)
 {
-  return {x / scalar, y / scalar};
+  return {a.x * b.x, a.y * b.y};
 }
 
-vec2 vec2::operator/(const vec2& other) const
+vec2 operator/(const vec2& v, f32 scalar)
 {
-  return {x / other.x, y / other.y};
+  return {v.x / scalar, v.y / scalar};
 }
 
-vec2& vec2::operator+=(const vec2& other)
+vec2 operator/(const vec2& a, const vec2& b)
 {
-  x += other.x;
-  y += other.y;
-  return *this;
+  return {a.x / b.x, a.y / b.y};
 }
 
-vec2& vec2::operator-=(const vec2& other)
+vec2& operator+=(vec2& a, const vec2& b)
 {
-  x -= other.x;
-  y -= other.y;
-  return *this;
+  a.x += b.x;
+  a.y += b.y;
+  return a;
 }
 
-vec2& vec2::operator*=(f32 scalar)
+vec2& operator-=(vec2& a, const vec2& b)
 {
-  x *= scalar;
-  y *= scalar;
-  return *this;
+  a.x -= b.x;
+  a.y -= b.y;
+  return a;
 }
 
-vec2& vec2::operator*=(const vec2& other)
+vec2& operator*=(vec2& v, f32 scalar)
 {
-  x *= other.x;
-  y *= other.y;
-  return *this;
+  v.x += scalar;
+  v.y += scalar;
+  return v;
 }
 
-vec2& vec2::operator/=(f32 scalar)
+vec2& operator*=(vec2& a, const vec2& b)
 {
-  x /= scalar;
-  y /= scalar;
-  return *this;
+  a.x *= b.x;
+  a.y *= b.y;
+  return a;
 }
 
-bool vec2::operator==(const vec2& other) const
+vec2& operator/=(vec2& v, f32 scalar)
 {
-  return f32_equal(x, other.x) && f32_equal(y, other.y);
+  v.x /= scalar;
+  v.y /= scalar;
+  return v;
 }
 
-bool vec2::operator!=(const vec2& other) const
+bool operator==(const vec2& a, const vec2& b)
 {
-  return !(*this == other);
+  return f32_equal(a.x, b.x) && f32_equal(a.y, b.y);
 }
 
-vec2 operator*(f32 scalar, const vec2& vec)
+bool operator!=(const vec2& a, const vec2& b)
 {
-  return vec * scalar;
+  return !(a == b);
 }
 
-uvec2 uvec2::operator+(const uvec2& other) const
+uvec2 operator+(const uvec2& a, const uvec2& b)
 {
-  return {x + other.x, y + other.y};
+  return {a.x + b.x, a.y + b.y};
 }
 
-uvec2 uvec2::operator-(const uvec2& other) const
+uvec2 operator-(const uvec2& a, const uvec2& b)
 {
-  return {x - other.x, y - other.y};
+  return {a.x - b.x, a.y - b.y};
 }
 
-uvec2& uvec2::operator+=(u32 scalar)
+uvec2& operator+=(uvec2& v, u32 scalar)
 {
-  x += scalar;
-  y += scalar;
-  return *this;
+  v.x += scalar;
+  v.y += scalar;
+  return v;
 }
 
-uvec2& uvec2::operator+=(const uvec2& other)
+uvec2& operator+=(uvec2& a, const uvec2& b)
 {
-  x += other.x;
-  y += other.y;
-  return *this;
+  a.x += b.x;
+  a.y += b.y;
+  return a;
 }
 
-uvec2& uvec2::operator-=(u32 scalar)
+uvec2& operator-=(uvec2& v, u32 scalar)
 {
-  x -= scalar;
-  y -= scalar;
-  return *this;
+  v.x -= scalar;
+  v.y -= scalar;
+  return v;
 }
 
-uvec2& uvec2::operator-=(const uvec2& other)
+uvec2& operator-=(uvec2& a, const uvec2& b)
 {
-  x -= other.x;
-  y -= other.y;
-  return *this;
+  a.x -= b.x;
+  a.y -= b.y;
+  return a;
 }
 
-f32 vec3::length() const
+vec3 operator-(const vec3& v)
 {
-  return std::hypot(x, y, z);
+  return {-v.x, -v.y, -v.z};
 }
 
-f32 vec3::length2() const
+vec3 operator+(const vec3& a, const vec3& b)
 {
-  return (x * x) + (y * y) + (z * z);
+  return {a.x + b.x, a.y + b.y, a.z + b.z};
 }
 
-vec3 vec3::normalize() const
+vec3 operator-(const vec3& a, const vec3& b)
 {
-  auto len = length();
+  return {a.x - b.x, a.y - b.y, a.z - b.z};
+}
+
+vec3 operator*(const vec3& v, f32 scalar)
+{
+  return {v.x * scalar, v.y * scalar, v.z * scalar};
+}
+
+vec3 operator*(f32 scalar, const vec3& v)
+{
+  return {v.x * scalar, v.y * scalar, v.z * scalar};
+}
+
+vec3 operator*(const vec3& a, const vec3& b)
+{
+  return {a.x * b.x, a.y * b.y, a.z * b.z};
+}
+
+vec3 operator/(const vec3& v, f32 scalar)
+{
+  return {v.x / scalar, v.y / scalar, v.z / scalar};
+}
+
+vec3& operator+=(vec3& a, const vec3& b)
+{
+  a.x += b.x;
+  a.y += b.y;
+  a.z += b.z;
+  return a;
+}
+
+vec3& operator-=(vec3& a, const vec3& b)
+{
+  a.x -= b.x;
+  a.y -= b.y;
+  a.z -= b.z;
+  return a;
+}
+
+vec3& operator*=(vec3& v, f32 scalar)
+{
+  v.x *= scalar;
+  v.y *= scalar;
+  v.z *= scalar;
+  return v;
+}
+
+vec3& operator*=(vec3& a, const vec3& b)
+{
+  a.x *= b.x;
+  a.y *= b.y;
+  a.z *= b.z;
+  return a;
+}
+
+vec3& operator/=(vec3& v, f32 scalar)
+{
+  v.x /= scalar;
+  v.y /= scalar;
+  v.z /= scalar;
+  return v;
+}
+
+bool operator==(const vec3& a, const vec3& b)
+{
+  return f32_equal(a.x, b.x) && f32_equal(a.y, b.y) && f32_equal(a.z, b.z);
+}
+
+bool operator!=(const vec3& a, const vec3& b)
+{
+  return !(a == b);
+}
+
+f32 length(const vec3& v)
+{
+  return std::hypot(v.x, v.y, v.z);
+}
+
+f32 length2(const vec3& v)
+{
+  return (v.x * v.x) + (v.y * v.y) + (v.z * v.z);
+}
+
+vec3 normalize(const vec3& v)
+{
+  auto len = length(v);
   if (f32_equal(len, 0))
   {
     return {};
   }
-  return {x / len, y / len, z / len};
-}
-
-vec3 vec3::operator-() const
-{
-  return {-x, -y, -z};
-}
-
-vec3 vec3::operator+(const vec3& other) const
-{
-  return {x + other.x, y + other.y, z + other.z};
-}
-
-vec3 vec3::operator-(const vec3& other) const
-{
-  return {x - other.x, y - other.y, z - other.z};
-}
-
-vec3 vec3::operator*(f32 scalar) const
-{
-  return {x * scalar, y * scalar, z * scalar};
-}
-
-vec3 vec3::operator*(const vec3& other) const
-{
-  return {x * other.x, y * other.y, z * other.z};
-}
-
-vec3 vec3::operator/(f32 scalar) const
-{
-  return {x / scalar, y / scalar, z / scalar};
-}
-
-vec3& vec3::operator+=(const vec3& other)
-{
-  x += other.x;
-  y += other.y;
-  z += other.z;
-  return *this;
-}
-
-vec3& vec3::operator-=(const vec3& other)
-{
-  x -= other.x;
-  y -= other.y;
-  z -= other.z;
-  return *this;
-}
-
-vec3& vec3::operator*=(f32 scalar)
-{
-  x *= scalar;
-  y *= scalar;
-  z *= scalar;
-  return *this;
-}
-
-vec3& vec3::operator*=(const vec3& other)
-{
-  x *= other.x;
-  y *= other.y;
-  z *= other.z;
-  return *this;
-}
-
-vec3& vec3::operator/=(f32 scalar)
-{
-  x /= scalar;
-  y /= scalar;
-  z /= scalar;
-  return *this;
-}
-
-bool vec3::operator==(const vec3& other) const
-{
-  return f32_equal(x, other.x) && f32_equal(y, other.y) && f32_equal(z, other.z);
-}
-
-bool vec3::operator!=(const vec3& other) const
-{
-  return !(*this == other);
-}
-
-vec3 operator*(f32 scalar, const vec3& vec)
-{
-  return vec * scalar;
+  return {v.x / len, v.y / len, v.z / len};
 }
 
 vec3 abs(const vec3& vec)
@@ -265,32 +265,31 @@ vec3 cross(const vec3& va, const vec3& vb)
   };
 }
 
-vec4 vec4::operator*(const vec4& other) const
+vec4 operator*(const vec4& a, const vec4& b)
 {
-  return {x * other.x, y * other.y, z * other.z, w * other.w};
+  return {a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w};
 }
 
-vec4& vec4::operator*=(const vec4& other)
+vec4& operator*=(vec4& a, const vec4& b)
 {
-  x *= other.x;
-  y *= other.y;
-  z *= other.z;
-  w *= other.w;
-  return *this;
+  a.x *= b.x;
+  a.y *= b.y;
+  a.z *= b.z;
+  a.w *= b.w;
+  return a;
 }
 
-bool vec4::operator==(const vec4& other) const
+bool operator==(const vec4& a, const vec4& b)
 {
-  return f32_equal(x, other.x) && f32_equal(y, other.y) && f32_equal(z, other.z) &&
-         f32_equal(w, other.w);
+  return f32_equal(a.x, b.x) && f32_equal(a.y, b.y) && f32_equal(a.z, b.z) && f32_equal(a.w, b.w);
 }
 
-bool vec4::operator!=(const vec4& other) const
+bool operator!=(const vec4& a, const vec4& b)
 {
-  return !(*this == other);
+  return !(a == b);
 }
 
-mat4 mat4::operator*(const mat4& other) const
+mat4 operator*(const mat4& a, const mat4& b)
 {
   mat4 out = {};
   for (usize i = 0; i < 4; ++i)
@@ -299,24 +298,29 @@ mat4 mat4::operator*(const mat4& other) const
     {
       for (usize k = 0; k < 4; ++k)
       {
-        out.data[j][i] += data[k][i] * other.data[j][k];
+        out.data[j][i] += a.data[k][i] * b.data[j][k];
       }
     }
   }
   return out;
 }
 
-vec4 mat4::operator*(const vec4& vec) const
+vec4 operator*(const mat4& m, const vec4& v)
 {
   vec4 out = {};
   for (usize i = 0; i < 4; ++i)
   {
     for (usize j = 0; j < 4; ++j)
     {
-      out[i] += data[i][j] * vec[j];
+      out.data[i] += m.data[i][j] * v.data[j];
     }
   }
   return out;
+}
+
+mat4 unit_matrix()
+{
+  return {{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}}};
 }
 
 mat4 perspective(f32 fov, f32 aspect, f32 near, f32 far, bool vertical)
@@ -360,8 +364,8 @@ mat4 orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far)
 
 mat4 look_at(const vec3& pos, const vec3& target, const vec3& up)
 {
-  vec3 f = (target - pos).normalize();
-  vec3 s = cross(f, up).normalize();
+  vec3 f = normalize(target - pos);
+  vec3 s = normalize(cross(f, up));
   vec3 u = cross(s, f);
 
   mat4 out = {};
@@ -434,7 +438,7 @@ mat4 rotate(mat4 mat, f32 rad, const vec3& axis)
   f32 s = std::sin(rad);
   f32 c = std::cos(rad);
   f32 t = 1.0f - c;
-  vec3 u = axis.normalize();
+  vec3 u = normalize(axis);
 
   mat.data[0][0] = (u.x * u.x) * t + c;
   mat.data[0][1] = (u.x * u.y) * t - u.z * s;
@@ -454,13 +458,13 @@ void hash_fnv1(usize& out, const void* data, usize n)
 {
   if (out == 0)
   {
-    out = constants<u64>::FNV_OFFSET;
+    out = FNV_OFFSET;
   }
   const u8* bytes = (const u8*) data;
   for (usize i = 0; i < n; ++i)
   {
     out ^= bytes[i];
-    out *= constants<u64>::FNV_PRIME;
+    out *= FNV_PRIME;
   }
 }
 

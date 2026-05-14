@@ -8,7 +8,6 @@
 
 #include "base/base.h"
 #include "base/math.h"
-#include "base/enum_array.h"
 
 namespace os
 {
@@ -16,50 +15,49 @@ namespace os
 void init();
 void shutdown();
 
-enum class Key
+enum Key
 {
-  A,
-  B,
-  C,
-  D,
-  E,
-  F,
-  G,
-  H,
-  I,
-  J,
-  K,
-  L,
-  M,
-  N,
-  O,
-  P,
-  Q,
-  R,
-  S,
-  T,
-  U,
-  V,
-  W,
-  X,
-  Y,
-  Z,
-  F1,
-  F2,
-  F3,
-  F4,
-  F5,
-  F6,
-  F7,
-  F8,
-  F9,
-  F10,
-  F11,
-  F12,
-  SPACE,
-  LSHIFT,
-
-  COUNT
+  KEY_A,
+  KEY_B,
+  KEY_C,
+  KEY_D,
+  KEY_E,
+  KEY_F,
+  KEY_G,
+  KEY_H,
+  KEY_I,
+  KEY_J,
+  KEY_K,
+  KEY_L,
+  KEY_M,
+  KEY_N,
+  KEY_O,
+  KEY_P,
+  KEY_Q,
+  KEY_R,
+  KEY_S,
+  KEY_T,
+  KEY_U,
+  KEY_V,
+  KEY_W,
+  KEY_X,
+  KEY_Y,
+  KEY_Z,
+  KEY_F1,
+  KEY_F2,
+  KEY_F3,
+  KEY_F4,
+  KEY_F5,
+  KEY_F6,
+  KEY_F7,
+  KEY_F8,
+  KEY_F9,
+  KEY_F10,
+  KEY_F11,
+  KEY_F12,
+  KEY_SPACE,
+  KEY_LSHIFT,
+  KEY_COUNT,
 };
 
 std::expected<std::string_view, std::string_view> key_to_string(Key key);
@@ -85,7 +83,7 @@ struct Input
     return keys[key];
   }
 
-  EnumArray<Key, KeyState> keys;
+  KeyState keys[KEY_COUNT];
   KeyState lmb;
   KeyState rmb;
 
