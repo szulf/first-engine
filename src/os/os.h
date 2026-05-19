@@ -78,7 +78,6 @@ struct OS_Input
   OS_KeyState keys[OS_KEY_COUNT];
   OS_KeyState lmb;
   OS_KeyState rmb;
-
   i32 mouse_scroll;
   vec2 mouse_pos;
   vec2 mouse_delta;
@@ -99,7 +98,6 @@ struct OS_Window
 std::expected<OS_Window, std::string_view>
 os_window_open(std::string_view name, const uvec2& dimensions);
 void os_window_close(OS_Window& window);
-
 void os_window_update(OS_Window& window);
 void os_window_swap_buffers(OS_Window& window);
 void os_window_center_mouse_pointer(OS_Window& window);
@@ -112,8 +110,7 @@ struct OS_Audio
 
 std::expected<OS_Audio, std::string_view>
 os_audio_init(u32 sample_rate = 48000, u32 channels = 2, u32 bit_count = 16);
-void os_audio_uninit(OS_Audio& audio);
-
+void os_audio_deinit(OS_Audio& audio);
 u32 os_audio_get_queued(const OS_Audio& audio);
 void os_audio_push(OS_Audio& audio, std::span<i16> buffer);
 

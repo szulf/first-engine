@@ -7,6 +7,7 @@
 #include "base/base.h"
 #include "camera.h"
 #include "assets.h"
+#include "sound.h"
 #include "os/os.h"
 #include "renderer.h"
 #include "entity.h"
@@ -53,11 +54,11 @@ Keymap load_gkey(const std::filesystem::path& path)
     {
       continue;
     }
-    parser::Pos pos{.line = line};
+    Parser_Pos pos{.line = line};
 
-    auto action = parser::word(pos);
-    parser::expect_and_skip(pos, ':');
-    auto key_str = parser::word(pos);
+    auto action = parser_word(pos);
+    parser_expect_and_skip(pos, ':');
+    auto key_str = parser_word(pos);
     auto key = os_string_to_key(key_str);
     ASSERT(key, "Invalid key string. ({})", key.error());
     for (usize i = 0; i < ACTION_COUNT; ++i)
@@ -73,97 +74,120 @@ Keymap load_gkey(const std::filesystem::path& path)
   return keymap;
 }
 
-Game::Game(OS_Window& window, OS_Audio& audio)
-  : m_window{window}, m_sound_system{audio}, m_keymap{load_gkey("data/keymap.gkey")},
-    m_gameplay_camera{CameraDescription{
-      .type = CameraType::PERSPECTIVE,
-      .pos = {0, 12, 8},
-      .yaw = -90,
-      .pitch = -55,
-      .using_vertical_fov = true,
-      .fov = 0.25f * std::numbers::pi_v<f32>,
-      .near_plane = 0.1f,
-      .far_plane = 1000.0f,
-      .viewport = m_window.dimensions,
-    }},
-    m_debug_camera{m_gameplay_camera}, m_main_camera{&m_gameplay_camera}
+GameData game_init(OS_Window& window, OS_Audio& audio)
 {
-  render::init();
-  scene = load_scene("data/main.gscn");
+  GameData game{};
+  game.window = &window;
+  game.sound_system = sound_system_init(audio);
+  sound_system_start(game.sound_system);
+  game.keymap = load_gkey("data/keymap.gkey");
+  game.gameplay_camera = {
+    .type = CAMERA_TYPE_PERSPECTIVE,
+    .pos = {0, 12, 8},
+    .prev_pos = {0, 12, 8},
+    .rendered_pos = {0, 12, 8},
+    .yaw = -90,
+    .pitch = -55,
+    .fov_type = FOV_TYPE_VERTICAL,
+    .fov = 0.25f * std::numbers::pi_v<f32>,
+    .near_plane = 0.1f,
+    .far_plane = 1000.0f,
+    .viewport = window.dimensions,
+  };
+  camera_update_vectors(game.gameplay_camera);
+  game.debug_camera = game.gameplay_camera;
+  game.used_camera = &game.gameplay_camera;
+  render_init();
+  {
+    auto scene = scene_from_file("data/main.gscn");
+    ASSERT(scene, "Failed to load scene {}", scene.error());
+    game.scene = *scene;
+  }
   // m_sound_system.play_looped(SoundHandle::TEST_MUSIC, 0.1f);
-  shadow_map = AssetManager::instance().set(Texture{TextureType::CUBEMAP, SHADOW_MAP_DIMENSIONS});
-  shadow_depth_shader = AssetManager::instance().set(
-    Shader{"shaders/shadow_depth.vert", "shaders/shadow_depth.frag", "shaders/shadow_depth.geom"}
-  );
-  render::create_framebuffer(shadow_map);
+  game.shadow_map = asset_set(g_assets, texture_init(TEXTURE_CUBEMAP, SHADOW_MAP_DIMENSIONS));
+  {
+    auto shader = shader_from_file(
+      "shaders/shadow_depth.vert",
+      "shaders/shadow_depth.frag",
+      "shaders/shadow_depth.geom"
+    );
+    ASSERT(shader, "Failed to create shadow map shader {}", shader.error());
+    game.shadow_depth_shader = asset_set(g_assets, *shader);
+  }
+  render_create_framebuffer(game.shadow_map);
   // TODO: load this with FilterOption::NEAREST
-  font_texture = AssetManager::instance().load_texture("assets/font.png");
+  game.font_texture = load_texture(g_assets, "assets/font.png");
+  return game;
 }
 
-void Game::update_tick(f32 dt)
+void game_deinit(GameData& game)
 {
-  m_gameplay_camera.update_viewport(m_window.dimensions);
-  m_debug_camera.update_viewport(m_window.dimensions);
+  sound_system_deinit(game.sound_system);
+}
 
-  if (os_key_just_pressed(action_key(ACTION_TOGGLE_DEBUG_MENU)))
+void game_update_tick(GameData& game, f32 dt)
+{
+  game.gameplay_camera.viewport = game.debug_camera.viewport = game.window->dimensions;
+
+  if (os_key_just_pressed(key_state_from_action(ACTION_TOGGLE_DEBUG_MENU, game)))
   {
-    debug_menu_shown = !debug_menu_shown;
-    debug_menu_drag = false;
+    game.debug.menu.shown = !game.debug.menu.shown;
+    game.debug.menu.drag = false;
   }
-  if (os_key_just_pressed(action_key(ACTION_TOGGLE_CAMERA_MODE)))
+  if (os_key_just_pressed(key_state_from_action(ACTION_TOGGLE_CAMERA_MODE, game)))
   {
-    m_camera_mode = !m_camera_mode;
+    game.debug.noclip = !game.debug.noclip;
   }
 
   vec3 acceleration = {};
-  if (action_key(ACTION_MOVE_FRONT).down)
+  if (key_state_from_action(ACTION_MOVE_FRONT, game).down)
   {
     acceleration.z += -1.0f;
   }
-  if (action_key(ACTION_MOVE_BACK).down)
+  if (key_state_from_action(ACTION_MOVE_BACK, game).down)
   {
     acceleration.z += 1.0f;
   }
-  if (action_key(ACTION_MOVE_LEFT).down)
+  if (key_state_from_action(ACTION_MOVE_LEFT, game).down)
   {
     acceleration.x += -1.0f;
   }
-  if (action_key(ACTION_MOVE_RIGHT).down)
+  if (key_state_from_action(ACTION_MOVE_RIGHT, game).down)
   {
     acceleration.x += 1.0f;
   }
   acceleration = normalize(acceleration);
 
-  if (m_camera_mode)
+  if (game.debug.noclip)
   {
-    m_main_camera = &m_debug_camera;
+    game.used_camera = &game.debug_camera;
     os_hide_mouse_pointer();
-    os_window_center_mouse_pointer(m_window);
+    os_window_center_mouse_pointer(*game.window);
 
-    if (action_key(ACTION_CAMERA_MOVE_UP).down)
+    if (key_state_from_action(ACTION_CAMERA_MOVE_UP, game).down)
     {
       acceleration.y += 1.0f;
     }
-    if (action_key(ACTION_CAMERA_MOVE_DOWN).down)
+    if (key_state_from_action(ACTION_CAMERA_MOVE_DOWN, game).down)
     {
       acceleration.y += -1.0f;
     }
 
-    auto forward = cross(Camera::WORLD_UP, m_debug_camera.right());
-    m_debug_camera.move(acceleration, forward, dt);
+    auto forward = cross(CAMERA_WORLD_UP, game.debug_camera.right);
+    camera_move(game.debug_camera, acceleration, forward, dt);
   }
   else
   {
-    m_main_camera = &m_gameplay_camera;
+    game.used_camera = &game.gameplay_camera;
     os_show_mouse_pointer();
 
-    for (usize i = 0; i < scene.entities.size(); ++i)
+    for (usize i = 0; i < game.scene.entities.size(); ++i)
     {
-      auto& entity = scene.entities[i];
+      auto& entity = game.scene.entities[i];
       entity.prev_pos = entity.pos;
       entity.prev_rotation = entity.rotation;
 
-      if (entity.controlled_by_player())
+      if (entity.flags & ENTITY_CONTROLLED_BY_PLAYER)
       {
         // NOTE: rotation
         {
@@ -199,10 +223,11 @@ void Game::update_tick(f32 dt)
 
           vec3 collision_normal = {};
           bool collided = false;
-          for (usize collidable_idx = 0; collidable_idx < scene.entities.size(); ++collidable_idx)
+          for (usize collidable_idx = 0; collidable_idx < game.scene.entities.size();
+               ++collidable_idx)
           {
-            auto& c = scene.entities[collidable_idx];
-            if (&c == &entity || !c.collidable() || c.pos.y != 0.0f)
+            auto& c = game.scene.entities[collidable_idx];
+            if (&c == &entity || !(c.flags & ENTITY_COLLIDABLE) || !f32_equal(c.pos.y, 0))
             {
               continue;
             }
@@ -268,18 +293,18 @@ void Game::update_tick(f32 dt)
           if (collided)
           {
             entity.velocity -= dot(entity.velocity, collision_normal) * collision_normal;
-            m_sound_system.play_once(SOUND_HANDLE_SINE, 0.1f);
+            sound_play_once(game.sound_system, SOUND_HANDLE_SINE, 0.1f);
           }
         }
 
         // NOTE: interactions
-        if (os_key_just_pressed(action_key(ACTION_INTERACT)))
+        if (os_key_just_pressed(key_state_from_action(ACTION_INTERACT, game)))
         {
-          for (usize interactable_idx = 0; interactable_idx < scene.entities.size();
+          for (usize interactable_idx = 0; interactable_idx < game.scene.entities.size();
                ++interactable_idx)
           {
-            auto& interactable = scene.entities[interactable_idx];
-            if (!interactable.interactable())
+            auto& interactable = game.scene.entities[interactable_idx];
+            if (!(interactable.flags & ENTITY_TOGGLEABLE))
             {
               continue;
             }
@@ -292,11 +317,11 @@ void Game::update_tick(f32 dt)
             {
               // TODO: this is light bulb specific behaviour, how do i work with other
               // interactables?
-              interactable.flags ^= Entity::EMITS_LIGHT;
+              interactable.flags ^= ENTITY_EMITS_LIGHT;
               interactable.tint =
-                interactable.emits_light() ? LIGHT_BULB_ON_TINT : LIGHT_BULB_OFF_TINT;
-              m_sound_system.play_once(SOUND_HANDLE_SHOTGUN, 0.1f);
-              m_sound_system.stop_looped(SOUND_HANDLE_TEST_MUSIC);
+                interactable.flags & ENTITY_EMITS_LIGHT ? LIGHT_BULB_ON_TINT : LIGHT_BULB_OFF_TINT;
+              sound_play_once(game.sound_system, SOUND_HANDLE_SHOTGUN, 0.1f);
+              sound_stop_looped(game.sound_system, SOUND_HANDLE_TEST_MUSIC);
             }
           }
         }
@@ -305,44 +330,44 @@ void Game::update_tick(f32 dt)
   }
 
   // NOTE: ui
-  ui_system_update(ui_system);
-  if (debug_menu_shown)
+  ui_system_update(game.ui_system);
+  if (game.debug.menu.shown)
   {
-    auto layout = ui_begin_layout(
+    auto layout = ui_layout_begin(
       "debug menu",
-      ui_system,
-      m_window.input,
-      debug_menu_pos,
+      game.ui_system,
+      game.window->input,
+      game.debug.menu.pos,
       {1280, 720},
       CHAR_SIZE,
-      font_texture
+      game.font_texture
     );
     {
-      ui_begin_element(layout, UI_AUTO_ID);
-      defer(ui_end_element(layout, {.layout_direction = UI_LayoutDirection::VERTICAL}));
+      ui_element_begin(layout, UI_AUTO_ID);
+      defer(ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL}));
 
       {
         bool titlebar_clicked = false;
-        ui_begin_element(layout, UI_AUTO_ID, {.clicked = &titlebar_clicked});
-        defer(ui_end_element(
+        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &titlebar_clicked});
+        defer(ui_element_end(
           layout,
-          {.sizing = {UI_SizingAxis::fill(), UI_SizingAxis::fit()},
-           .padding = UI_Padding::all(4),
+          {.sizing = {ui_sizing_fill(), ui_sizing_fit()},
+           .padding = ui_padding_all(4),
            .child_gap = 4,
-           .child_alignment = {.y = UI_ChildAlignmentAxis::CENTER},
+           .child_alignment = {.y = UI_CHILD_ALIGNMENT_CENTER},
            .bg_color = {0, 0, 0, 0.5f}}
         ));
 
         {
           bool collapser_clicked = false;
-          ui_begin_element(layout, UI_AUTO_ID, {.clicked = &collapser_clicked});
-          defer(ui_end_element(
+          ui_element_begin(layout, UI_AUTO_ID, {.clicked = &collapser_clicked});
+          defer(ui_element_end(
             layout,
-            {.sizing = {UI_SizingAxis::fixed(16), UI_SizingAxis::fixed(16)},
-             .child_alignment = {UI_ChildAlignmentAxis::CENTER, UI_ChildAlignmentAxis::CENTER},
+            {.sizing = {ui_sizing_fixed(16), ui_sizing_fixed(16)},
+             .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
              .bg_color = {0.5f, 0.5f, 0.5f, 1}}
           ));
-          if (debug_menu_open)
+          if (game.debug.menu.open)
           {
             ui_text(layout, "v", 1.0f);
           }
@@ -352,7 +377,7 @@ void Game::update_tick(f32 dt)
           }
           if (collapser_clicked)
           {
-            debug_menu_open = !debug_menu_open;
+            game.debug.menu.open = !game.debug.menu.open;
           }
         }
 
@@ -360,28 +385,32 @@ void Game::update_tick(f32 dt)
 
         if (titlebar_clicked)
         {
-          debug_menu_drag = true;
-          debug_menu_drag_offset = m_window.input.mouse_pos - vec2{layout.pos.x, layout.pos.y};
+          game.debug.menu.drag = true;
+          game.debug.menu.drag_offset =
+            game.window->input.mouse_pos - vec2{layout.pos.x, layout.pos.y};
         }
-        if (debug_menu_drag && m_window.input.lmb.down)
+        if (game.debug.menu.drag)
         {
-          vec2 new_pos = m_window.input.mouse_pos - debug_menu_drag_offset;
-          debug_menu_pos.x = new_pos.x;
-          debug_menu_pos.y = new_pos.y;
-        }
-        if (debug_menu_drag && !m_window.input.lmb.down)
-        {
-          debug_menu_drag = false;
+          if (game.window->input.lmb.down)
+          {
+            vec2 new_pos = game.window->input.mouse_pos - game.debug.menu.drag_offset;
+            game.debug.menu.pos.x = new_pos.x;
+            game.debug.menu.pos.y = new_pos.y;
+          }
+          else
+          {
+            game.debug.menu.drag = false;
+          }
         }
       }
 
-      if (debug_menu_open)
+      if (game.debug.menu.open)
       {
-        ui_begin_element(layout, UI_AUTO_ID);
-        defer(ui_end_element(
+        ui_element_begin(layout, UI_AUTO_ID);
+        defer(ui_element_end(
           layout,
-          {.layout_direction = UI_LayoutDirection::VERTICAL,
-           .padding = UI_Padding::all(4),
+          {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+           .padding = ui_padding_all(4),
            .child_gap = 4,
            .bg_color = {0.2f, 0.2f, 0.2f, 0.5f}}
         ));
@@ -389,16 +418,16 @@ void Game::update_tick(f32 dt)
         auto checkbox = [](UI_Layout& layout, UI_Id id, bool& value, std::string_view text)
         {
           bool checkbox_test = false;
-          ui_begin_element(layout, UI_AUTO_ID);
-          defer(ui_end_element(
+          ui_element_begin(layout, UI_AUTO_ID);
+          defer(ui_element_end(
             layout,
-            {.layout_direction = UI_LayoutDirection::HORIZONTAL, .child_gap = 4}
+            {.layout_direction = UI_LAYOUT_DIRECTION_HORIZONTAL, .child_gap = 4}
           ));
 
-          ui_begin_element(layout, id, {.clicked = &checkbox_test});
-          ui_end_element(
+          ui_element_begin(layout, id, {.clicked = &checkbox_test});
+          ui_element_end(
             layout,
-            {.sizing = {UI_SizingAxis::fixed(16), UI_SizingAxis::fixed(16)},
+            {.sizing = {ui_sizing_fixed(16), ui_sizing_fixed(16)},
              .bg_color = value ? vec4{1, 1, 1, 1} : vec4{0.4f, 0.4f, 0.4f, 1},
              .corner_radius = 0.5f}
           );
@@ -408,28 +437,27 @@ void Game::update_tick(f32 dt)
           }
           ui_text(layout, text, 1.0f);
         };
-        checkbox(layout, UI_AUTO_ID, m_display_bounding_boxes, "display bounding boxes");
-        checkbox(layout, UI_AUTO_ID, m_camera_mode, "debug camera (F2)");
+        checkbox(layout, UI_AUTO_ID, game.debug.display_bounding_boxes, "display bounding boxes");
+        checkbox(layout, UI_AUTO_ID, game.debug.noclip, "noclip (F2)");
       }
     }
-    ui_end_layout(layout);
+    ui_layout_end(layout);
   }
 }
 
-void Game::update_frame(f32 alpha)
+void game_update_frame(GameData& game, f32 alpha)
 {
-  if (m_camera_mode)
+  if (game.debug.noclip)
   {
-    vec2 offset = m_window.input.mouse_delta * Camera::SENSITIVITY;
-    m_debug_camera.look_around(offset);
-
-    m_debug_camera.update(alpha);
+    vec2 offset = game.window->input.mouse_delta * CAMERA_SENSITIVITY;
+    camera_look_around(game.debug_camera, offset);
+    camera_update(game.debug_camera, alpha);
   }
   else
   {
-    for (usize i = 0; i < scene.entities.size(); ++i)
+    for (usize i = 0; i < game.scene.entities.size(); ++i)
     {
-      auto& entity = scene.entities[i];
+      auto& entity = game.scene.entities[i];
       entity.rendered_pos = entity.pos * alpha + entity.prev_pos * (1.0f - alpha);
       vec2 prev_rot_vec = {-std::sin(entity.prev_rotation), std::cos(entity.prev_rotation)};
       vec2 rot_vec = {-std::sin(entity.rotation), std::cos(entity.rotation)};
@@ -439,16 +467,16 @@ void Game::update_frame(f32 alpha)
   }
 }
 
-void Game::render()
+void game_render(GameData& game)
 {
   // NOTE: shadow map pass
   Camera shadow_map_camera{};
   {
     vec3 pos = {};
-    for (usize i = 0; i < scene.entities.size(); ++i)
+    for (usize i = 0; i < game.scene.entities.size(); ++i)
     {
-      auto& entity = scene.entities[i];
-      if (entity.emits_light())
+      auto& entity = game.scene.entities[i];
+      if (entity.flags & ENTITY_EMITS_LIGHT)
       {
         pos = entity.pos;
         pos.y += entity.light_height_offset;
@@ -456,107 +484,128 @@ void Game::render()
       }
     }
 
-    shadow_map_camera = Camera{
-      {.pos = pos,
-       .yaw = std::numbers::pi_v<f32>,
-       .using_vertical_fov = false,
-       .fov = std::numbers::pi_v<f32> * 0.5f,
-       .near_plane = 0.1f,
-       .far_plane = 25.0f,
-       .viewport = SHADOW_MAP_DIMENSIONS}
+    shadow_map_camera = {
+      .type = CAMERA_TYPE_PERSPECTIVE,
+      .pos = pos,
+      .prev_pos = pos,
+      .rendered_pos = pos,
+      .yaw = std::numbers::pi_v<f32>,
+      .fov_type = FOV_TYPE_VERTICAL,
+      .fov = 0.5f * std::numbers::pi_v<f32>,
+      .near_plane = 0.1f,
+      .far_plane = 25.0f,
+      .viewport = SHADOW_MAP_DIMENSIONS,
     };
+    camera_update_vectors(shadow_map_camera);
+
     auto& c = shadow_map_camera;
-    mat4 light_proj_mat = c.projection();
+    mat4 light_proj_mat = camera_projection(c);
     std::array<mat4, 6> transforms = {
-      light_proj_mat * look_at(c.pos(), c.pos() + vec3{1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
-      light_proj_mat * look_at(c.pos(), c.pos() + vec3{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
-      light_proj_mat * look_at(c.pos(), c.pos() + vec3{0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}),
-      light_proj_mat * look_at(c.pos(), c.pos() + vec3{0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}),
-      light_proj_mat * look_at(c.pos(), c.pos() + vec3{0.0f, 0.0f, 1.0f}, {0.0f, -1.0f, 0.0f}),
-      light_proj_mat * look_at(c.pos(), c.pos() + vec3{0.0f, 0.0f, -1.0f}, {0.0f, -1.0f, 0.0f}),
+      light_proj_mat * look_at(c.pos, c.pos + vec3{1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
+      light_proj_mat * look_at(c.pos, c.pos + vec3{-1.0f, 0.0f, 0.0f}, {0.0f, -1.0f, 0.0f}),
+      light_proj_mat * look_at(c.pos, c.pos + vec3{0.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 1.0f}),
+      light_proj_mat * look_at(c.pos, c.pos + vec3{0.0f, -1.0f, 0.0f}, {0.0f, 0.0f, -1.0f}),
+      light_proj_mat * look_at(c.pos, c.pos + vec3{0.0f, 0.0f, 1.0f}, {0.0f, -1.0f, 0.0f}),
+      light_proj_mat * look_at(c.pos, c.pos + vec3{0.0f, 0.0f, -1.0f}, {0.0f, -1.0f, 0.0f}),
     };
 
-    render::Pass pass{shadow_map_camera};
-    pass.render_to(shadow_map);
-    pass.override_shader(shadow_depth_shader);
-    pass.on_shader_bind(
+    Render_Pass pass = {
+      .camera = &shadow_map_camera,
+    };
+    render_pass_render_to(pass, game.shadow_map);
+    render_pass_override_shader(pass, game.shadow_depth_shader);
+    render_pass_on_shader_bind(
+      pass,
       [&transforms](Shader& shader)
       {
-        shader.set("shadow_matrices[0]", transforms[0]);
-        shader.set("shadow_matrices[1]", transforms[1]);
-        shader.set("shadow_matrices[2]", transforms[2]);
-        shader.set("shadow_matrices[3]", transforms[3]);
-        shader.set("shadow_matrices[4]", transforms[4]);
-        shader.set("shadow_matrices[5]", transforms[5]);
+        shader_set(shader, "shadow_matrices[0]", transforms[0]);
+        shader_set(shader, "shadow_matrices[1]", transforms[1]);
+        shader_set(shader, "shadow_matrices[2]", transforms[2]);
+        shader_set(shader, "shadow_matrices[3]", transforms[3]);
+        shader_set(shader, "shadow_matrices[4]", transforms[4]);
+        shader_set(shader, "shadow_matrices[5]", transforms[5]);
       }
     );
 
-    for (usize i = 0; i < scene.entities.size(); ++i)
+    for (usize i = 0; i < game.scene.entities.size(); ++i)
     {
-      auto& entity = scene.entities[i];
-      if (entity.controlled_by_player() && entity.renderable())
+      auto& entity = game.scene.entities[i];
+      if (entity.flags & ENTITY_CONTROLLED_BY_PLAYER && entity.flags & ENTITY_VISIBLE)
       {
-        pass.append(render::mesh(entity.mesh, entity.rendered_pos, entity.rendered_rotation));
+        render_pass_append(
+          pass,
+          render_mesh(entity.mesh, entity.rendered_pos, entity.rendered_rotation)
+        );
       }
     }
 
-    pass.finish();
+    render_pass_finish(pass);
   }
 
   // NOTE: main draw pass
   {
-    render::Pass pass{*m_main_camera, scene.ambient_color};
-    pass.on_shader_bind(
+    Render_Pass pass = {
+      .camera = game.used_camera,
+      .ambient_color = game.scene.ambient_color,
+    };
+    render_pass_on_shader_bind(
+      pass,
       [&](Shader& shader)
       {
-        shader.set("shadow_map", shadow_map);
-        shader.set("shadow_map_camera_far_plane", shadow_map_camera.far_plane());
+        shader_set(shader, "shadow_map", game.shadow_map);
+        shader_set(shader, "shadow_map_camera_far_plane", shadow_map_camera.far_plane);
       }
     );
 
-    for (usize i = 0; i < scene.entities.size(); ++i)
+    for (usize i = 0; i < game.scene.entities.size(); ++i)
     {
-      const auto& entity = scene.entities[i];
-      if (entity.renderable())
+      const auto& entity = game.scene.entities[i];
+      if (entity.flags & ENTITY_VISIBLE)
       {
-        pass.append(
-          render::mesh(entity.mesh, entity.rendered_pos, entity.rendered_rotation, entity.tint)
+        render_pass_append(
+          pass,
+          render_mesh(entity.mesh, entity.rendered_pos, entity.rendered_rotation, entity.tint)
         );
       }
-      if (entity.emits_light())
+      if (entity.flags & ENTITY_EMITS_LIGHT)
       {
         vec3 pos = entity.rendered_pos;
         pos.y += entity.light_height_offset;
-        pass.set_light(pos, entity.light_color);
+        render_pass_set_light(pass, pos, entity.light_color);
       }
 
-      if (m_display_bounding_boxes)
+      if (game.debug.display_bounding_boxes)
       {
-        if (entity.controlled_by_player())
+        if (entity.flags & ENTITY_CONTROLLED_BY_PLAYER)
         {
-          pass.append(
-            render::line(entity.rendered_pos, 0.6f, entity.rendered_rotation, {1.0f, 0.0f, 0.0f})
+          render_pass_append(
+            pass,
+            render_line(entity.rendered_pos, 0.6f, entity.rendered_rotation, {1.0f, 0.0f, 0.0f})
           );
         }
-        if (entity.collidable() && f32_equal(entity.pos.y, 0.0f))
+        if (entity.flags & ENTITY_COLLIDABLE && f32_equal(entity.pos.y, 0.0f))
         {
-          pass.append(render::cube_wires(
-            entity.rendered_pos,
-            {entity.bounding_box.x, 1.0f, entity.bounding_box.y},
-            {0.0f, 1.0f, 0.0f}
-          ));
+          render_pass_append(
+            pass,
+            render_cube_wires(
+              entity.rendered_pos,
+              {entity.bounding_box.x, 1.0f, entity.bounding_box.y},
+              {0.0f, 1.0f, 0.0f}
+            )
+          );
         }
-        if (entity.interactable())
+        if (entity.flags & ENTITY_TOGGLEABLE)
         {
-          pass.append(
-            render::ring(entity.rendered_pos, entity.interactable_radius, {1.0f, 1.0f, 0.0f})
+          render_pass_append(
+            pass,
+            render_ring(entity.rendered_pos, entity.interactable_radius, {1.0f, 1.0f, 0.0f})
           );
         }
       }
     }
 
-    pass.append(ui_system.render_cmds);
+    render_pass_append(pass, game.ui_system.render_cmds);
 
-    pass.finish();
+    render_pass_finish(pass);
   }
 }

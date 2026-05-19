@@ -13,7 +13,7 @@ void ui_system_update(UI_System& system)
   system.render_cmds.clear();
 }
 
-UI_Layout ui_begin_layout(
+UI_Layout ui_layout_begin(
   UI_Id id,
   UI_System& system,
   const OS_Input& input,
@@ -27,46 +27,46 @@ UI_Layout ui_begin_layout(
   ++system.next_auto_id;
   UI_Layout layout = {
     .id = id_internal,
-    .system = system,
-    .input = input,
+    .system = &system,
+    .input = &input,
     .pos = pos,
     .max_dimensions = max_dimensions,
     .char_size = char_size,
     .font_texture = font_texture,
   };
-  ui_begin_element(layout, nullptr, {});
+  ui_element_begin(layout, nullptr, {});
   return layout;
 }
 
-enum class UI_Axis
+enum UI_Axis
 {
-  X,
-  Y,
+  UI_AXIS_X,
+  UI_AXIS_Y,
 };
 
 constexpr static std::array<UI_LayoutDirection, 2> layout_direction_from_axis = []()
 {
   std::array<UI_LayoutDirection, 2> t{};
-  t[(usize) UI_Axis::X] = UI_LayoutDirection::HORIZONTAL;
-  t[(usize) UI_Axis::Y] = UI_LayoutDirection::VERTICAL;
+  t[(usize) UI_AXIS_X] = UI_LAYOUT_DIRECTION_HORIZONTAL;
+  t[(usize) UI_AXIS_Y] = UI_LAYOUT_DIRECTION_VERTICAL;
   return t;
 }();
 
 constexpr static std::array<UI_Axis, 2> axis_from_layout_direction = []()
 {
   std::array<UI_Axis, 2> t{};
-  t[(usize) UI_LayoutDirection::HORIZONTAL] = UI_Axis::X;
-  t[(usize) UI_LayoutDirection::VERTICAL] = UI_Axis::Y;
+  t[(usize) UI_LAYOUT_DIRECTION_HORIZONTAL] = UI_AXIS_X;
+  t[(usize) UI_LAYOUT_DIRECTION_VERTICAL] = UI_AXIS_Y;
   return t;
 }();
 
 static UI_SizingAxis& ui_sizing_from_axis(UI_ElementConfigNormal& config, UI_Axis axis)
 {
-  if (axis == UI_Axis::X)
+  if (axis == UI_AXIS_X)
   {
     return config.sizing.width;
   }
-  else if (axis == UI_Axis::Y)
+  else if (axis == UI_AXIS_Y)
   {
     return config.sizing.height;
   }
@@ -75,11 +75,11 @@ static UI_SizingAxis& ui_sizing_from_axis(UI_ElementConfigNormal& config, UI_Axi
 
 static f32& ui_dimension_from_axis(UI_Element& elem, UI_Axis axis)
 {
-  if (axis == UI_Axis::X)
+  if (axis == UI_AXIS_X)
   {
     return elem.dimensions.x;
   }
-  else if (axis == UI_Axis::Y)
+  else if (axis == UI_AXIS_Y)
   {
     return elem.dimensions.y;
   }
@@ -88,11 +88,11 @@ static f32& ui_dimension_from_axis(UI_Element& elem, UI_Axis axis)
 
 static f32 ui_total_padding_from_axis(UI_ElementConfigNormal& config, UI_Axis axis)
 {
-  if (axis == UI_Axis::X)
+  if (axis == UI_AXIS_X)
   {
     return config.padding.left + config.padding.right;
   }
-  else if (axis == UI_Axis::Y)
+  else if (axis == UI_AXIS_Y)
   {
     return config.padding.top + config.padding.down;
   }
@@ -106,11 +106,11 @@ static void ui_calculate_fit_fixed_sizing_axis(UI_Layout& layout, UI_ElementIdx 
   auto& sizing = ui_sizing_from_axis(config, axis);
   switch (sizing.type)
   {
-    case UI_SizingType::FIXED:
+    case UI_SIZING_FIXED:
       ui_dimension_from_axis(elem, axis) = sizing.fixed_px;
       break;
-    case UI_SizingType::FIT:
-    case UI_SizingType::FILL:
+    case UI_SIZING_FIT:
+    case UI_SIZING_FILL:
       for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
            child_idx = layout.elements[child_idx].next_sibling)
       {
@@ -148,10 +148,10 @@ static void ui_calculate_text_fit_fixed_sizing(UI_Layout& layout, UI_ElementIdx 
 
   switch (elem.config.type)
   {
-    case UI_ElementType::NORMAL:
+    case UI_ELEMENT_NORMAL:
     {
-      ui_calculate_fit_fixed_sizing_axis(layout, idx, UI_Axis::X);
-      ui_calculate_fit_fixed_sizing_axis(layout, idx, UI_Axis::Y);
+      ui_calculate_fit_fixed_sizing_axis(layout, idx, UI_AXIS_X);
+      ui_calculate_fit_fixed_sizing_axis(layout, idx, UI_AXIS_Y);
       auto& config = elem.config.normal;
       if (has_children)
       {
@@ -161,7 +161,7 @@ static void ui_calculate_text_fit_fixed_sizing(UI_Layout& layout, UI_ElementIdx 
     }
     break;
 
-    case UI_ElementType::TEXT:
+    case UI_ELEMENT_TEXT:
     {
       auto& config = elem.config.text;
       elem.dimensions =
@@ -184,7 +184,7 @@ static void ui_calculate_fill_sizing_axis(UI_Layout& layout, UI_ElementIdx idx, 
          child_idx = layout.elements[child_idx].next_sibling)
     {
       auto& child = layout.elements[child_idx];
-      if (ui_sizing_from_axis(child.config.normal, axis).type == UI_SizingType::FILL)
+      if (ui_sizing_from_axis(child.config.normal, axis).type == UI_SIZING_FILL)
       {
         ++fill_child_count;
       }
@@ -200,15 +200,15 @@ static void ui_calculate_fill_sizing_axis(UI_Layout& layout, UI_ElementIdx idx, 
        child_idx = layout.elements[child_idx].next_sibling)
   {
     auto& child = layout.elements[child_idx];
-    if (child.config.type == UI_ElementType::TEXT)
+    if (child.config.type == UI_ELEMENT_TEXT)
     {
       continue;
     }
-    if (ui_sizing_from_axis(child.config.normal, axis).type == UI_SizingType::FILL)
+    if (ui_sizing_from_axis(child.config.normal, axis).type == UI_SIZING_FILL)
     {
       if (config.layout_direction == layout_direction_from_axis[(usize) axis])
       {
-        if (ui_sizing_from_axis(config, axis).type != UI_SizingType::FIT)
+        if (ui_sizing_from_axis(config, axis).type != UI_SIZING_FIT)
         {
           ui_dimension_from_axis(child, axis) = available_space / (f32) fill_child_count;
         }
@@ -224,12 +224,12 @@ static void ui_calculate_fill_sizing_axis(UI_Layout& layout, UI_ElementIdx idx, 
 static void ui_calculate_fill_sizing(UI_Layout& layout, UI_ElementIdx idx = 0)
 {
   auto& elem = layout.elements[idx];
-  if (elem.config.type == UI_ElementType::TEXT)
+  if (elem.config.type == UI_ELEMENT_TEXT)
   {
     return;
   }
-  ui_calculate_fill_sizing_axis(layout, idx, UI_Axis::X);
-  ui_calculate_fill_sizing_axis(layout, idx, UI_Axis::Y);
+  ui_calculate_fill_sizing_axis(layout, idx, UI_AXIS_X);
+  ui_calculate_fill_sizing_axis(layout, idx, UI_AXIS_Y);
   for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
        child_idx = layout.elements[child_idx].next_sibling)
   {
@@ -240,11 +240,11 @@ static void ui_calculate_fill_sizing(UI_Layout& layout, UI_ElementIdx idx = 0)
 static UI_ChildAlignmentAxis
 ui_child_alignment_from_axis(const UI_ElementConfigNormal& config, UI_Axis axis)
 {
-  if (axis == UI_Axis::X)
+  if (axis == UI_AXIS_X)
   {
     return config.child_alignment.x;
   }
-  else if (axis == UI_Axis::Y)
+  else if (axis == UI_AXIS_Y)
   {
     return config.child_alignment.y;
   }
@@ -253,11 +253,11 @@ ui_child_alignment_from_axis(const UI_ElementConfigNormal& config, UI_Axis axis)
 
 static f32& ui_pos_from_axis(UI_Element& elem, UI_Axis axis)
 {
-  if (axis == UI_Axis::X)
+  if (axis == UI_AXIS_X)
   {
     return elem.pos.x;
   }
-  else if (axis == UI_Axis::Y)
+  else if (axis == UI_AXIS_Y)
   {
     return elem.pos.y;
   }
@@ -266,11 +266,11 @@ static f32& ui_pos_from_axis(UI_Element& elem, UI_Axis axis)
 
 static f32 ui_start_padding_from_axis(UI_ElementConfigNormal& config, UI_Axis axis)
 {
-  if (axis == UI_Axis::X)
+  if (axis == UI_AXIS_X)
   {
     return config.padding.left;
   }
-  else if (axis == UI_Axis::Y)
+  else if (axis == UI_AXIS_Y)
   {
     return config.padding.top;
   }
@@ -279,11 +279,11 @@ static f32 ui_start_padding_from_axis(UI_ElementConfigNormal& config, UI_Axis ax
 
 static f32 ui_end_padding_from_axis(UI_ElementConfigNormal& config, UI_Axis axis)
 {
-  if (axis == UI_Axis::X)
+  if (axis == UI_AXIS_X)
   {
     return config.padding.right;
   }
-  else if (axis == UI_Axis::Y)
+  else if (axis == UI_AXIS_Y)
   {
     return config.padding.down;
   }
@@ -305,17 +305,17 @@ static void ui_calculate_position_axis(
   {
     switch (ui_child_alignment_from_axis(config, axis))
     {
-      case UI_ChildAlignmentAxis::START:
+      case UI_CHILD_ALIGNMENT_START:
         ui_pos_from_axis(child, axis) =
           ui_pos_from_axis(elem, axis) + ui_start_padding_from_axis(config, axis) + used_space;
         used_space += ui_dimension_from_axis(child, axis) + config.child_gap;
         break;
-      case UI_ChildAlignmentAxis::CENTER:
+      case UI_CHILD_ALIGNMENT_CENTER:
         ui_pos_from_axis(child, axis) =
           ui_pos_from_axis(elem, axis) + ui_start_padding_from_axis(config, axis) + used_space;
         used_space += ui_dimension_from_axis(child, axis) + config.child_gap;
         break;
-      case UI_ChildAlignmentAxis::END:
+      case UI_CHILD_ALIGNMENT_END:
         ui_pos_from_axis(child, axis) =
           ui_pos_from_axis(elem, axis) + ui_dimension_from_axis(elem, axis) -
           ui_end_padding_from_axis(config, axis) - ui_dimension_from_axis(child, axis) - used_space;
@@ -327,17 +327,17 @@ static void ui_calculate_position_axis(
   {
     switch (ui_child_alignment_from_axis(config, axis))
     {
-      case UI_ChildAlignmentAxis::START:
+      case UI_CHILD_ALIGNMENT_START:
         ui_pos_from_axis(child, axis) =
           ui_pos_from_axis(elem, axis) + ui_start_padding_from_axis(config, axis);
         break;
-      case UI_ChildAlignmentAxis::CENTER:
+      case UI_CHILD_ALIGNMENT_CENTER:
         ui_pos_from_axis(child, axis) =
           (ui_pos_from_axis(elem, axis) + ui_start_padding_from_axis(config, axis)) +
           ((ui_dimension_from_axis(elem, axis) - ui_total_padding_from_axis(config, axis)) * 0.5f) -
           (ui_dimension_from_axis(child, axis) * 0.5f);
         break;
-      case UI_ChildAlignmentAxis::END:
+      case UI_CHILD_ALIGNMENT_END:
         ui_pos_from_axis(child, axis) =
           ui_pos_from_axis(elem, axis) + ui_dimension_from_axis(elem, axis) -
           ui_end_padding_from_axis(config, axis) - ui_dimension_from_axis(child, axis);
@@ -352,7 +352,7 @@ ui_adjust_centered_position(UI_Layout& layout, UI_ElementIdx idx, f32 used_space
   auto& elem = layout.elements[idx];
   auto& config = elem.config.normal;
   if (config.layout_direction == layout_direction_from_axis[(usize) axis] &&
-      ui_child_alignment_from_axis(config, axis) == UI_ChildAlignmentAxis::CENTER)
+      ui_child_alignment_from_axis(config, axis) == UI_CHILD_ALIGNMENT_CENTER)
   {
     f32 adjust_value = (ui_dimension_from_axis(elem, axis) - used_space) * 0.5f;
     for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
@@ -371,7 +371,7 @@ static void ui_calculate_positions(UI_Layout& layout, UI_ElementIdx idx = 0)
   {
     elem.pos = {layout.pos.x, layout.pos.y};
   }
-  if (elem.config.type == UI_ElementType::TEXT)
+  if (elem.config.type == UI_ELEMENT_TEXT)
   {
     return;
   }
@@ -381,15 +381,15 @@ static void ui_calculate_positions(UI_Layout& layout, UI_ElementIdx idx = 0)
        child_idx = layout.elements[child_idx].next_sibling)
   {
     auto& child = layout.elements[child_idx];
-    ui_calculate_position_axis(layout, idx, child_idx, used_space, UI_Axis::X);
-    ui_calculate_position_axis(layout, idx, child_idx, used_space, UI_Axis::Y);
+    ui_calculate_position_axis(layout, idx, child_idx, used_space, UI_AXIS_X);
+    ui_calculate_position_axis(layout, idx, child_idx, used_space, UI_AXIS_Y);
     if (config.scroll_value)
     {
       child.pos.y += (f32) *config.scroll_value * SCROLL_SENSITIVITY;
     }
   }
-  ui_adjust_centered_position(layout, idx, used_space, UI_Axis::X);
-  ui_adjust_centered_position(layout, idx, used_space, UI_Axis::Y);
+  ui_adjust_centered_position(layout, idx, used_space, UI_AXIS_X);
+  ui_adjust_centered_position(layout, idx, used_space, UI_AXIS_Y);
   for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
        child_idx = layout.elements[child_idx].next_sibling)
   {
@@ -416,7 +416,7 @@ static void ui_calculate_scroll_value(UI_Layout& layout, UI_ElementIdx idx)
   f32 max_height{};
   switch (config.layout_direction)
   {
-    case UI_LayoutDirection::HORIZONTAL:
+    case UI_LAYOUT_DIRECTION_HORIZONTAL:
     {
       for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
            child_idx = layout.elements[child_idx].next_sibling)
@@ -427,7 +427,7 @@ static void ui_calculate_scroll_value(UI_Layout& layout, UI_ElementIdx idx)
       }
     }
     break;
-    case UI_LayoutDirection::VERTICAL:
+    case UI_LAYOUT_DIRECTION_VERTICAL:
     {
       for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
            child_idx = layout.elements[child_idx].next_sibling)
@@ -441,7 +441,7 @@ static void ui_calculate_scroll_value(UI_Layout& layout, UI_ElementIdx idx)
     break;
   }
 
-  *config.scroll_value += layout.input.mouse_scroll;
+  *config.scroll_value += layout.input->mouse_scroll;
   *config.scroll_value =
     std::clamp(*config.scroll_value, (i32) -std::floor(max_height / SCROLL_SENSITIVITY), 0);
 }
@@ -451,12 +451,12 @@ static void ui_handle_scroll(UI_Layout& layout)
   for (i32 idx = (i32) layout.elements.size() - 1; idx >= 0; --idx)
   {
     auto& elem = layout.elements[(usize) idx];
-    if (elem.config.type != UI_ElementType::NORMAL)
+    if (elem.config.type != UI_ELEMENT_NORMAL)
     {
       continue;
     }
     auto& config = elem.config.normal;
-    if (ui_intersects(layout.input.mouse_pos, elem.pos, elem.dimensions))
+    if (ui_intersects(layout.input->mouse_pos, elem.pos, elem.dimensions))
     {
       if (config.scroll_value)
       {
@@ -511,18 +511,18 @@ static void ui_generate_render_cmds(UI_Layout& layout, UI_ElementIdx idx = 0)
       ui_intersection_rectangle({elem.pos, elem.dimensions}, elem.clip_rectangle);
     switch (child.config.type)
     {
-      case UI_ElementType::NORMAL:
+      case UI_ELEMENT_NORMAL:
       {
         auto& config = child.config.normal;
         // TODO: this is not really render cmd generation, not sure if it belongs here
-        layout.system.last_frame_data[layout.id].id_map.insert_or_assign(child.id, child_idx);
+        layout.system->last_frame_data[layout.id].id_map.insert_or_assign(child.id, child_idx);
         if (config.texture)
         {
           // TODO: this is not really the ideal solution,
           // what if someone really wants to render a fully transparent texture?
           // (good enough for now tho)
           auto bg = config.bg_color != vec4{} ? config.bg_color : vec4{1, 1, 1, 1};
-          layout.system.render_cmds.push_back(render::texture(
+          layout.system->render_cmds.push_back(render_texture(
             *config.texture,
             {child.pos.x, child.pos.y, layout._z},
             child.dimensions,
@@ -533,7 +533,7 @@ static void ui_generate_render_cmds(UI_Layout& layout, UI_ElementIdx idx = 0)
         }
         else
         {
-          layout.system.render_cmds.push_back(render::quad(
+          layout.system->render_cmds.push_back(render_quad(
             {child.pos.x, child.pos.y, layout._z},
             child.dimensions,
             {.corner_radius = config.corner_radius,
@@ -543,7 +543,7 @@ static void ui_generate_render_cmds(UI_Layout& layout, UI_ElementIdx idx = 0)
         }
       }
       break;
-      case UI_ElementType::TEXT:
+      case UI_ELEMENT_TEXT:
       {
         auto& config = child.config.text;
         for (usize i = 0; i < config.text.size(); ++i)
@@ -573,7 +573,7 @@ static void ui_generate_render_cmds(UI_Layout& layout, UI_ElementIdx idx = 0)
           {
             ASSERT(false, "Unsupported character '{}' found in drawing", config.text[i]);
           }
-          layout.system.render_cmds.push_back(render::texture_part(
+          layout.system->render_cmds.push_back(render_texture_part(
             layout.font_texture,
             {child.pos.x + ((f32) i * layout.char_size.x * config.size), child.pos.y, layout._z},
             layout.char_size * config.size,
@@ -592,21 +592,21 @@ static void ui_generate_render_cmds(UI_Layout& layout, UI_ElementIdx idx = 0)
   }
 }
 
-void ui_end_layout(UI_Layout& layout)
+void ui_layout_end(UI_Layout& layout)
 {
-  ui_end_element(
+  ui_element_end(
     layout,
     {.sizing =
-       {UI_SizingAxis::fixed((u16) layout.max_dimensions.x),
-        UI_SizingAxis::fixed((u16) layout.max_dimensions.y)}}
+       {ui_sizing_fixed((u16) layout.max_dimensions.x),
+        ui_sizing_fixed((u16) layout.max_dimensions.y)}}
   );
   ui_calculate_text_fit_fixed_sizing(layout);
   ui_calculate_fill_sizing(layout);
   ui_calculate_positions(layout);
   ui_handle_scroll(layout);
-  layout.system.last_frame_data[layout.id].id_map.clear();
+  layout.system->last_frame_data[layout.id].id_map.clear();
   ui_generate_render_cmds(layout);
-  layout.system.last_frame_data[layout.id].elements = layout.elements;
+  layout.system->last_frame_data[layout.id].elements = layout.elements;
 }
 
 // TODO: i hate this, but currently i dont have a clue what could be better
@@ -628,33 +628,33 @@ static void set_first_child_or_next_sibling(UI_Layout& layout)
   }
 }
 
-void ui_begin_element(UI_Layout& layout, UI_Id id, const UI_StateOptions& state_options)
+void ui_element_begin(UI_Layout& layout, UI_Id id, const UI_StateOptions& state_options)
 {
   UI_IdInternal id_internal =
     id ? std::hash<UI_Id>{}(id) : std::hash<UI_ElementIdx>{}(layout.elements.size());
-  if (layout.system.last_frame_data[layout.id].id_map.contains(id_internal))
+  if (layout.system->last_frame_data[layout.id].id_map.contains(id_internal))
   {
-    auto& idx = layout.system.last_frame_data[layout.id].id_map[id_internal];
-    auto& elem = layout.system.last_frame_data[layout.id].elements[idx];
+    auto& idx = layout.system->last_frame_data[layout.id].id_map[id_internal];
+    auto& elem = layout.system->last_frame_data[layout.id].elements[idx];
     Rectangle interaction_rect =
       ui_intersection_rectangle({elem.pos, elem.dimensions}, elem.clip_rectangle);
     bool hovered =
-      ui_intersects(layout.input.mouse_pos, interaction_rect.pos, interaction_rect.dimensions);
+      ui_intersects(layout.input->mouse_pos, interaction_rect.pos, interaction_rect.dimensions);
     bool nothing_on_top = true;
     if (hovered)
     {
       for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
-           child_idx = layout.system.last_frame_data[layout.id].elements[child_idx].next_sibling)
+           child_idx = layout.system->last_frame_data[layout.id].elements[child_idx].next_sibling)
       {
-        auto& child = layout.system.last_frame_data[layout.id].elements[child_idx];
-        if (child.config.type != UI_ElementType::NORMAL)
+        auto& child = layout.system->last_frame_data[layout.id].elements[child_idx];
+        if (child.config.type != UI_ELEMENT_NORMAL)
         {
           continue;
         }
         auto child_interaction_rect =
           ui_intersection_rectangle({child.pos, child.dimensions}, child.clip_rectangle);
         if (ui_intersects(
-              layout.input.mouse_pos,
+              layout.input->mouse_pos,
               child_interaction_rect.pos,
               child_interaction_rect.dimensions
             ))
@@ -671,23 +671,23 @@ void ui_begin_element(UI_Layout& layout, UI_Id id, const UI_StateOptions& state_
       }
       if (state_options.clicked)
       {
-        *state_options.clicked = hovered && os_key_just_pressed(layout.input.lmb);
+        *state_options.clicked = hovered && os_key_just_pressed(layout.input->lmb);
       }
     }
   }
   layout.elements.push_back({
     .id = id_internal,
     .parent = layout._active_parent,
-    .config = {.type = UI_ElementType::NORMAL},
+    .config = {.type = UI_ELEMENT_NORMAL},
   });
   set_first_child_or_next_sibling(layout);
   layout._active_parent = layout.elements.size() - 1;
 }
 
-void ui_end_element(UI_Layout& layout, const UI_ElementConfigNormal& config)
+void ui_element_end(UI_Layout& layout, const UI_ElementConfigNormal& config)
 {
   auto& elem = layout.elements[layout._active_parent];
-  ASSERT(elem.config.type == UI_ElementType::NORMAL, "Cannot close a not normal element");
+  ASSERT(elem.config.type == UI_ELEMENT_NORMAL, "Cannot close a not normal element");
   elem.config.normal = config;
   layout._active_parent = layout.elements[layout._active_parent].parent;
 }
@@ -696,7 +696,7 @@ void ui_text(UI_Layout& layout, std::string_view text, f32 size)
 {
   layout.elements.push_back({
     .parent = layout._active_parent,
-    .config = {.type = UI_ElementType::TEXT, .text = {.text = text, .size = size}},
+    .config = {.type = UI_ELEMENT_TEXT, .text = {.text = text, .size = size}},
   });
   set_first_child_or_next_sibling(layout);
 }

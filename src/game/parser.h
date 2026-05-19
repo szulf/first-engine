@@ -4,31 +4,25 @@
 
 #include <string_view>
 
-namespace parser
-{
-
-struct Pos
+struct Parser_Pos
 {
   std::string_view line;
   usize pos;
-
-  char curr_char()
-  {
-    return line[pos];
-  }
-
-  bool size_ok()
-  {
-    return line.size() > pos;
-  }
 };
 
-void skip_whitespace(Pos& pos);
-void expect_and_skip(Pos& pos, char c);
+void parser_skip_whitespace(Parser_Pos& pos);
+void parser_expect_and_skip(Parser_Pos& pos, char c);
+std::string_view parser_word(Parser_Pos& pos);
+f32 parser_number_f32(Parser_Pos& pos);
+u32 parser_number_u32(Parser_Pos& pos);
+bool parser_boolean(Parser_Pos& pos);
 
-std::string_view word(Pos& pos);
-f32 number_f32(Pos& pos);
-u32 number_u32(Pos& pos);
-bool boolean(Pos& pos);
+inline char parser_curr_char(Parser_Pos& pos)
+{
+  return pos.line[pos.pos];
+}
 
+inline bool parser_size_ok(Parser_Pos& pos)
+{
+  return pos.pos < pos.line.size();
 }

@@ -9,37 +9,39 @@
 // NOTE: possibly im doing way too many iterations over the whole data set
 // so if ever performance becomes an issue i could look at that
 
-enum class UI_LayoutDirection
+enum UI_LayoutDirection
 {
-  HORIZONTAL,
-  VERTICAL,
+  UI_LAYOUT_DIRECTION_HORIZONTAL,
+  UI_LAYOUT_DIRECTION_VERTICAL,
 };
 
-enum class UI_SizingType
+enum UI_SizingType
 {
-  FIT,
-  FILL,
-  FIXED,
+  UI_SIZING_FIT,
+  UI_SIZING_FILL,
+  UI_SIZING_FIXED,
 };
 
 struct UI_SizingAxis
 {
   UI_SizingType type{};
   u16 fixed_px{};
-
-  static UI_SizingAxis fit()
-  {
-    return {.type = UI_SizingType::FIT};
-  }
-  static UI_SizingAxis fill()
-  {
-    return {.type = UI_SizingType::FILL};
-  }
-  static UI_SizingAxis fixed(u16 px)
-  {
-    return {.type = UI_SizingType::FIXED, .fixed_px = px};
-  }
 };
+
+inline UI_SizingAxis ui_sizing_fit()
+{
+  return {.type = UI_SIZING_FIT};
+}
+
+inline UI_SizingAxis ui_sizing_fill()
+{
+  return {.type = UI_SIZING_FILL};
+}
+
+inline UI_SizingAxis ui_sizing_fixed(u16 px)
+{
+  return {.type = UI_SIZING_FIXED, .fixed_px = px};
+}
 
 struct UI_Sizing
 {
@@ -49,28 +51,28 @@ struct UI_Sizing
 
 struct UI_Padding
 {
-  u16 top;
-  u16 down;
-  u16 left;
-  u16 right;
-
-  static UI_Padding all(u16 value)
-  {
-    return {value, value, value, value};
-  }
+  u16 top{};
+  u16 down{};
+  u16 left{};
+  u16 right{};
 };
 
-enum class UI_ChildAlignmentAxis
+inline UI_Padding ui_padding_all(u16 value)
 {
-  START,
-  CENTER,
-  END,
+  return {value, value, value, value};
+}
+
+enum UI_ChildAlignmentAxis
+{
+  UI_CHILD_ALIGNMENT_START,
+  UI_CHILD_ALIGNMENT_CENTER,
+  UI_CHILD_ALIGNMENT_END,
 };
 
 struct UI_ChildAlignment
 {
-  UI_ChildAlignmentAxis x;
-  UI_ChildAlignmentAxis y;
+  UI_ChildAlignmentAxis x{};
+  UI_ChildAlignmentAxis y{};
 };
 
 #define SCROLL_SENSITIVITY 50
@@ -89,10 +91,10 @@ struct UI_ElementConfigNormal
   i32* scroll_value{};
 };
 
-enum class UI_ElementType
+enum UI_ElementType
 {
-  NORMAL,
-  TEXT,
+  UI_ELEMENT_NORMAL,
+  UI_ELEMENT_TEXT,
 };
 
 struct UI_ElementConfig
@@ -100,7 +102,7 @@ struct UI_ElementConfig
   UI_ElementType type{};
   union
   {
-    UI_ElementConfigNormal normal;
+    UI_ElementConfigNormal normal{};
     struct
     {
       std::string_view text{};
@@ -135,13 +137,13 @@ struct UI_Element
 
 struct UI_System
 {
-  std::vector<render::Cmd2D> render_cmds{};
+  std::vector<Render_Cmd2D> render_cmds{};
   struct LastFrameData
   {
     std::unordered_map<UI_IdInternal, UI_ElementIdx> id_map{};
     std::vector<UI_Element> elements{};
   };
-  usize next_auto_id{1};
+  usize next_auto_id = 1;
   std::unordered_map<UI_IdInternal, LastFrameData> last_frame_data{};
 };
 
@@ -151,8 +153,8 @@ void ui_system_update(UI_System& system);
 struct UI_Layout
 {
   UI_IdInternal id{};
-  UI_System& system;
-  const OS_Input& input;
+  UI_System* system;
+  const OS_Input* input;
   std::vector<UI_Element> elements{};
   vec3 pos{};
   vec2 max_dimensions{};
@@ -166,7 +168,7 @@ struct UI_Layout
 };
 
 // TODO: sometimes i dont want to pass max_dimensions
-UI_Layout ui_begin_layout(
+UI_Layout ui_layout_begin(
   UI_Id id,
   UI_System& system,
   const OS_Input& input,
@@ -175,10 +177,10 @@ UI_Layout ui_begin_layout(
   const vec2& char_size,
   TextureHandle font_texture
 );
-void ui_end_layout(UI_Layout& layout);
+void ui_layout_end(UI_Layout& layout);
 
 #define UI_AUTO_ID nullptr
-void ui_begin_element(UI_Layout& layout, UI_Id id, const UI_StateOptions& state_options = {});
-void ui_end_element(UI_Layout& layout, const UI_ElementConfigNormal& config = {});
+void ui_element_begin(UI_Layout& layout, UI_Id id, const UI_StateOptions& state_options = {});
+void ui_element_end(UI_Layout& layout, const UI_ElementConfigNormal& config = {});
 
 void ui_text(UI_Layout& layout, std::string_view text, f32 size);

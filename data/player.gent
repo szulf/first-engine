@@ -5,5 +5,5 @@ controlled_by_player : true
 collidable : true
 dynamically_calculated_bounding_box : true
 
-renderable: true
+visible: true
 mesh : assets/bean.obj

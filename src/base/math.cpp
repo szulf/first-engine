@@ -141,6 +141,45 @@ uvec2& operator-=(uvec2& a, const uvec2& b)
   return a;
 }
 
+f32 length(const vec3& v)
+{
+  return std::hypot(v.x, v.y, v.z);
+}
+
+f32 length2(const vec3& v)
+{
+  return (v.x * v.x) + (v.y * v.y) + (v.z * v.z);
+}
+
+vec3 normalize(const vec3& v)
+{
+  auto len = length(v);
+  if (f32_equal(len, 0))
+  {
+    return {};
+  }
+  return {v.x / len, v.y / len, v.z / len};
+}
+
+vec3 abs(const vec3& vec)
+{
+  return {std::abs(vec.x), std::abs(vec.y), std::abs(vec.z)};
+}
+
+f32 dot(const vec3& va, const vec3& vb)
+{
+  return va.x * vb.x + va.y * vb.y + va.z * vb.z;
+}
+
+vec3 cross(const vec3& va, const vec3& vb)
+{
+  return {
+    (va.y * vb.z) - (va.z * vb.y),
+    (va.z * vb.x) - (va.x * vb.z),
+    (va.x * vb.y) - (va.y * vb.x),
+  };
+}
+
 vec3 operator-(const vec3& v)
 {
   return {-v.x, -v.y, -v.z};
@@ -226,45 +265,6 @@ bool operator!=(const vec3& a, const vec3& b)
   return !(a == b);
 }
 
-f32 length(const vec3& v)
-{
-  return std::hypot(v.x, v.y, v.z);
-}
-
-f32 length2(const vec3& v)
-{
-  return (v.x * v.x) + (v.y * v.y) + (v.z * v.z);
-}
-
-vec3 normalize(const vec3& v)
-{
-  auto len = length(v);
-  if (f32_equal(len, 0))
-  {
-    return {};
-  }
-  return {v.x / len, v.y / len, v.z / len};
-}
-
-vec3 abs(const vec3& vec)
-{
-  return {std::abs(vec.x), std::abs(vec.y), std::abs(vec.z)};
-}
-
-f32 dot(const vec3& va, const vec3& vb)
-{
-  return va.x * vb.x + va.y * vb.y + va.z * vb.z;
-}
-
-vec3 cross(const vec3& va, const vec3& vb)
-{
-  return {
-    (va.y * vb.z) - (va.z * vb.y),
-    (va.z * vb.x) - (va.x * vb.z),
-    (va.x * vb.y) - (va.y * vb.x),
-  };
-}
-
 vec4 operator*(const vec4& a, const vec4& b)
 {
   return {a.x * b.x, a.y * b.y, a.z * b.z, a.w * b.w};
@@ -287,35 +287,6 @@ bool operator==(const vec4& a, const vec4& b)
 bool operator!=(const vec4& a, const vec4& b)
 {
   return !(a == b);
-}
-
-mat4 operator*(const mat4& a, const mat4& b)
-{
-  mat4 out = {};
-  for (usize i = 0; i < 4; ++i)
-  {
-    for (usize j = 0; j < 4; ++j)
-    {
-      for (usize k = 0; k < 4; ++k)
-      {
-        out.data[j][i] += a.data[k][i] * b.data[j][k];
-      }
-    }
-  }
-  return out;
-}
-
-vec4 operator*(const mat4& m, const vec4& v)
-{
-  vec4 out = {};
-  for (usize i = 0; i < 4; ++i)
-  {
-    for (usize j = 0; j < 4; ++j)
-    {
-      out.data[i] += m.data[i][j] * v.data[j];
-    }
-  }
-  return out;
 }
 
 mat4 unit_matrix()
@@ -452,6 +423,35 @@ mat4 rotate(mat4 mat, f32 rad, const vec3& axis)
   mat.data[2][1] = (u.y * u.z) * t + u.x * s;
   mat.data[2][2] = (u.z * u.z) * t + c;
   return mat;
+}
+
+mat4 operator*(const mat4& a, const mat4& b)
+{
+  mat4 out = {};
+  for (usize i = 0; i < 4; ++i)
+  {
+    for (usize j = 0; j < 4; ++j)
+    {
+      for (usize k = 0; k < 4; ++k)
+      {
+        out.data[j][i] += a.data[k][i] * b.data[j][k];
+      }
+    }
+  }
+  return out;
+}
+
+vec4 operator*(const mat4& m, const vec4& v)
+{
+  vec4 out = {};
+  for (usize i = 0; i < 4; ++i)
+  {
+    for (usize j = 0; j < 4; ++j)
+    {
+      out.data[i] += m.data[i][j] * v.data[j];
+    }
+  }
+  return out;
 }
 
 void hash_fnv1(usize& out, const void* data, usize n)

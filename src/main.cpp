@@ -22,9 +22,10 @@ i32 main()
 
   auto audio = os_audio_init();
   ASSERT(audio, "Failed to init audio");
-  defer(os_audio_uninit(*audio));
+  defer(os_audio_deinit(*audio));
 
-  Game game{*window, *audio};
+  auto game = game_init(*window, *audio);
+  defer(game_deinit(game));
 
   auto current_time = std::chrono::high_resolution_clock::now();
   std::chrono::nanoseconds accumulator{};
@@ -39,14 +40,14 @@ i32 main()
 
     while (accumulator >= DT)
     {
-      game.update_tick(DT_F32);
+      game_update_tick(game, DT_F32);
       os_input_clear(window->input);
       accumulator -= DT;
     }
 
-    game.update_frame(((f32) accumulator.count() / (f32) std::nano::den) / DT_F32);
+    game_update_frame(game, ((f32) accumulator.count() / (f32) std::nano::den) / DT_F32);
 
-    game.render();
+    game_render(game);
 
     // auto end_time = std::chrono::high_resolution_clock::now();
     // std::println(

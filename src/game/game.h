@@ -31,53 +31,52 @@ struct Keymap
   OS_Key map[ACTION_COUNT]{};
 };
 
-class Game
+#define SHADOW_MAP_DIMENSIONS uvec2{1024, 1024}
+#define CHAR_SIZE vec2{9, 16}
+
+struct GameData
 {
-public:
-  Game(OS_Window& window, OS_Audio& audio);
-  Game(const Game&) = delete;
-  Game& operator=(const Game&) = delete;
-  Game(Game&&) = delete;
-  Game& operator=(Game&&) = delete;
-
-  void update_tick(f32 dt);
-  void update_frame(f32 alpha);
-  void render();
-
-private:
-  inline constexpr OS_KeyState& action_key(Action action)
-  {
-    return m_window.input.keys[m_keymap.map[action]];
-  }
-
-private:
-  OS_Window& m_window;
-
-  static constexpr uvec2 SHADOW_MAP_DIMENSIONS = {1024, 1024};
-  TextureHandle shadow_map;
-  ShaderHandle shadow_depth_shader;
-  static constexpr vec2 CHAR_SIZE = {9, 16};
-  TextureHandle font_texture;
-
-  SoundSystem m_sound_system;
+  OS_Window* window{};
+  Sound_System sound_system;
   UI_System ui_system{};
 
-  Scene scene;
-  Keymap m_keymap{};
+  Scene scene{};
+  Keymap keymap{};
 
-  Camera m_gameplay_camera;
-  Camera m_debug_camera;
-  Camera* m_main_camera{};
+  Camera gameplay_camera{};
+  Camera debug_camera{};
+  Camera* used_camera{};
 
-  // TODO: can i somehow get rid of these flags?
-  bool debug_menu_shown{};
-  bool debug_menu_open{true};
-  bool debug_menu_drag{};
-  vec3 debug_menu_pos{100, 50, 0};
-  vec2 debug_menu_drag_offset{};
+  TextureHandle shadow_map{};
+  ShaderHandle shadow_depth_shader{};
+  TextureHandle font_texture{};
 
-  bool m_camera_mode{};
-  bool m_display_bounding_boxes{};
+  struct DebugOptions
+  {
+    struct Menu
+    {
+      bool shown{};
+      bool open = true;
+      bool drag{};
+      vec3 pos = {100, 50, 0};
+      vec2 drag_offset{};
+    };
+    Menu menu{};
+    bool noclip{};
+    bool display_bounding_boxes{};
+  };
+  DebugOptions debug{};
 };
+
+GameData game_init(OS_Window& window, OS_Audio& audio);
+void game_deinit(GameData& game);
+void game_update_tick(GameData& game, f32 dt);
+void game_update_frame(GameData& game, f32 alpha);
+void game_render(GameData& game);
+
+inline OS_KeyState key_state_from_action(Action action, GameData& game)
+{
+  return game.window->input.keys[game.keymap.map[action]];
+}
 
 #endif

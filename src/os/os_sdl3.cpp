@@ -653,7 +653,7 @@ os_audio_init(u32 sample_rate, u32 channels, u32 bit_count)
   return audio;
 }
 
-void os_audio_uninit(OS_Audio& audio)
+void os_audio_deinit(OS_Audio& audio)
 {
   SDL_DestroyAudioStream(audio.platform_data->stream);
   free(audio.platform_data);

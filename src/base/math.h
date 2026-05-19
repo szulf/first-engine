@@ -49,6 +49,12 @@ struct vec3
   f32 y{};
   f32 z{};
 };
+f32 length(const vec3& v);
+f32 length2(const vec3& v);
+vec3 normalize(const vec3& v);
+vec3 abs(const vec3& vec);
+f32 dot(const vec3& va, const vec3& vb);
+vec3 cross(const vec3& va, const vec3& vb);
 vec3 operator-(const vec3& v);
 vec3 operator+(const vec3& a, const vec3& b);
 vec3 operator-(const vec3& a, const vec3& b);
@@ -63,13 +69,6 @@ vec3& operator*=(vec3& a, const vec3& b);
 vec3& operator/=(vec3& v, f32 scalar);
 bool operator==(const vec3& a, const vec3& b);
 bool operator!=(const vec3& a, const vec3& b);
-
-f32 length(const vec3& v);
-f32 length2(const vec3& v);
-vec3 normalize(const vec3& v);
-vec3 abs(const vec3& vec);
-f32 dot(const vec3& va, const vec3& vb);
-vec3 cross(const vec3& va, const vec3& vb);
 
 union vec4
 {
@@ -92,18 +91,16 @@ struct mat4
 {
   f32 data[4][4]{};
 };
-mat4 operator*(const mat4& a, const mat4& b);
-vec4 operator*(const mat4& m, const vec4& v);
-
 mat4 unit_matrix();
 mat4 perspective(f32 fov, f32 aspect, f32 near, f32 far, bool vertical);
 mat4 orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far);
 mat4 look_at(const vec3& pos, const vec3& target, const vec3& up);
-
 mat4 scale(mat4 mat, f32 scale);
 mat4 scale(mat4 mat, const vec3& scale);
 mat4 translate(mat4 mat, const vec3& position);
 mat4 rotate(mat4 mat, f32 rad, const vec3& axis);
+mat4 operator*(const mat4& a, const mat4& b);
+vec4 operator*(const mat4& m, const vec4& v);
 
 void hash_fnv1(usize& out, const void* data, usize n);
 

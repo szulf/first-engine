@@ -4,6 +4,11 @@
 
 1. better apis
 2. better errors than std::string_view
+3. do i need rendered_pos in things?
+4. no more #pragma once
+5. entities_update function instead of everything in game_update_tick
+6. assets and renderer refactor again, trying to simplify by not making it so generic
+
 
 ---
 

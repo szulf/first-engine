@@ -4,46 +4,44 @@
 #include <format>
 #include <charconv>
 
-namespace parser
+void parser_skip_whitespace(Parser_Pos& pos)
 {
-
-void skip_whitespace(Pos& pos)
-{
-  while (pos.size_ok() && std::isspace(pos.curr_char()))
+  while (parser_size_ok(pos) && std::isspace(parser_curr_char(pos)))
   {
     ++pos.pos;
   }
 }
 
-void expect_and_skip(Pos& pos, char c)
+void parser_expect_and_skip(Parser_Pos& pos, char c)
 {
-  ASSERT(pos.curr_char() == c, "Expected '{}', found '{}'.", c, pos.curr_char());
+  ASSERT(parser_curr_char(pos) == c, "Expected '{}', found '{}'.", c, parser_curr_char(pos));
   ++pos.pos;
-  skip_whitespace(pos);
+  parser_skip_whitespace(pos);
 }
 
-std::string_view word(Pos& pos)
+std::string_view parser_word(Parser_Pos& pos)
 {
   usize word_length{};
-  while (pos.size_ok() &&
-         (std::isalnum(pos.curr_char()) || pos.curr_char() == '#' || pos.curr_char() == '.' ||
-          pos.curr_char() == '_' || pos.curr_char() == '/'))
+  while (parser_size_ok(pos) && (std::isalnum(parser_curr_char(pos)) ||
+                                 parser_curr_char(pos) == '#' || parser_curr_char(pos) == '.' ||
+                                 parser_curr_char(pos) == '_' || parser_curr_char(pos) == '/'))
   {
     ++word_length;
     ++pos.pos;
   }
 
   auto word = pos.line.substr(pos.pos - word_length, word_length);
-  skip_whitespace(pos);
+  parser_skip_whitespace(pos);
   return word;
 }
 
-f32 number_f32(Pos& pos)
+f32 parser_number_f32(Parser_Pos& pos)
 {
   usize num_length{};
-  while (pos.size_ok() &&
-         (std::isdigit(pos.curr_char()) || pos.curr_char() == '.' || pos.curr_char() == 'e' ||
-          pos.curr_char() == 'E' || pos.curr_char() == '+' || pos.curr_char() == '-'))
+  while (parser_size_ok(pos) &&
+         (std::isdigit(parser_curr_char(pos)) || parser_curr_char(pos) == '.' ||
+          parser_curr_char(pos) == 'e' || parser_curr_char(pos) == 'E' ||
+          parser_curr_char(pos) == '+' || parser_curr_char(pos) == '-'))
   {
     ++num_length;
     ++pos.pos;
@@ -53,14 +51,14 @@ f32 number_f32(Pos& pos)
   auto ec =
     std::from_chars(pos.line.data() + (pos.pos - num_length), pos.line.data() + pos.pos, result).ec;
   ASSERT(ec == std::errc{}, "Invalid f32.");
-  skip_whitespace(pos);
+  parser_skip_whitespace(pos);
   return result;
 }
 
-u32 number_u32(Pos& pos)
+u32 parser_number_u32(Parser_Pos& pos)
 {
   usize num_length{};
-  while (pos.size_ok() && std::isdigit(pos.curr_char()))
+  while (parser_size_ok(pos) && std::isdigit(parser_curr_char(pos)))
   {
     ++num_length;
     ++pos.pos;
@@ -70,11 +68,11 @@ u32 number_u32(Pos& pos)
   auto ec =
     std::from_chars(pos.line.data() + (pos.pos - num_length), pos.line.data() + pos.pos, result).ec;
   ASSERT(ec == std::errc{}, "Invalid u32.");
-  skip_whitespace(pos);
+  parser_skip_whitespace(pos);
   return result;
 }
 
-bool boolean(Pos& pos)
+bool parser_boolean(Parser_Pos& pos)
 {
   if (pos.line.size() - pos.pos >= 4 && pos.line.substr(pos.pos, 4) == "true")
   {
@@ -85,6 +83,4 @@ bool boolean(Pos& pos)
     return false;
   }
   ASSERT(false, "Invalid boolean.");
-}
-
 }

@@ -9,165 +9,134 @@
 #include "assets.h"
 #include "camera.h"
 
-namespace render
+void render_init();
+void render_create_framebuffer(TextureHandle texture);
+
+enum Render_UBOIndices
 {
-
-struct Data
-{
-  Camera camera_2d{};
-
-  static constexpr u32 UBO_INDEX_CAMERA = 0;
-  u32 camera_ubo{};
-  static constexpr u32 UBO_INDEX_LIGHTS = 1;
-  u32 lights_ubo{};
-  u32 instance_data_buffer{};
-
-  ShaderHandle default_shader;
-  ShaderHandle lighting_shader;
-  ShaderHandle quads_shader;
-
-  MeshHandle cube_wires;
-  MeshHandle ring;
-  MeshHandle line;
-  MeshHandle quad;
-
-  TextureHandle blank_texture;
-
-  std::unordered_map<TextureHandle, u32> framebuffers;
+  RENDER_UBO_INDEX_CAMERA = 0,
+  RENDER_UBO_INDEX_LIGHTS = 1,
 };
 
-static constexpr usize MAX_INSTANCES = 10000;
-struct InstanceData
+struct Render_Data
+{
+  Camera camera_2d{};
+  u32 camera_ubo{};
+  u32 lights_ubo{};
+  u32 instance_data_buffer{};
+  ShaderHandle default_shader{};
+  ShaderHandle lighting_shader{};
+  ShaderHandle quads_shader{};
+  MeshHandle cube_wires{};
+  MeshHandle ring{};
+  MeshHandle line{};
+  MeshHandle quad{};
+  TextureHandle blank_texture{};
+  std::unordered_map<TextureHandle, u32> framebuffers{};
+};
+
+#define RENDER_MAX_INSTANCES 10000
+struct Render_InstanceData
 {
   mat4 transform{};
   vec4 tint{};
   // NOTE: these are only used for 2D
-  vec2 uv_scale{1, 1};
-  vec2 uv_offset{0, 0};
+  vec2 uv_scale = {1, 1};
+  vec2 uv_offset = {0, 0};
   f32 corner_radius{};
 };
 
-struct Cmd2D
+struct Render_Cmd2D
 {
   TextureHandle texture{};
   f32 z_idx{};
-  InstanceData instance_data{};
+  Render_InstanceData instance_data{};
   std::optional<Rectangle> clip_rectangle{};
 };
 
-struct Cmd3D
+struct Render_Cmd3D
 {
   MaterialHandle material{};
   MeshHandle mesh{};
   usize submesh_idx{};
-  InstanceData instance_data{};
+  Render_InstanceData instance_data{};
 };
 
-struct Light
+#define RENDER_LIGHT_ATTENUATION_CONSTANT 1.0f
+#define RENDER_LIGHT_ATTENUATION_LINEAR 0.22f
+#define RENDER_LIGHT_ATTENUATION_QUADRATIC 0.2f
+struct Render_Light
 {
-  vec3 pos;
-  vec3 color;
-
-  static constexpr f32 CONSTANT = 1.0f;
-  static constexpr f32 LINEAR = 0.22f;
-  static constexpr f32 QUADRATIC = 0.2f;
+  vec3 pos{};
+  vec3 color{};
 };
 
-class Pass
+enum Render_PassFlagsEnum
 {
-  using OnShaderBindCallback = std::function<void(Shader& shader)>;
-
-public:
-  Pass(const Camera& camera, const vec3& ambient_color = {1, 1, 1})
-    : m_camera{camera}, m_ambient_color{ambient_color}
-  {
-  }
-
-  void render_to(TextureHandle texture);
-  void override_shader(ShaderHandle shader);
-  void on_shader_bind(OnShaderBindCallback&& on_bind);
-  // TODO: when overriding shaders i should probably only bind it once
-  // before iterating over all render commands
-  void finish();
-
-  void append(const Cmd2D& cmd);
-  void append(const std::vector<Cmd2D>& cmd);
-  void append(const Cmd3D& cmd);
-  void append(const std::vector<Cmd3D>& cmd);
-
-  // NOTE: supports rendering only a single point light since that is what i need for the game,
-  // would not be too hard to implement more lights (will implement directional light later)
-  void set_light(const vec3& pos, const vec3& color);
-
-private:
-  using Flags = u32;
-  static constexpr Flags OVERRIDED_FRAMEBUFFER = 1 << 0;
-  static constexpr Flags OVERRIDED_SHADER = 1 << 1;
-  static constexpr Flags USES_SHADOW_MAP = 1 << 2;
-
-  Flags m_flags{};
-  std::vector<Cmd3D> m_cmds_3d{};
-  std::vector<Cmd2D> m_cmds_2d{};
-  const Camera& m_camera;
-  OnShaderBindCallback m_on_shader_bind{};
-
-  Light m_light{};
-  vec3 m_ambient_color{};
-
-  u32 m_framebuffer{};
-
-  ShaderHandle m_overidded_shader{};
-
-  friend class Renderer;
+  PASS_OVERRIDED_FRAMEBUFFER = 1 << 0,
+  PASS_OVERRIDED_SHADER = 1 << 1,
 };
+using Render_PassFlags = u32;
+
+using Render_PassOnShaderBindCallback = std::function<void(Shader& shader)>;
+struct Render_Pass
+{
+  Render_PassFlags flags{};
+  const Camera* camera{};
+  std::vector<Render_Cmd3D> cmds_3d{};
+  std::vector<Render_Cmd2D> cmds_2d{};
+  Render_PassOnShaderBindCallback on_shader_bind{};
+  Render_Light light{};
+  vec3 ambient_color = {1, 1, 1};
+  u32 framebuffer{};
+  ShaderHandle overidded_shader{};
+};
+
+void render_pass_finish(Render_Pass& pass);
+void render_pass_render_to(Render_Pass& pass, TextureHandle texture);
+void render_pass_override_shader(Render_Pass& pass, ShaderHandle shader);
+void render_pass_on_shader_bind(Render_Pass& pass, Render_PassOnShaderBindCallback&& on_bind);
+void render_pass_append(Render_Pass& pass, const Render_Cmd2D& cmd);
+void render_pass_append(Render_Pass& pass, const std::vector<Render_Cmd2D>& cmd);
+void render_pass_append(Render_Pass& pass, const Render_Cmd3D& cmd);
+void render_pass_append(Render_Pass& pass, const std::vector<Render_Cmd3D>& cmd);
+// NOTE: supports rendering only a single point light since that is what i need for the game,
+// would not be too hard to implement more lights (will implement directional light later)
+void render_pass_set_light(Render_Pass& pass, const vec3& pos, const vec3& color);
 
 // NOTE: 2D
 // TODO: commands with the same z-index are rendered wrong, disable depth test?
-struct Options2D
+struct Render_Options2D
 {
   f32 corner_radius = 0.0f;
   vec4 tint = {1, 1, 1, 1};
   std::optional<Rectangle> clip_rectangle = std::nullopt;
 };
-Cmd2D quad(const vec3& pos, const vec2& size, const Options2D& args = {});
-Cmd2D texture(TextureHandle texture, const vec3& pos, const vec2& size, const Options2D& args = {});
-Cmd2D texture_part(
+Render_Cmd2D render_quad(const vec3& pos, const vec2& size, const Render_Options2D& args = {});
+Render_Cmd2D render_texture(
+  TextureHandle texture,
+  const vec3& pos,
+  const vec2& size,
+  const Render_Options2D& args = {}
+);
+Render_Cmd2D render_texture_part(
   TextureHandle texture,
   const vec3& pos,
   const vec2& size,
   const vec2& in_texture_pos,
   const vec2& in_texture_size,
-  const Options2D& args = {}
+  const Render_Options2D& args = {}
 );
 
 // NOTE: 3D
-std::vector<Cmd3D>
-mesh(MeshHandle handle, const vec3& pos, f32 rotation, const vec3& tint = {1.0f, 1.0f, 1.0f});
-Cmd3D cube_wires(const vec3& pos, const vec3& size, const vec3& color);
-Cmd3D ring(const vec3& pos, f32 radius, const vec3& color);
-Cmd3D line(const vec3& pos, f32 length, f32 rotation, const vec3& color);
-
-void init();
-void create_framebuffer(TextureHandle texture);
-
-struct STD140Camera
-{
-  mat4 proj_view;
-  vec3 view_pos;
-  float far_plane;
-};
-
-struct STD140Light
-{
-  vec4 pos;
-  vec4 color;
-
-  f32 constant;
-  f32 linear;
-  f32 quadratic;
-  f32 _pad;
-};
-
-}
+std::vector<Render_Cmd3D> render_mesh(
+  MeshHandle handle,
+  const vec3& pos,
+  f32 rotation,
+  const vec3& tint = {1.0f, 1.0f, 1.0f}
+);
+Render_Cmd3D render_cube_wires(const vec3& pos, const vec3& size, const vec3& color);
+Render_Cmd3D render_ring(const vec3& pos, f32 radius, const vec3& color);
+Render_Cmd3D render_line(const vec3& pos, f32 length, f32 rotation, const vec3& color);
 
 #endif

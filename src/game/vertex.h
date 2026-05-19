@@ -1,8 +1,6 @@
 #ifndef VERTEX_H
 #define VERTEX_H
 
-#include <string>
-
 #include "base/math.h"
 
 struct Vertex
@@ -30,6 +28,9 @@ struct std::hash<Vertex>
   }
 };
 
-bool operator==(const Vertex& va, const Vertex& vb);
+inline bool operator==(const Vertex& va, const Vertex& vb)
+{
+  return va.pos == vb.pos && va.normal == vb.normal && va.uv == vb.uv;
+}
 
 #endif

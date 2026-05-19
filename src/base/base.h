@@ -75,13 +75,11 @@ enum AtomicMemoryOrder
   ATOMIC_MEMORY_ORDER_RELEASE = __ATOMIC_RELEASE,
 };
 
-#  define atomic_load_usize(ptr, memory_order) __atomic_load_n((ptr), (memory_order))
-#  define atomic_store_usize(ptr, value, memory_order)                                             \
-    __atomic_store_n((ptr), (value), (memory_order))
-#  define atomic_load_f32(ptr, memory_order) __atomic_load_n((ptr), (memory_order))
-#  define atomic_store_f32(ptr, value, memory_order)                                               \
-    __atomic_store_n((ptr), (value), (memory_order))
+#  define atomic_load_32(ptr, memory_order) __atomic_load_n((ptr), (memory_order))
+#  define atomic_store_32(ptr, value, memory_order) __atomic_store_n((ptr), (value), (memory_order))
 
 #elif defined(COMPILER_MSVC)
+#  error Compiler intrinsics for atomic operations not supported for this compiler
+#else
 #  error Compiler intrinsics for atomic operations not supported for this compiler
 #endif

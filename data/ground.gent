@@ -1,6 +1,6 @@
 name : ground
 
-renderable : true
+visible : true
 mesh : assets/cube.obj
 
 collidable : true

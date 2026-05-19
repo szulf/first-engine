@@ -2,69 +2,71 @@
 
 #include <cmath>
 
-void Camera::update(f32 alpha)
+void camera_update_vectors(Camera& camera)
 {
-  m_rendered_pos = m_pos * alpha + m_prev_pos * (1.0f - alpha);
+  camera.front.x = std::cos(radians(camera.yaw)) * std::cos(radians(camera.pitch));
+  camera.front.y = std::sin(radians(camera.pitch));
+  camera.front.z = std::sin(radians(camera.yaw)) * std::cos(radians(camera.pitch));
+  camera.front = normalize(camera.front);
+
+  camera.right = normalize(cross(camera.front, CAMERA_WORLD_UP));
+  camera.up = normalize(cross(camera.right, camera.front));
 }
 
-void Camera::look_around(const vec2& offset)
+void camera_update(Camera& camera, f32 alpha)
 {
-  m_yaw += offset.x;
-  m_pitch -= offset.y;
-  m_pitch = std::clamp(m_pitch, -89.0f, 89.0f);
-  update_vectors();
+  camera.rendered_pos = camera.pos * alpha + camera.prev_pos * (1.0f - alpha);
 }
 
-void Camera::move(const vec3& acceleration, const vec3& direction, f32 dt)
+void camera_look_around(Camera& camera, const vec2& offset)
 {
-  m_prev_pos = m_rendered_pos = m_pos;
-  m_pos += direction * (-acceleration.z * SPEED * dt);
-  m_pos += m_right * (acceleration.x * SPEED * dt);
-  m_pos += WORLD_UP * (acceleration.y * SPEED * dt);
+  camera.yaw += offset.x;
+  camera.pitch -= offset.y;
+  camera.pitch = std::clamp(camera.pitch, -89.0f, 89.0f);
+  camera_update_vectors(camera);
 }
 
-mat4 Camera::look_at() const
+void camera_move(Camera& camera, const vec3& acceleration, const vec3& direction, f32 dt)
 {
-  return ::look_at(m_rendered_pos, m_rendered_pos + m_front, m_up);
+  camera.prev_pos = camera.rendered_pos = camera.pos;
+  camera.pos += direction * (-acceleration.z * CAMERA_SPEED * dt);
+  camera.pos += camera.right * (acceleration.x * CAMERA_SPEED * dt);
+  camera.pos += CAMERA_WORLD_UP * (acceleration.y * CAMERA_SPEED * dt);
 }
 
-mat4 Camera::projection() const
+mat4 camera_look_at(const Camera& camera)
 {
-  switch (m_type)
+  return look_at(camera.rendered_pos, camera.rendered_pos + camera.front, camera.up);
+}
+
+mat4 camera_projection(const Camera& camera)
+{
+  switch (camera.type)
   {
-    case CameraType::PERSPECTIVE:
+    case CAMERA_TYPE_PERSPECTIVE:
     {
       return perspective(
-        m_fov,
-        (f32) m_viewport.x / (f32) m_viewport.y,
-        m_near_plane,
-        m_far_plane,
-        m_using_vertical_fov
+        camera.fov,
+        (f32) camera.viewport.x / (f32) camera.viewport.y,
+        camera.near_plane,
+        camera.far_plane,
+        camera.fov_type == FOV_TYPE_VERTICAL
       );
     }
     break;
-    case CameraType::ORTHOGRAPHIC:
+    case CAMERA_TYPE_ORTHOGRAPHIC:
     {
       return orthographic(
-        (f32) m_viewport.x,
+        (f32) camera.viewport.x,
         0.0f,
         0.0f,
-        (f32) m_viewport.y,
-        m_near_plane,
-        m_far_plane
+        (f32) camera.viewport.y,
+        camera.near_plane,
+        camera.far_plane
       );
     }
     break;
   }
-}
-
-void Camera::update_vectors()
-{
-  m_front.x = std::cos(radians(m_yaw)) * std::cos(radians(m_pitch));
-  m_front.y = std::sin(radians(m_pitch));
-  m_front.z = std::sin(radians(m_yaw)) * std::cos(radians(m_pitch));
-  m_front = normalize(m_front);
-
-  m_right = normalize(cross(m_front, WORLD_UP));
-  m_up = normalize(cross(m_right, m_front));
+  ASSERT(false, "Invalid camera type");
+  return {};
 }

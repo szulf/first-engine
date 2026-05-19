@@ -9,7 +9,7 @@
 
 #include "os/os.h"
 
-enum SoundHandle
+enum Sound_Handle
 {
   SOUND_HANDLE_SINE,
   SOUND_HANDLE_SHOTGUN,
@@ -18,69 +18,57 @@ enum SoundHandle
 };
 
 // NOTE: assumes 48'000 sample rate, 2 channels and i16 encoding
-struct SoundData
+struct Sound_Data
 {
   std::vector<i16> samples{};
   u32 frames{};
 };
 
-SoundData load_wav(const std::filesystem::path& path);
+std::expected<Sound_Data, std::string_view> sound_load_wav(const std::filesystem::path& path);
 
-enum SoundCmdType
+enum Sound_CmdType
 {
   SOUND_CMD_PLAY_ONCE,
   SOUND_CMD_START_LOOP,
   SOUND_CMD_END_LOOP,
 };
 
-struct SoundCmd
+struct Sound_Cmd
 {
-  SoundCmdType type{};
-  SoundHandle sound{};
+  Sound_CmdType type{};
+  Sound_Handle sound{};
   f32 volume{1.0f};
 };
 
-struct SoundSource
+struct Sound_Source
 {
-  SoundHandle handle;
+  Sound_Handle handle;
   u32 frame_idx{};
   f32 volume{};
   bool loop{};
 };
 
-class SoundSystem
+#define SOUND_BUFFER_FRAMES 512
+#define SOUND_BUFFER_CHANNELS 2
+#define SOUND_BUFFER_SIZE (SOUND_BUFFER_FRAMES * SOUND_BUFFER_CHANNELS)
+#define SOUND_BUFFER_SIZE_BYTES (SOUND_BUFFER_SIZE * sizeof(i16))
+
+struct Sound_System
 {
-public:
-  SoundSystem(OS_Audio& audio);
-  ~SoundSystem()
-  {
-    m_thread.request_stop();
-    m_thread.join();
-    spsc_queue_uninit(m_cmds);
-  }
-
-  void play_once(SoundHandle sound, f32 volume = 1.0f);
-  // NOTE: assumes only 1 looped sound source per sound handle
-  void play_looped(SoundHandle sound, f32 volume = 1.0f);
-  void stop_looped(SoundHandle sound);
-
-private:
-  void sound_loop(std::stop_token st);
-
-public:
-  std::atomic<f32> master_volume{1.0f};
-
-private:
-  std::jthread m_thread{};
-
-  OS_Audio& m_audio;
-
-  SPSCQueue<SoundCmd> m_cmds{};
-  SoundData m_sound_data[SOUND_HANDLE_COUNT]{};
-  std::vector<SoundSource> m_active_sources{};
-
-  static constexpr u32 FRAMES = 512;
-  static constexpr u32 CHANNELS = 2;
-  static constexpr usize BYTES_PER_BUFFER = FRAMES * CHANNELS * sizeof(i16);
-  std::array<i16, FRAMES * CHANNELS> mix_buffer{};
+  OS_Audio* audio{};
+  std::jthread thread{};
+  // NOTE: atomic value between 0 and 100
+  u32 master_volume = 100;
+  Sound_Data sound_data[SOUND_HANDLE_COUNT]{};
+  SPSCQueue<Sound_Cmd> cmds{};
+  std::vector<Sound_Source> active_sources{};
+  i16 mix_buffer[SOUND_BUFFER_SIZE]{};
 };
+
+Sound_System sound_system_init(OS_Audio& audio);
+void sound_system_start(Sound_System& system);
+void sound_system_deinit(Sound_System& system);
+void sound_play_once(Sound_System& system, Sound_Handle sound, f32 volume = 1.0f);
+// NOTE: assumes only 1 looped sound source per sound handle
+void sound_play_looped(Sound_System& system, Sound_Handle sound, f32 volume = 1.0f);
+void sound_stop_looped(Sound_System& system, Sound_Handle sound);

@@ -4,58 +4,22 @@
 
 #include "stb/image.h"
 
-Image::Image(const u8* data, const uvec2& dimensions) : m_dimensions{dimensions}
+Image image_init(const u8* data, const uvec2& dimensions)
 {
-  m_data = new u8[m_dimensions.x * m_dimensions.y * 4];
-  for (u32 i = 0; i < m_dimensions.x * m_dimensions.y * 4; ++i)
-  {
-    m_data[i] = data[i];
-  }
+  Image img = {.dimensions = dimensions};
+  img.data.insert(img.data.end(), data, data + (dimensions.x * dimensions.y * 4));
+  return img;
 }
 
-Image::Image(const std::filesystem::path& path) : m_stbi_loaded{true}
+std::expected<Image, std::string_view> image_from_file(const std::filesystem::path& path)
 {
   int width, height, channels;
-  m_data = stbi_load(path.c_str(), &width, &height, &channels, 4);
-  ASSERT(channels == 4, "Invalid image file.");
-  m_dimensions = {static_cast<u32>(width), static_cast<u32>(height)};
-}
-
-Image::Image(Image&& other)
-  : m_stbi_loaded{other.m_stbi_loaded}, m_data{other.m_data}, m_dimensions{other.m_dimensions}
-{
-  other.m_data = nullptr;
-}
-
-Image& Image::operator=(Image&& other)
-{
-  if (this == &other)
+  u8* data = stbi_load(path.c_str(), &width, &height, &channels, 4);
+  if (!data)
   {
-    return *this;
+    return std::unexpected{"Failed to load image file"};
   }
-  if (m_stbi_loaded)
-  {
-    stbi_image_free(m_data);
-  }
-  else
-  {
-    delete[] m_data;
-  }
-  m_data = other.m_data;
-  other.m_data = nullptr;
-  m_dimensions = other.m_dimensions;
-  m_stbi_loaded = other.m_stbi_loaded;
-  return *this;
-}
-
-Image::~Image()
-{
-  if (m_stbi_loaded)
-  {
-    stbi_image_free(m_data);
-  }
-  else
-  {
-    delete[] m_data;
-  }
+  Image img = image_init(data, {(u32) width, (u32) height});
+  stbi_image_free(data);
+  return img;
 }

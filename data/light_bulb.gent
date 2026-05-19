@@ -1,6 +1,6 @@
 name : light_bulb
 
-renderable : true
+visible : true
 mesh : assets/light_bulb.obj
 
 collidable : true
@@ -10,7 +10,7 @@ emits_light : false
 light_color : (1.0, 1.0, 0.7)
 light_height_offset : -0.25
 
-interactable : true
+toggleable : true
 interactable_radius : 0.8
 
 # TODO: shouldnt i get this from the in code constant somehow?

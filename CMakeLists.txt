@@ -104,7 +104,7 @@ target_link_libraries(platform PRIVATE base SDL3::SDL3 OpenGL)
 add_executable(game
   src/main.cpp
   src/game/game.h src/game/game.cpp
-  src/game/vertex.h src/game/vertex.cpp
+  src/game/vertex.h
   src/game/assets.h src/game/assets.cpp
   src/game/camera.h src/game/camera.cpp
   src/game/entity.h src/game/entity.cpp

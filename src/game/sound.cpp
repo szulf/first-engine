@@ -6,16 +6,11 @@
 #include <fstream>
 #include <cmath>
 
-struct SoundDescription
-{
-  const char* file;
-};
-
 struct WAVContext
 {
   usize curr_pos{};
   std::vector<u8> buffer{};
-  SoundData out{};
+  Sound_Data out{};
 };
 
 inline static u8 wav_read_u8(WAVContext& ctx)
@@ -54,7 +49,7 @@ enum WaveFormat
   WAVE_FORMAT_EXTENSIBLE = 0xFFFE,
 };
 
-SoundData load_wav(const std::filesystem::path& path)
+std::expected<Sound_Data, std::string_view> sound_load_wav(const std::filesystem::path& path)
 {
   WAVContext ctx{};
   // NOTE: i absolutely hate this, but there is no easy way to read a binary file in the stl
@@ -62,8 +57,7 @@ SoundData load_wav(const std::filesystem::path& path)
     std::ifstream file{path, std::ios::binary};
     if (file.fail())
     {
-      throw std::runtime_error{std::format("[WAV] Failed to open file. (path: {}).", path.string())
-      };
+      return std::unexpected{"Failed to open wav file"};
     }
     ctx.buffer.resize(std::filesystem::file_size(path));
     file.read((char*) ctx.buffer.data(), (i64) ctx.buffer.size());
@@ -71,39 +65,39 @@ SoundData load_wav(const std::filesystem::path& path)
 
   if (!wav_expect(ctx, "RIFF"))
   {
-    throw std::runtime_error{"[WAV] Invalid 'RIFF' master header."};
+    return std::unexpected{"Invalid 'RIFF' master header"};
   }
   wav_read_u32(ctx); // file_size (?)
   if (!wav_expect(ctx, "WAVE"))
   {
-    throw std::runtime_error{"[WAV] Invalid 'WAVE' master header."};
+    return std::unexpected{"Invalid 'WAVE' master header"};
   }
   if (!wav_expect(ctx, "fmt "))
   {
-    throw std::runtime_error{"[WAV] Invalid 'fmt ' header."};
+    return std::unexpected{"Invalid 'fmt ' header"};
   }
   wav_read_u32(ctx); // fmt_size
   u16 format_type = wav_read_u16(ctx);
   if (format_type != 1)
   {
-    throw std::runtime_error{"[WAV] Invalid format_type. (Non PCM)."};
+    return std::unexpected{"Invalid format_type - Non PCM"};
   }
   u16 channels = wav_read_u16(ctx);
   u32 sample_rate = wav_read_u32(ctx);
   if (sample_rate != 48'000)
   {
-    throw std::runtime_error{"[WAV] Invalid sample rate."};
+    return std::unexpected{"Invalid sample rate"};
   }
   wav_read_u32(ctx); // idk
   wav_read_u16(ctx); // idk2
   u16 bits_per_sample = wav_read_u16(ctx);
   if (bits_per_sample != 16)
   {
-    throw std::runtime_error{"[WAV] Invalid bits per sample count."};
+    return std::unexpected{"Invalid bits per sample count"};
   }
   if (!wav_expect(ctx, "data"))
   {
-    throw std::runtime_error{"[WAV] Invalid 'data' header."};
+    return std::unexpected{"Invalid 'data' header"};
   }
   u32 data_size = wav_read_u32(ctx);
   ctx.out.samples.reserve(data_size);
@@ -114,14 +108,129 @@ SoundData load_wav(const std::filesystem::path& path)
     ctx.out.samples.push_back(sample);
   }
   ctx.out.frames = data_size / (sizeof(i16) * channels);
-  return ctx.out;
+  return {ctx.out};
 }
 
-SoundSystem::SoundSystem(OS_Audio& audio) : m_audio{audio}
+void sound_loop(Sound_System& system, std::stop_token st)
 {
-  m_cmds = spsc_queue_init<SoundCmd>(1024);
+  while (!st.stop_requested())
   {
-    SoundData sound{};
+    auto queued = os_audio_get_queued(*system.audio);
+
+    // TODO: definitely has one buffer of delay(around 10ms), keeping for now like mixing
+    if (queued <= SOUND_BUFFER_SIZE_BYTES)
+    {
+      Sound_Cmd cmd{};
+      while (spsc_queue_consume_one(system.cmds, cmd))
+      {
+        switch (cmd.type)
+        {
+          case SOUND_CMD_PLAY_ONCE:
+          {
+            system.active_sources.push_back({
+              .handle = cmd.sound,
+              .volume = cmd.volume,
+              .loop = false,
+            });
+          }
+          break;
+          case SOUND_CMD_START_LOOP:
+          {
+            system.active_sources.push_back({
+              .handle = cmd.sound,
+              .volume = cmd.volume,
+              .loop = true,
+            });
+          }
+          break;
+          case SOUND_CMD_END_LOOP:
+          {
+            auto it = std::ranges::find_if(
+              system.active_sources,
+              [&cmd](const auto& v)
+              {
+                return v.handle == cmd.sound;
+              }
+            );
+            if (it != system.active_sources.end())
+            {
+              system.active_sources.erase(it);
+            }
+          }
+          break;
+        }
+      }
+
+      auto master = atomic_load_32(&system.master_volume, ATOMIC_MEMORY_ORDER_RELAXED);
+      ASSERT(master <= 100, "Invalid master volume value");
+      std::ranges::fill(system.mix_buffer, 0);
+      for (auto it = system.active_sources.begin(); it != system.active_sources.end();)
+      {
+        Sound_Source& v = *it;
+        auto& data = system.sound_data[v.handle];
+        for (u32 f = 0; f < SOUND_BUFFER_FRAMES; ++f)
+        {
+          if (v.frame_idx >= data.frames)
+          {
+            break;
+          }
+
+          // TODO: this is slighly better than last time, but still pretty bad
+          // im gonna keep this for now(need to get some things done in the engine),
+          // but i need to later probably watch how to do proper sound mixing
+          // probably will watch the "handmade hero" series,
+          // it seems like an overall good source of information
+          u32 sample_index = v.frame_idx * 2;
+          system.mix_buffer[f * 2 + 0] = (i16) std::clamp(
+            (system.mix_buffer[f * 2 + 0] +
+             (data.samples[sample_index + 0] * v.volume * ((f32) master / 100.0f))),
+            (f32) std::numeric_limits<i16>::min(),
+            (f32) std::numeric_limits<i16>::max()
+          );
+          system.mix_buffer[f * 2 + 1] = (i16) std::clamp(
+            (system.mix_buffer[f * 2 + 1] +
+             (data.samples[sample_index + 1] * v.volume * ((f32) master / 100.0f))),
+            (f32) std::numeric_limits<i16>::min(),
+            (f32) std::numeric_limits<i16>::max()
+          );
+
+          ++v.frame_idx;
+        }
+        if (v.frame_idx >= data.frames)
+        {
+          if (v.loop)
+          {
+            v.frame_idx = 0;
+            ++it;
+          }
+          else
+          {
+            it = system.active_sources.erase(it);
+          }
+        }
+        else
+        {
+          ++it;
+        }
+      }
+
+      os_audio_push(*system.audio, system.mix_buffer);
+    }
+    else
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+  }
+}
+
+Sound_System sound_system_init(OS_Audio& audio)
+{
+  Sound_System system = {};
+  system.audio = &audio;
+  system.cmds = spsc_queue_init<Sound_Cmd>(1024);
+
+  {
+    Sound_Data sound{};
     sound.frames = (u32) (48'000 * 0.3f);
     sound.samples.resize(sound.frames * 2);
     static constexpr f32 phase_inc = 2.0f * std::numbers::pi_v<f32> * 440.0f / 48'000.0f;
@@ -138,141 +247,49 @@ SoundSystem::SoundSystem(OS_Audio& audio) : m_audio{audio}
       sound.samples[frame * 2 + 0] = sample;
       sound.samples[frame * 2 + 1] = sample;
     }
-    m_sound_data[SOUND_HANDLE_SINE] = std::move(sound);
+    system.sound_data[SOUND_HANDLE_SINE] = std::move(sound);
+  }
+  {
+    auto sound = sound_load_wav("assets/shotgun.wav");
+    ASSERT(sound, "{}", sound.error());
+    system.sound_data[SOUND_HANDLE_SHOTGUN] = *sound;
+  }
+  {
+    auto sound = sound_load_wav("assets/music.wav");
+    ASSERT(sound, "{}", sound.error());
+    system.sound_data[SOUND_HANDLE_TEST_MUSIC] = *sound;
   }
 
-  m_sound_data[SOUND_HANDLE_SHOTGUN] = load_wav("assets/shotgun.wav");
+  return system;
+}
 
-  m_sound_data[SOUND_HANDLE_TEST_MUSIC] = load_wav("assets/music.wav");
-
-  m_thread = std::jthread(
+void sound_system_start(Sound_System& system)
+{
+  system.thread = std::jthread(
     [&](std::stop_token st)
     {
-      sound_loop(st);
+      sound_loop(system, st);
     }
   );
 }
 
-void SoundSystem::play_once(SoundHandle sound, f32 volume)
+void sound_system_deinit(Sound_System& system)
 {
-  spsc_queue_push(m_cmds, {.type = SOUND_CMD_PLAY_ONCE, .sound = sound, .volume = volume});
+  system.thread.request_stop();
+  spsc_queue_deinit(system.cmds);
 }
 
-void SoundSystem::play_looped(SoundHandle sound, f32 volume)
+void sound_play_once(Sound_System& system, Sound_Handle sound, f32 volume)
 {
-  spsc_queue_push(m_cmds, {.type = SOUND_CMD_START_LOOP, .sound = sound, .volume = volume});
+  spsc_queue_push(system.cmds, {.type = SOUND_CMD_PLAY_ONCE, .sound = sound, .volume = volume});
 }
 
-void SoundSystem::stop_looped(SoundHandle sound)
+void sound_play_looped(Sound_System& system, Sound_Handle sound, f32 volume)
 {
-  spsc_queue_push(m_cmds, {.type = SOUND_CMD_END_LOOP, .sound = sound});
+  spsc_queue_push(system.cmds, {.type = SOUND_CMD_START_LOOP, .sound = sound, .volume = volume});
 }
 
-void SoundSystem::sound_loop(std::stop_token st)
+void sound_stop_looped(Sound_System& system, Sound_Handle sound)
 {
-  while (!st.stop_requested())
-  {
-    auto queued = os_audio_get_queued(m_audio);
-
-    // TODO: definitely has one buffer of delay(around 10ms), keeping for now like mixing
-    if (queued <= BYTES_PER_BUFFER)
-    {
-      SoundCmd cmd{};
-      while (spsc_queue_consume_one(m_cmds, cmd))
-      {
-        switch (cmd.type)
-        {
-          case SOUND_CMD_PLAY_ONCE:
-          {
-            m_active_sources.push_back({
-              .handle = cmd.sound,
-              .volume = cmd.volume,
-              .loop = false,
-            });
-          }
-          break;
-          case SOUND_CMD_START_LOOP:
-          {
-            m_active_sources.push_back({
-              .handle = cmd.sound,
-              .volume = cmd.volume,
-              .loop = true,
-            });
-          }
-          break;
-          case SOUND_CMD_END_LOOP:
-          {
-            auto it = std::ranges::find_if(
-              m_active_sources,
-              [&cmd](const auto& v)
-              {
-                return v.handle == cmd.sound;
-              }
-            );
-            if (it != m_active_sources.end())
-            {
-              m_active_sources.erase(it);
-            }
-          }
-          break;
-        }
-      }
-
-      auto master = master_volume.load();
-      std::ranges::fill(mix_buffer, 0);
-      for (auto it = m_active_sources.begin(); it != m_active_sources.end();)
-      {
-        SoundSource& v = *it;
-        auto& data = m_sound_data[v.handle];
-        for (u32 f = 0; f < FRAMES; ++f)
-        {
-          if (v.frame_idx >= data.frames)
-          {
-            break;
-          }
-
-          // TODO: this is slighly better than last time, but still pretty bad
-          // im gonna keep this for now(need to get some things done in the engine),
-          // but i need to later probably watch how to do proper sound mixing
-          // probably will watch the "handmade hero" series,
-          // it seems like an overall good source of information
-          u32 sample_index = v.frame_idx * 2;
-          mix_buffer[f * 2 + 0] = (i16) std::clamp(
-            (mix_buffer[f * 2 + 0] + (data.samples[sample_index + 0] * v.volume * master)),
-            (f32) std::numeric_limits<i16>::min(),
-            (f32) std::numeric_limits<i16>::max()
-          );
-          mix_buffer[f * 2 + 1] = (i16) std::clamp(
-            (mix_buffer[f * 2 + 1] + (data.samples[sample_index + 1] * v.volume * master)),
-            (f32) std::numeric_limits<i16>::min(),
-            (f32) std::numeric_limits<i16>::max()
-          );
-
-          ++v.frame_idx;
-        }
-        if (v.frame_idx >= data.frames)
-        {
-          if (v.loop)
-          {
-            v.frame_idx = 0;
-            ++it;
-          }
-          else
-          {
-            it = m_active_sources.erase(it);
-          }
-        }
-        else
-        {
-          ++it;
-        }
-      }
-
-      os_audio_push(m_audio, mix_buffer);
-    }
-    else
-    {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
-  }
+  spsc_queue_push(system.cmds, {.type = SOUND_CMD_END_LOOP, .sound = sound});
 }

@@ -1,6 +1,7 @@
 #include "assets.h"
 
 #include <GL/glcorearb.h>
+#include <expected>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -10,52 +11,205 @@
 #include "parser.h"
 #include "renderer.h"
 
-enum class ShaderType
+static GLenum texture_type_to_gl_texture(TextureType type)
 {
-  VERTEX,
-  FRAGMENT,
-  GEOMETRY,
+  switch (type)
+  {
+    case TEXTURE_2D:
+      return GL_TEXTURE_2D;
+    case TEXTURE_CUBEMAP:
+      return GL_TEXTURE_CUBE_MAP;
+  }
+  ASSERT(false, "Invalid texture type");
+}
+
+static GLint wrap_option_to_gl_wrap(WrapOption option)
+{
+  switch (option)
+  {
+    case WRAP_OPTION_REPEAT:
+      return GL_REPEAT;
+    case WRAP_OPTION_MIRRORED_REPEAT:
+      return GL_MIRRORED_REPEAT;
+    case WRAP_OPTION_CLAMP_TO_EDGE:
+      return GL_CLAMP_TO_EDGE;
+    case WRAP_OPTION_CLAMP_TO_BORDER:
+      return GL_CLAMP_TO_BORDER;
+  }
+  ASSERT(false, "Invalid wrap option");
+}
+
+static GLint filter_option_to_gl_filter(FilterOption option)
+{
+  switch (option)
+  {
+    case FILTER_OPTION_LINEAR:
+      return GL_LINEAR;
+    case FILTER_OPTION_NEAREST:
+      return GL_NEAREST;
+  }
+  ASSERT(false, "Invalid filter option");
+}
+
+static void texture__init(
+  Texture& texture,
+  const void* data,
+  WrapOption wrap_s,
+  WrapOption wrap_t,
+  WrapOption wrap_r,
+  FilterOption min_filter,
+  FilterOption mag_filter
+)
+{
+  auto gl_type = texture_type_to_gl_texture(texture.type);
+  glGenTextures(1, &texture.id);
+  glBindTexture(gl_type, texture.id);
+
+  glTexParameteri(gl_type, GL_TEXTURE_WRAP_S, wrap_option_to_gl_wrap(wrap_s));
+  glTexParameteri(gl_type, GL_TEXTURE_WRAP_T, wrap_option_to_gl_wrap(wrap_t));
+  glTexParameteri(gl_type, GL_TEXTURE_WRAP_R, wrap_option_to_gl_wrap(wrap_r));
+  glTexParameteri(gl_type, GL_TEXTURE_MIN_FILTER, filter_option_to_gl_filter(min_filter));
+  glTexParameteri(gl_type, GL_TEXTURE_MAG_FILTER, filter_option_to_gl_filter(mag_filter));
+
+  switch (texture.type)
+  {
+    case TEXTURE_2D:
+    {
+      glTexImage2D(
+        GL_TEXTURE_2D,
+        0,
+        GL_RGBA8,
+        (GLsizei) texture.dimensions.x,
+        (GLsizei) texture.dimensions.y,
+        0,
+        GL_RGBA,
+        GL_UNSIGNED_BYTE,
+        data
+      );
+      glGenerateMipmap(GL_TEXTURE_2D);
+    }
+    break;
+    case TEXTURE_CUBEMAP:
+    {
+      for (u32 i = 0; i < 6; ++i)
+      {
+        glTexImage2D(
+          GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+          0,
+          GL_DEPTH_COMPONENT,
+          (GLsizei) texture.dimensions.x,
+          (GLsizei) texture.dimensions.y,
+          0,
+          GL_DEPTH_COMPONENT,
+          GL_FLOAT,
+          data
+        );
+      }
+    }
+    break;
+  }
+}
+
+Texture texture_init(TextureType type, const uvec2& dimensions)
+{
+  Texture texture{};
+  texture.type = type;
+  texture.dimensions = dimensions;
+  texture__init(
+    texture,
+    nullptr,
+    WRAP_OPTION_CLAMP_TO_EDGE,
+    WRAP_OPTION_CLAMP_TO_EDGE,
+    WRAP_OPTION_CLAMP_TO_EDGE,
+    FILTER_OPTION_NEAREST,
+    FILTER_OPTION_NEAREST
+  );
+  return texture;
+}
+
+Texture texture_from_image(
+  const Image& img,
+  WrapOption wrap_s,
+  WrapOption wrap_t,
+  FilterOption min_filter,
+  FilterOption mag_filter
+)
+{
+  Texture texture{};
+  texture.type = TEXTURE_2D;
+  texture.dimensions = img.dimensions;
+  texture__init(
+    texture,
+    img.data.data(),
+    wrap_s,
+    wrap_t,
+    WRAP_OPTION_CLAMP_TO_EDGE,
+    min_filter,
+    mag_filter
+  );
+  return texture;
+}
+
+void texture_deinit(Texture& texture)
+{
+  glDeleteTextures(1, &texture.id);
+}
+
+void texture_activate(const Texture& texture, u32 slot)
+{
+  glActiveTexture(GL_TEXTURE0 + slot);
+  glBindTexture(texture_type_to_gl_texture(texture.type), texture.id);
+}
+
+enum ShaderType
+{
+  SHADER_TYPE_VERTEX,
+  SHADER_TYPE_FRAGMENT,
+  SHADER_TYPE_GEOMETRY,
 };
 
 static std::string_view shader_type_to_string(ShaderType type)
 {
   switch (type)
   {
-    case ShaderType::VERTEX:
+    case SHADER_TYPE_VERTEX:
       return "Vertex";
-    case ShaderType::FRAGMENT:
+    case SHADER_TYPE_FRAGMENT:
       return "Fragment";
-    case ShaderType::GEOMETRY:
+    case SHADER_TYPE_GEOMETRY:
       return "Geometry";
-    default:
-      return "Invalid";
   }
+  ASSERT(false, "Invalid shader type");
 }
 
-static GLenum gl_shader_type(ShaderType type)
+static GLenum shader_type_to_gl_shader(ShaderType type)
 {
   switch (type)
   {
-    case ShaderType::VERTEX:
+    case SHADER_TYPE_VERTEX:
       return GL_VERTEX_SHADER;
-    case ShaderType::FRAGMENT:
+    case SHADER_TYPE_FRAGMENT:
       return GL_FRAGMENT_SHADER;
-    case ShaderType::GEOMETRY:
+    case SHADER_TYPE_GEOMETRY:
       return GL_GEOMETRY_SHADER;
   }
-  ASSERT(false, "Invalid shader type.");
-  return {};
+  ASSERT(false, "Invalid shader type");
 }
 
-static u32 shader_load(const std::filesystem::path& path, ShaderType shader_type)
+static std::expected<u32, std::string_view>
+shader_load(const std::filesystem::path& path, ShaderType shader_type)
 {
   std::ifstream file_stream{path};
-  ASSERT(!file_stream.fail(), "Failed to read file. Path: {}", path.string());
+  if (file_stream.fail())
+  {
+    return std::unexpected{"Failed to read shader file"};
+  }
   std::stringstream ss{};
   ss << file_stream.rdbuf();
   auto file = ss.str();
 
-  u32 shader = glCreateShader(gl_shader_type(shader_type));
+  auto gl_shader_type = shader_type_to_gl_shader(shader_type);
+  u32 shader = glCreateShader(gl_shader_type);
   auto shader_src = file.c_str();
   glShaderSource(shader, 1, &shader_src, nullptr);
   glCompileShader(shader);
@@ -74,7 +228,7 @@ static u32 shader_load(const std::filesystem::path& path, ShaderType shader_type
     );
   }
 
-  return shader;
+  return {shader};
 }
 
 static u32 shader_link(u32 vertex_shader, u32 fragment_shader, std::optional<u32> geometry_shader)
@@ -107,293 +261,120 @@ static u32 shader_link(u32 vertex_shader, u32 fragment_shader, std::optional<u32
   return program;
 }
 
-Shader::Shader(const std::filesystem::path& vs_path, const std::filesystem::path& fs_path)
-{
-  auto vs = shader_load(vs_path, ShaderType::VERTEX);
-  auto fs = shader_load(fs_path, ShaderType::FRAGMENT);
-  m_id = shader_link(vs, fs, std::nullopt);
-
-  auto index = glGetUniformBlockIndex(m_id, "Camera");
-  if (index != GL_INVALID_INDEX)
-  {
-    glUniformBlockBinding(m_id, index, render::Data::UBO_INDEX_CAMERA);
-  }
-  index = glGetUniformBlockIndex(m_id, "Lights");
-  if (index != GL_INVALID_INDEX)
-  {
-    glUniformBlockBinding(m_id, index, render::Data::UBO_INDEX_LIGHTS);
-  }
-}
-
-Shader::Shader(
+std::expected<Shader, std::string_view> shader_from_file(
   const std::filesystem::path& vs_path,
   const std::filesystem::path& fs_path,
   const std::filesystem::path& gs_path
 )
 {
-  auto vs = shader_load(vs_path, ShaderType::VERTEX);
-  auto fs = shader_load(fs_path, ShaderType::FRAGMENT);
-  auto gs = shader_load(gs_path, ShaderType::GEOMETRY);
-  m_id = shader_link(vs, fs, gs);
+  Shader shader{};
+  auto vs = shader_load(vs_path, SHADER_TYPE_VERTEX);
+  if (!vs)
+  {
+    return std::unexpected{"Failed to load vertex shader"};
+  }
+  auto fs = shader_load(fs_path, SHADER_TYPE_FRAGMENT);
+  if (!fs)
+  {
+    return std::unexpected{"Failed to load fragment shader"};
+  }
+  if (gs_path.empty())
+  {
+    shader.id = shader_link(*vs, *fs, std::nullopt);
+  }
+  else
+  {
+    auto gs = shader_load(gs_path, SHADER_TYPE_GEOMETRY);
+    if (!gs)
+    {
+      return std::unexpected{"Failed to load geometry shader"};
+    }
+    shader.id = shader_link(*vs, *fs, *gs);
+  }
 
-  auto index = glGetUniformBlockIndex(m_id, "Camera");
+  auto index = glGetUniformBlockIndex(shader.id, "Camera");
   if (index != GL_INVALID_INDEX)
   {
-    glUniformBlockBinding(m_id, index, render::Data::UBO_INDEX_CAMERA);
+    glUniformBlockBinding(shader.id, index, RENDER_UBO_INDEX_CAMERA);
   }
-  index = glGetUniformBlockIndex(m_id, "Lights");
+  index = glGetUniformBlockIndex(shader.id, "Lights");
   if (index != GL_INVALID_INDEX)
   {
-    glUniformBlockBinding(m_id, index, render::Data::UBO_INDEX_LIGHTS);
+    glUniformBlockBinding(shader.id, index, RENDER_UBO_INDEX_LIGHTS);
   }
+  return {shader};
 }
 
-Shader::Shader(Shader&& other) : m_id{other.m_id}
+void shader_deinit(Shader& shader)
 {
-  other.m_id = 0;
+  glDeleteProgram(shader.id);
 }
 
-Shader& Shader::operator=(Shader&& other)
+void shader_use(const Shader& shader)
 {
-  if (this == &other)
-  {
-    return *this;
-  }
-  glDeleteProgram(m_id);
-  m_id = other.m_id;
-  other.m_id = 0;
-  return *this;
+  glUseProgram(shader.id);
 }
 
-Shader::~Shader()
+void shader_set(Shader& shader, std::string_view name, i32 value)
 {
-  glDeleteProgram(m_id);
+  glUniform1i(glGetUniformLocation(shader.id, name.data()), value);
 }
 
-void Shader::use() const
+void shader_set(Shader& shader, std::string_view name, f32 value)
 {
-  glUseProgram(m_id);
+  glUniform1f(glGetUniformLocation(shader.id, name.data()), value);
 }
 
-void Shader::set(std::string_view name, i32 value)
+void shader_set(Shader& shader, std::string_view name, const vec3& value)
 {
-  glUniform1i(glGetUniformLocation(m_id, name.data()), value);
+  glUniform3f(glGetUniformLocation(shader.id, name.data()), value.x, value.y, value.z);
 }
 
-void Shader::set(std::string_view name, f32 value)
+void shader_set(Shader& shader, std::string_view name, const mat4& value)
 {
-  glUniform1f(glGetUniformLocation(m_id, name.data()), value);
+  glUniformMatrix4fv(glGetUniformLocation(shader.id, name.data()), 1, false, value.data[0]);
 }
 
-void Shader::set(std::string_view name, const vec3& value)
+void shader_set(Shader& shader, std::string_view name, TextureHandle handle)
 {
-  glUniform3f(glGetUniformLocation(m_id, name.data()), value.x, value.y, value.z);
+  ASSERT(shader.texture_slot < 16, "Reached max active textures.");
+  texture_activate(asset_get(g_assets, handle), shader.texture_slot);
+  shader_set(shader, name, (i32) shader.texture_slot);
+  ++shader.texture_slot;
 }
 
-void Shader::set(std::string_view name, const mat4& value)
+void shader_reset_texture_slot(Shader& shader)
 {
-  glUniformMatrix4fv(glGetUniformLocation(m_id, name.data()), 1, false, value.data[0]);
+  shader.texture_slot = 0;
 }
 
-void Shader::set(std::string_view name, TextureHandle handle)
-{
-  ASSERT(m_texture_slot < 16, "Reached max active textures.");
-  AssetManager::instance().get(handle).activate(m_texture_slot);
-  set(name, (i32) m_texture_slot);
-  ++m_texture_slot;
-}
-
-void Shader::reset_texture_slot()
-{
-  m_texture_slot = 0;
-}
-
-Texture::Texture(TextureType type, const uvec2& dimensions_) : dimensions{dimensions_}, m_type{type}
-{
-  constructor_helper(
-    nullptr,
-    WrapOption::CLAMP_TO_EDGE,
-    WrapOption::CLAMP_TO_EDGE,
-    WrapOption::CLAMP_TO_EDGE,
-    FilterOption::NEAREST,
-    FilterOption::NEAREST
-  );
-}
-
-Texture::Texture(const Image& image) : dimensions{image.dimensions()}, m_type{TextureType::FLAT}
-{
-  constructor_helper(
-    image.data(),
-    WrapOption::REPEAT,
-    WrapOption::REPEAT,
-    WrapOption::REPEAT,
-    FilterOption::NEAREST,
-    FilterOption::NEAREST
-  );
-}
-
-Texture::Texture(
-  const Image& image,
-  WrapOption wrap_s,
-  WrapOption wrap_t,
-  FilterOption min_filter,
-  FilterOption mag_filter
-)
-  : dimensions{image.dimensions()}, m_type{TextureType::FLAT}
-{
-  constructor_helper(image.data(), wrap_s, wrap_t, WrapOption::REPEAT, min_filter, mag_filter);
-}
-
-Texture::Texture(Texture&& other)
-  : dimensions{other.dimensions}, m_type{other.m_type}, m_id{other.m_id}
-{
-  other.m_id = 0;
-}
-
-Texture& Texture::operator=(Texture&& other)
-{
-  if (this == &other)
-  {
-    return *this;
-  }
-  dimensions = other.dimensions;
-  m_type = other.m_type;
-  glDeleteTextures(1, &m_id);
-  m_id = other.m_id;
-  other.m_id = 0;
-  return *this;
-}
-
-Texture::~Texture()
-{
-  glDeleteTextures(1, &m_id);
-}
-
-static GLenum gl_texture_type(TextureType type)
-{
-  switch (type)
-  {
-    case TextureType::FLAT:
-      return GL_TEXTURE_2D;
-    case TextureType::CUBEMAP:
-      return GL_TEXTURE_CUBE_MAP;
-  }
-  ASSERT(false, "Invalid texture type.");
-  return (GLenum) -1;
-}
-
-void Texture::activate(u32 slot) const
-{
-  glActiveTexture(GL_TEXTURE0 + slot);
-  glBindTexture(gl_texture_type(m_type), m_id);
-}
-
-static GLint gl_wrap_option(WrapOption option)
-{
-  switch (option)
-  {
-    case WrapOption::REPEAT:
-      return GL_REPEAT;
-    case WrapOption::MIRRORED_REPEAT:
-      return GL_MIRRORED_REPEAT;
-    case WrapOption::CLAMP_TO_EDGE:
-      return GL_CLAMP_TO_EDGE;
-    case WrapOption::CLAMP_TO_BORDER:
-      return GL_CLAMP_TO_BORDER;
-  }
-}
-
-static GLint gl_filter_option(FilterOption option)
-{
-  switch (option)
-  {
-    case FilterOption::LINEAR:
-      return GL_LINEAR;
-    case FilterOption::NEAREST:
-      return GL_NEAREST;
-  }
-}
-
-void Texture::constructor_helper(
-  void* data,
-  WrapOption wrap_s,
-  WrapOption wrap_t,
-  WrapOption wrap_r,
-  FilterOption min_filter,
-  FilterOption mag_filter
+Mesh mesh_init(
+  const std::vector<Vertex>& vertices,
+  const std::vector<u32>& indices,
+  const std::vector<Submesh>& submeshes,
+  RenderPrimitive primitive,
+  Render_Data& render_data
 )
 {
-  auto gl_type = gl_texture_type(m_type);
-  glGenTextures(1, &m_id);
-  glBindTexture(gl_type, m_id);
+  Mesh mesh{};
+  mesh.vertices = vertices;
+  mesh.indices = indices;
+  mesh.submeshes = submeshes;
+  mesh.primitive = primitive;
 
-  glTexParameteri(gl_type, GL_TEXTURE_WRAP_S, gl_wrap_option(wrap_s));
-  glTexParameteri(gl_type, GL_TEXTURE_WRAP_T, gl_wrap_option(wrap_t));
-  glTexParameteri(gl_type, GL_TEXTURE_WRAP_R, gl_wrap_option(wrap_r));
-  glTexParameteri(gl_type, GL_TEXTURE_MIN_FILTER, gl_filter_option(min_filter));
-  glTexParameteri(gl_type, GL_TEXTURE_MAG_FILTER, gl_filter_option(mag_filter));
+  glGenVertexArrays(1, &mesh.vao);
+  glBindVertexArray(mesh.vao);
 
-  switch (m_type)
-  {
-    case TextureType::FLAT:
-    {
-      glTexImage2D(
-        GL_TEXTURE_2D,
-        0,
-        GL_RGBA8,
-        (GLsizei) dimensions.x,
-        (GLsizei) dimensions.y,
-        0,
-        GL_RGBA,
-        GL_UNSIGNED_BYTE,
-        data
-      );
-      glGenerateMipmap(GL_TEXTURE_2D);
-    }
-    break;
-    case TextureType::CUBEMAP:
-    {
-      for (u32 i = 0; i < 6; ++i)
-      {
-        glTexImage2D(
-          GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
-          0,
-          GL_DEPTH_COMPONENT,
-          (GLsizei) dimensions.x,
-          (GLsizei) dimensions.y,
-          0,
-          GL_DEPTH_COMPONENT,
-          GL_FLOAT,
-          data
-        );
-      }
-    }
-    break;
-  }
-}
-
-Mesh::Mesh(
-  std::vector<Vertex>&& vertices_,
-  std::vector<u32>&& indices_,
-  std::vector<Submesh>&& submeshes_,
-  RenderPrimitive primitive_,
-  render::Data& render_data_
-)
-  : vertices{vertices_}, indices{indices_}, submeshes{submeshes_}, primitive{primitive_}
-{
-  glGenVertexArrays(1, &m_vao);
-  glBindVertexArray(m_vao);
-
-  glGenBuffers(1, &m_vbo);
-  glBindBuffer(GL_ARRAY_BUFFER, m_vbo);
+  glGenBuffers(1, &mesh.vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, mesh.vbo);
   glBufferData(
     GL_ARRAY_BUFFER,
     (GLsizei) (vertices.size() * sizeof(Vertex)),
     vertices.data(),
     GL_STATIC_DRAW
   );
-  glGenBuffers(1, &m_ebo);
-  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ebo);
+  glGenBuffers(1, &mesh.ebo);
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.ebo);
   glBufferData(
     GL_ELEMENT_ARRAY_BUFFER,
     (GLsizei) (indices.size() * sizeof(u32)),
@@ -418,15 +399,15 @@ Mesh::Mesh(
   }
 
   {
-    glBindBuffer(GL_ARRAY_BUFFER, render_data_.instance_data_buffer);
+    glBindBuffer(GL_ARRAY_BUFFER, render_data.instance_data_buffer);
     // NOTE: model matrix
     glVertexAttribPointer(
       3,
       4,
       GL_FLOAT,
       GL_FALSE,
-      sizeof(render::InstanceData),
-      (void*) offsetof(render::InstanceData, transform)
+      sizeof(Render_InstanceData),
+      (void*) offsetof(Render_InstanceData, transform)
     );
     glEnableVertexAttribArray(3);
     glVertexAttribPointer(
@@ -434,8 +415,8 @@ Mesh::Mesh(
       4,
       GL_FLOAT,
       GL_FALSE,
-      sizeof(render::InstanceData),
-      (void*) (offsetof(render::InstanceData, transform) + sizeof(vec4))
+      sizeof(Render_InstanceData),
+      (void*) (offsetof(Render_InstanceData, transform) + sizeof(vec4))
     );
     glEnableVertexAttribArray(4);
     glVertexAttribPointer(
@@ -443,8 +424,8 @@ Mesh::Mesh(
       4,
       GL_FLOAT,
       GL_FALSE,
-      sizeof(render::InstanceData),
-      (void*) (offsetof(render::InstanceData, transform) + 2 * sizeof(vec4))
+      sizeof(Render_InstanceData),
+      (void*) (offsetof(Render_InstanceData, transform) + 2 * sizeof(vec4))
     );
     glEnableVertexAttribArray(5);
     glVertexAttribPointer(
@@ -452,8 +433,8 @@ Mesh::Mesh(
       4,
       GL_FLOAT,
       GL_FALSE,
-      sizeof(render::InstanceData),
-      (void*) (offsetof(render::InstanceData, transform) + 3 * sizeof(vec4))
+      sizeof(Render_InstanceData),
+      (void*) (offsetof(Render_InstanceData, transform) + 3 * sizeof(vec4))
     );
     glEnableVertexAttribArray(6);
     // NOTE: entity tint
@@ -462,8 +443,8 @@ Mesh::Mesh(
       4,
       GL_FLOAT,
       GL_FALSE,
-      sizeof(render::InstanceData),
-      (void*) offsetof(render::InstanceData, tint)
+      sizeof(Render_InstanceData),
+      (void*) offsetof(Render_InstanceData, tint)
     );
     glEnableVertexAttribArray(7);
     // NOTE: for rendering parts of a texture
@@ -472,8 +453,8 @@ Mesh::Mesh(
       2,
       GL_FLOAT,
       GL_FALSE,
-      sizeof(render::InstanceData),
-      (void*) offsetof(render::InstanceData, uv_scale)
+      sizeof(Render_InstanceData),
+      (void*) offsetof(Render_InstanceData, uv_scale)
     );
     glEnableVertexAttribArray(8);
     glVertexAttribPointer(
@@ -481,8 +462,8 @@ Mesh::Mesh(
       2,
       GL_FLOAT,
       GL_FALSE,
-      sizeof(render::InstanceData),
-      (void*) offsetof(render::InstanceData, uv_offset)
+      sizeof(Render_InstanceData),
+      (void*) offsetof(Render_InstanceData, uv_offset)
     );
     glEnableVertexAttribArray(9);
     glVertexAttribPointer(
@@ -490,8 +471,8 @@ Mesh::Mesh(
       1,
       GL_FLOAT,
       GL_FALSE,
-      sizeof(render::InstanceData),
-      (void*) offsetof(render::InstanceData, corner_radius)
+      sizeof(Render_InstanceData),
+      (void*) offsetof(Render_InstanceData, corner_radius)
     );
     glEnableVertexAttribArray(10);
 
@@ -506,50 +487,19 @@ Mesh::Mesh(
   }
 
   glBindVertexArray(0);
+  return mesh;
 }
 
-Mesh::Mesh(Mesh&& other)
-  : vertices{std::move(other.vertices)}, indices{std::move(other.indices)},
-    submeshes{std::move(other.submeshes)}, primitive{other.primitive}, m_vbo{other.m_vbo},
-    m_ebo{other.m_ebo}, m_vao{other.m_vao}
+void mesh_deinit(Mesh& mesh)
 {
-  other.m_vbo = 0;
-  other.m_ebo = 0;
-  other.m_vao = 0;
+  glDeleteBuffers(1, &mesh.vbo);
+  glDeleteBuffers(1, &mesh.ebo);
+  glDeleteVertexArrays(1, &mesh.vao);
 }
 
-Mesh& Mesh::operator=(Mesh&& other)
+void mesh_use(const Mesh& mesh)
 {
-  if (this == &other)
-  {
-    return *this;
-  }
-  vertices = std::move(other.vertices);
-  indices = std::move(other.indices);
-  submeshes = std::move(other.submeshes);
-  primitive = other.primitive;
-  glDeleteBuffers(1, &m_vbo);
-  m_vbo = other.m_vbo;
-  other.m_vbo = 0;
-  glDeleteBuffers(1, &m_ebo);
-  m_ebo = other.m_ebo;
-  other.m_ebo = 0;
-  glDeleteVertexArrays(1, &m_vao);
-  m_vao = other.m_vao;
-  other.m_vao = 0;
-  return *this;
-}
-
-Mesh::~Mesh()
-{
-  glDeleteBuffers(1, &m_vbo);
-  glDeleteBuffers(1, &m_ebo);
-  glDeleteVertexArrays(1, &m_vao);
-}
-
-void Mesh::use() const
-{
-  glBindVertexArray(m_vao);
+  glBindVertexArray(mesh.vao);
 }
 
 struct OBJContext
@@ -563,16 +513,16 @@ struct OBJContext
   std::unordered_map<Vertex, std::size_t> vertex_cache{};
 };
 
-static vec3 obj_parse_vec3(parser::Pos& pos)
+static vec3 obj_parse_vec3(Parser_Pos& pos)
 {
   vec3 out{};
-  out.x = parser::number_f32(pos);
-  out.y = parser::number_f32(pos);
-  out.z = parser::number_f32(pos);
+  out.x = parser_number_f32(pos);
+  out.y = parser_number_f32(pos);
+  out.z = parser_number_f32(pos);
   return out;
 }
 
-void AssetManager::load_mtl_file(const std::filesystem::path& path)
+static void load_mtl_file(AssetStore& assets, const std::filesystem::path& path)
 {
   std::string mat_name{};
   Material mat{};
@@ -586,18 +536,18 @@ void AssetManager::load_mtl_file(const std::filesystem::path& path)
     {
       continue;
     }
-    parser::Pos pos{.line = line};
+    Parser_Pos pos{.line = line};
 
-    auto key = parser::word(pos);
+    auto key = parser_word(pos);
     if (key == "newmtl")
     {
       if (parsing)
       {
-        auto material_handle = set(std::move(mat));
-        m_material_handles.insert_or_assign(mat_name, material_handle);
+        auto material_handle = asset_set(assets, mat);
+        assets.material_handles.insert_or_assign(mat_name, material_handle);
       }
-      mat_name = parser::word(pos);
-      if (m_material_handles.contains(mat_name))
+      mat_name = parser_word(pos);
+      if (assets.material_handles.contains(mat_name))
       {
         parsing = false;
       }
@@ -621,8 +571,8 @@ void AssetManager::load_mtl_file(const std::filesystem::path& path)
     }
     else if (key == "map_Kd")
     {
-      auto filename = parser::word(pos);
-      mat.diffuse_map = load_texture(path.parent_path() / filename);
+      auto filename = parser_word(pos);
+      mat.diffuse_map = load_texture(g_assets, path.parent_path() / filename);
     }
     else if (key == "Ks")
     {
@@ -634,7 +584,7 @@ void AssetManager::load_mtl_file(const std::filesystem::path& path)
     }
     else if (key == "Ns")
     {
-      mat.specular_exponent = parser::number_f32(pos);
+      mat.specular_exponent = parser_number_f32(pos);
     }
     else if (key == "map_Ns")
     {
@@ -667,18 +617,18 @@ void AssetManager::load_mtl_file(const std::filesystem::path& path)
   }
   if (parsing)
   {
-    auto material_handle = set(std::move(mat));
-    m_material_handles.insert_or_assign(mat_name, material_handle);
+    auto material_handle = asset_set(g_assets, mat);
+    assets.material_handles.insert_or_assign(mat_name, material_handle);
   }
 }
 
-static void obj_parse_vertex(OBJContext& ctx, parser::Pos& pos)
+static void obj_parse_vertex(OBJContext& ctx, Parser_Pos& pos)
 {
-  auto position_idx = parser::number_u32(pos);
-  parser::expect_and_skip(pos, '/');
-  auto uv_idx = parser::number_u32(pos);
-  parser::expect_and_skip(pos, '/');
-  auto normal_idx = parser::number_u32(pos);
+  auto position_idx = parser_number_u32(pos);
+  parser_expect_and_skip(pos, '/');
+  auto uv_idx = parser_number_u32(pos);
+  parser_expect_and_skip(pos, '/');
+  auto normal_idx = parser_number_u32(pos);
 
   Vertex v{
     .pos = ctx.positions[position_idx - 1],
@@ -700,9 +650,9 @@ static void obj_parse_vertex(OBJContext& ctx, parser::Pos& pos)
   ++ctx.submeshes[ctx.submeshes.size() - 1].index_count;
 }
 
-MeshHandle AssetManager::load_obj(const std::filesystem::path& path)
+MeshHandle load_obj(AssetStore& assets, const std::filesystem::path& path)
 {
-  ASSERT(m_render_data, "Need to bind render data, before loading meshes.");
+  ASSERT(assets.render_data, "Need to bind render data, before loading meshes.");
   OBJContext ctx{};
   std::ifstream file{path};
   ASSERT(!file.fail(), "File reading error. (path: {}).", path.string());
@@ -713,13 +663,13 @@ MeshHandle AssetManager::load_obj(const std::filesystem::path& path)
     {
       continue;
     }
-    parser::Pos pos{.line = line};
+    Parser_Pos pos{.line = line};
 
-    auto key = parser::word(pos);
+    auto key = parser_word(pos);
     if (key == "mtllib")
     {
-      auto mtl_filename = parser::word(pos);
-      load_mtl_file(path.parent_path() / mtl_filename);
+      auto mtl_filename = parser_word(pos);
+      load_mtl_file(assets, path.parent_path() / mtl_filename);
     }
     else if (key == "o")
     {
@@ -740,8 +690,8 @@ MeshHandle AssetManager::load_obj(const std::filesystem::path& path)
     else if (key == "vt")
     {
       vec2 uv{};
-      uv.x = parser::number_f32(pos);
-      uv.y = parser::number_f32(pos);
+      uv.x = parser_number_f32(pos);
+      uv.y = parser_number_f32(pos);
       ctx.uvs.push_back(uv);
     }
     else if (key == "s")
@@ -750,8 +700,8 @@ MeshHandle AssetManager::load_obj(const std::filesystem::path& path)
     }
     else if (key == "usemtl")
     {
-      auto name = parser::word(pos);
-      ctx.submeshes[ctx.submeshes.size() - 1].material = m_material_handles[std::string{name}];
+      auto name = parser_word(pos);
+      ctx.submeshes[ctx.submeshes.size() - 1].material = assets.material_handles[std::string{name}];
     }
     else if (key == "f")
     {
@@ -769,37 +719,30 @@ MeshHandle AssetManager::load_obj(const std::filesystem::path& path)
     }
   }
 
-  return set(Mesh{
-    std::move(ctx.vertices),
-    std::move(ctx.indices),
-    std::move(ctx.submeshes),
-    RenderPrimitive::TRIANGLES,
-    *m_render_data
-  });
+  return asset_set(
+    g_assets,
+    mesh_init(
+      ctx.vertices,
+      ctx.indices,
+      ctx.submeshes,
+      RENDER_PRIMITIVE_TRIANGLES,
+      *assets.render_data
+    )
+  );
 }
 
-TextureHandle AssetManager::load_texture(const std::filesystem::path& path)
+TextureHandle load_texture(AssetStore& assets, const std::filesystem::path& path)
 {
-  if (m_texture_handles.contains(path.string()))
+  if (assets.texture_handles.contains(path.string()))
   {
-    return m_texture_handles[path.string()];
+    return assets.texture_handles[path.string()];
   }
-  auto handle = set(Texture{Image{path}});
-  m_texture_handles.insert_or_assign(path.string(), handle);
+  auto img = image_from_file(path);
+  // TODO: this should not assert
+  ASSERT(img, "{}", img.error());
+  auto handle = asset_set(assets, texture_from_image(*img));
+  assets.texture_handles.insert_or_assign(path.string(), handle);
   return handle;
 }
 
-void AssetManager::clear()
-{
-  m_textures.clear();
-  m_materials.clear();
-  m_meshes.clear();
-
-  m_texture_handles.clear();
-  m_material_handles.clear();
-}
-
-void AssetManager::bind_render_data(render::Data& render_data)
-{
-  m_render_data = &render_data;
-}
+AssetStore g_assets = {};
