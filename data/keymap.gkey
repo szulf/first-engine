@@ -4,6 +4,6 @@ move_left : A
 move_right : D
 interact : E
 toggle_debug_menu : F1
-toggle_camera_mode : F2
+toggle_noclip : F2
 camera_move_up : SPACE
 camera_move_down : LSHIFT

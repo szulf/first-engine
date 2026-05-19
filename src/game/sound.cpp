@@ -1,10 +1,12 @@
 #include "sound.h"
-#include "base/base.h"
-#include "base/spsc_queue.h"
-#include "os/os.h"
 
 #include <fstream>
 #include <cmath>
+
+#include "base/base.h"
+#include "base/spsc_queue.h"
+#include "base/errors.h"
+#include "os/os.h"
 
 struct WAVContext
 {
@@ -251,13 +253,25 @@ Sound_System sound_system_init(OS_Audio& audio)
   }
   {
     auto sound = sound_load_wav("assets/shotgun.wav");
-    ASSERT(sound, "{}", sound.error());
-    system.sound_data[SOUND_HANDLE_SHOTGUN] = *sound;
+    if (sound)
+    {
+      system.sound_data[SOUND_HANDLE_SHOTGUN] = *sound;
+    }
+    else
+    {
+      REPORT_ERROR(sound.error());
+    }
   }
   {
     auto sound = sound_load_wav("assets/music.wav");
-    ASSERT(sound, "{}", sound.error());
-    system.sound_data[SOUND_HANDLE_TEST_MUSIC] = *sound;
+    if (sound)
+    {
+      system.sound_data[SOUND_HANDLE_TEST_MUSIC] = *sound;
+    }
+    else
+    {
+      REPORT_ERROR(sound.error());
+    }
   }
 
   return system;

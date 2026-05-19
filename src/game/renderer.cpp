@@ -3,11 +3,29 @@
 #include <algorithm>
 
 #include "base/math.h"
-#include "game/assets.h"
-#include "game/camera.h"
+#include "base/errors.h"
 #include "os/gl_functions.h"
+#include "assets.h"
+#include "camera.h"
 
 static Render_Data g_render_data{};
+
+struct STD140Camera
+{
+  mat4 proj_view{};
+  vec3 view_pos{};
+  float far_plane{};
+};
+
+struct STD140Light
+{
+  vec4 pos{};
+  vec4 color{};
+  f32 constant{};
+  f32 linear{};
+  f32 quadratic{};
+  f32 _pad{};
+};
 
 static constexpr Vertex cube_vertices[] = {
   {{-0.500000, 0.500000, 0.500000}, {-1.000000, -0.000000, -0.000000}, {0.000000, 1.000000}},
@@ -91,23 +109,6 @@ static MeshHandle static_model_init(
   );
 }
 
-struct STD140Camera
-{
-  mat4 proj_view{};
-  vec3 view_pos{};
-  float far_plane{};
-};
-
-struct STD140Light
-{
-  vec4 pos{};
-  vec4 color{};
-  f32 constant{};
-  f32 linear{};
-  f32 quadratic{};
-  f32 _pad{};
-};
-
 void render_init()
 {
   g_render_data.camera_2d = {
@@ -151,18 +152,36 @@ void render_init()
 
   {
     auto shader = shader_from_file("shaders/shader.vert", "shaders/default.frag");
-    ASSERT(shader, "{}", shader.error());
-    g_render_data.default_shader = asset_set(g_assets, *shader);
+    if (shader)
+    {
+      g_render_data.default_shader = asset_set(g_assets, *shader);
+    }
+    else
+    {
+      REPORT_ERROR(shader.error());
+    }
   }
   {
     auto shader = shader_from_file("shaders/quads.vert", "shaders/quads.frag");
-    ASSERT(shader, "{}", shader.error());
-    g_render_data.quads_shader = asset_set(g_assets, *shader);
+    if (shader)
+    {
+      g_render_data.quads_shader = asset_set(g_assets, *shader);
+    }
+    else
+    {
+      REPORT_ERROR(shader.error());
+    }
   }
   {
     auto shader = shader_from_file("shaders/shader.vert", "shaders/lighting.frag");
-    ASSERT(shader, "{}", shader.error());
-    g_render_data.lighting_shader = asset_set(g_assets, *shader);
+    if (shader)
+    {
+      g_render_data.lighting_shader = asset_set(g_assets, *shader);
+    }
+    else
+    {
+      REPORT_ERROR(shader.error());
+    }
   }
 
   g_render_data.cube_wires = static_model_init(

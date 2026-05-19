@@ -105,7 +105,7 @@ struct UI_ElementConfig
     UI_ElementConfigNormal normal{};
     struct
     {
-      std::string_view text{};
+      usize string_idx{};
       f32 size{};
     } text;
   };
@@ -155,6 +155,8 @@ struct UI_Layout
   UI_IdInternal id{};
   UI_System* system;
   const OS_Input* input;
+  // NOTE: weird hack to get the union working, because c++
+  std::vector<std::string> strings{};
   std::vector<UI_Element> elements{};
   vec3 pos{};
   vec2 max_dimensions{};

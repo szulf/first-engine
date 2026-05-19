@@ -21,7 +21,7 @@ enum Action
   ACTION_CAMERA_MOVE_UP,
   ACTION_CAMERA_MOVE_DOWN,
   ACTION_TOGGLE_DEBUG_MENU,
-  ACTION_TOGGLE_CAMERA_MODE,
+  ACTION_TOGGLE_NOCLIP,
 
   ACTION_COUNT,
 };
@@ -30,6 +30,21 @@ struct Keymap
 {
   OS_Key map[ACTION_COUNT]{};
 };
+
+static constexpr Keymap DEFAULT_KEYMAP = []() -> Keymap
+{
+  Keymap k{};
+  k.map[ACTION_MOVE_FRONT] = OS_KEY_W;
+  k.map[ACTION_MOVE_BACK] = OS_KEY_S;
+  k.map[ACTION_MOVE_LEFT] = OS_KEY_A;
+  k.map[ACTION_MOVE_RIGHT] = OS_KEY_D;
+  k.map[ACTION_INTERACT] = OS_KEY_E;
+  k.map[ACTION_CAMERA_MOVE_UP] = OS_KEY_SPACE;
+  k.map[ACTION_CAMERA_MOVE_DOWN] = OS_KEY_LSHIFT;
+  k.map[ACTION_TOGGLE_DEBUG_MENU] = OS_KEY_F1;
+  k.map[ACTION_TOGGLE_NOCLIP] = OS_KEY_F2;
+  return k;
+}();
 
 #define SHADOW_MAP_DIMENSIONS uvec2{1024, 1024}
 #define CHAR_SIZE vec2{9, 16}
@@ -56,12 +71,13 @@ struct GameData
     struct Menu
     {
       bool shown{};
-      bool open = true;
+      bool open{};
       bool drag{};
-      vec3 pos = {100, 50, 0};
+      vec3 pos{};
       vec2 drag_offset{};
     };
-    Menu menu{};
+    Menu menu{.pos = {100, 50, 0}};
+    Menu error_list{.pos = {400, 50, 0}};
     bool noclip{};
     bool display_bounding_boxes{};
   };

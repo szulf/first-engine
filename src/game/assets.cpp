@@ -6,8 +6,8 @@
 #include <fstream>
 #include <string>
 
+#include "base/errors.h"
 #include "os/gl_functions.h"
-
 #include "parser.h"
 #include "renderer.h"
 
@@ -220,12 +220,8 @@ shader_load(const std::filesystem::path& path, ShaderType shader_type)
     GLsizei log_length = 0;
     GLchar message[1024];
     glGetShaderInfoLog(shader, 1024, &log_length, message);
-    ASSERT(
-      false,
-      "{} shader failed with message:\n{}",
-      shader_type_to_string(shader_type),
-      message
-    );
+    // TODO: i hate not reporting the actual compilation message here
+    return std::unexpected{"Failed to compile shader"};
   }
 
   return {shader};
@@ -528,7 +524,11 @@ static void load_mtl_file(AssetStore& assets, const std::filesystem::path& path)
   Material mat{};
   bool parsing{};
   std::ifstream file{path};
-  ASSERT(!file.fail(), "[MTL] File reading error. (path: {}).", path.string());
+  if (file.fail())
+  {
+    REPORT_ERROR("Failed to open mtl file");
+    return;
+  }
   std::string line{};
   while (std::getline(file, line))
   {
@@ -612,7 +612,8 @@ static void load_mtl_file(AssetStore& assets, const std::filesystem::path& path)
     }
     else
     {
-      ASSERT(false, "Invalid key found. ({}).", key);
+      REPORT_ERROR("Invalid mtl key");
+      continue;
     }
   }
   if (parsing)
@@ -655,7 +656,11 @@ MeshHandle load_obj(AssetStore& assets, const std::filesystem::path& path)
   ASSERT(assets.render_data, "Need to bind render data, before loading meshes.");
   OBJContext ctx{};
   std::ifstream file{path};
-  ASSERT(!file.fail(), "File reading error. (path: {}).", path.string());
+  if (file.fail())
+  {
+    REPORT_ERROR("Failed to open obj file");
+    return assets.render_data->quad;
+  }
   std::string line{};
   while (std::getline(file, line))
   {
@@ -715,7 +720,8 @@ MeshHandle load_obj(AssetStore& assets, const std::filesystem::path& path)
     }
     else
     {
-      ASSERT(false, "Invalid key found. ({}).", key);
+      REPORT_ERROR("Invalid obj key");
+      return assets.render_data->quad;
     }
   }
 
@@ -738,8 +744,11 @@ TextureHandle load_texture(AssetStore& assets, const std::filesystem::path& path
     return assets.texture_handles[path.string()];
   }
   auto img = image_from_file(path);
-  // TODO: this should not assert
-  ASSERT(img, "{}", img.error());
+  if (!img)
+  {
+    REPORT_ERROR(img.error());
+    return assets.render_data->blank_texture;
+  }
   auto handle = asset_set(assets, texture_from_image(*img));
   assets.texture_handles.insert_or_assign(path.string(), handle);
   return handle;

@@ -164,8 +164,9 @@ static void ui_calculate_text_fit_fixed_sizing(UI_Layout& layout, UI_ElementIdx 
     case UI_ELEMENT_TEXT:
     {
       auto& config = elem.config.text;
+      auto& str = layout.strings[config.string_idx];
       elem.dimensions =
-        vec2{layout.char_size.x * (f32) config.text.size(), layout.char_size.y} * config.size;
+        vec2{layout.char_size.x * (f32) str.size(), layout.char_size.y} * config.size;
     }
     break;
   }
@@ -546,32 +547,41 @@ static void ui_generate_render_cmds(UI_Layout& layout, UI_ElementIdx idx = 0)
       case UI_ELEMENT_TEXT:
       {
         auto& config = child.config.text;
-        for (usize i = 0; i < config.text.size(); ++i)
+        auto& str = layout.strings[config.string_idx];
+        for (usize i = 0; i < str.size(); ++i)
         {
           vec2 texture_offset{};
-          if (std::islower(config.text[i]))
+          if (std::islower(str[i]))
           {
-            texture_offset = {(f32) (config.text[i] - 'a'), 1};
+            texture_offset = {(f32) (str[i] - 'a'), 1};
           }
-          else if (std::isupper(config.text[i]))
+          else if (std::isupper(str[i]))
           {
-            texture_offset = {(f32) (config.text[i] - 'A'), 1};
+            texture_offset = {(f32) (str[i] - 'A'), 1};
           }
-          else if (std::isdigit(config.text[i]))
+          else if (std::isdigit(str[i]))
           {
-            texture_offset = {(f32) (config.text[i] - '0'), 2};
+            texture_offset = {(f32) (str[i] - '0'), 2};
           }
-          else if (config.text[i] >= '!' && config.text[i] <= '-')
+          else if (str[i] >= '!' && str[i] <= '.')
           {
-            texture_offset = {(f32) (config.text[i] - '!'), 3};
+            texture_offset = {(f32) (str[i] - '!'), 3};
           }
-          else if (std::isspace(config.text[i]))
+          else if (str[i] >= ':' && str[i] <= ';')
+          {
+            texture_offset = {(f32) (str[i] - ':'), 4};
+          }
+          else if (str[i] >= '[' && str[i] <= '_')
+          {
+            texture_offset = {(f32) (str[i] - '['), 5};
+          }
+          else if (std::isspace(str[i]))
           {
             continue;
           }
           else
           {
-            ASSERT(false, "Unsupported character '{}' found in drawing", config.text[i]);
+            ASSERT(false, "Unsupported character '{}'({}) found in drawing", str[i], (i32) str[i]);
           }
           layout.system->render_cmds.push_back(render_texture_part(
             layout.font_texture,
@@ -694,9 +704,11 @@ void ui_element_end(UI_Layout& layout, const UI_ElementConfigNormal& config)
 
 void ui_text(UI_Layout& layout, std::string_view text, f32 size)
 {
+  layout.strings.push_back(std::string{text});
   layout.elements.push_back({
     .parent = layout._active_parent,
-    .config = {.type = UI_ELEMENT_TEXT, .text = {.text = text, .size = size}},
+    .config =
+      {.type = UI_ELEMENT_TEXT, .text = {.string_idx = layout.strings.size() - 1, .size = size}},
   });
   set_first_child_or_next_sibling(layout);
 }

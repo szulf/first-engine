@@ -2,7 +2,6 @@
 
 ## SMALL TODOS: (ordered)
 
-1. better apis
 2. better errors than std::string_view
 3. do i need rendered_pos in things?
 4. no more #pragma once

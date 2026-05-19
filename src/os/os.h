@@ -59,7 +59,6 @@ enum OS_Key
   OS_KEY_COUNT,
 };
 
-std::expected<std::string_view, std::string_view> os_key_to_string(OS_Key key);
 std::expected<OS_Key, std::string_view> os_string_to_key(std::string_view str);
 
 struct OS_KeyState

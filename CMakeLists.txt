@@ -87,6 +87,7 @@ include(vendor/vendor.cmake)
 add_library(base STATIC
   src/base/base.h
   src/base/math.h src/base/math.cpp
+  src/base/errors.h src/base/errors.cpp
   src/base/spsc_queue.h
 )
 target_compile_options(base PRIVATE ${flags})

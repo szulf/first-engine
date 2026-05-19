@@ -78,3 +78,8 @@
 5. almost completely usable ui
    - clipping/scrolling
    - round corners
+
+## 6. BIG TODO: get rid of c++ bs
+
+1. better apis
+2. better errors than std::string_view

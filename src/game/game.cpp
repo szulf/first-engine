@@ -5,48 +5,66 @@
 #include <string>
 
 #include "base/base.h"
+#include "base/errors.h"
+#include "os/os.h"
 #include "camera.h"
 #include "assets.h"
 #include "sound.h"
-#include "os/os.h"
 #include "renderer.h"
 #include "entity.h"
 #include "parser.h"
 #include "ui.h"
 
-std::expected<std::string_view, std::string_view> action_to_string(Action action)
+std::expected<Action, std::string_view> string_to_action(std::string_view str)
 {
-  switch (action)
+  if (str == "move_front")
   {
-    case ACTION_MOVE_FRONT:
-      return {"move_front"};
-    case ACTION_MOVE_BACK:
-      return {"move_back"};
-    case ACTION_MOVE_LEFT:
-      return {"move_left"};
-    case ACTION_MOVE_RIGHT:
-      return {"move_right"};
-    case ACTION_INTERACT:
-      return {"interact"};
-    case ACTION_CAMERA_MOVE_UP:
-      return {"camera_move_up"};
-    case ACTION_CAMERA_MOVE_DOWN:
-      return {"camera_move_down"};
-    case ACTION_TOGGLE_DEBUG_MENU:
-      return {"toggle_debug_menu"};
-    case ACTION_TOGGLE_CAMERA_MODE:
-      return {"toggle_camera_mode"};
-    case ACTION_COUNT:
-    default:
-      return std::unexpected{"Invalid action."};
+    return {ACTION_MOVE_FRONT};
   }
+  else if (str == "move_back")
+  {
+    return {ACTION_MOVE_BACK};
+  }
+  else if (str == "move_left")
+  {
+    return {ACTION_MOVE_LEFT};
+  }
+  else if (str == "move_right")
+  {
+    return {ACTION_MOVE_RIGHT};
+  }
+  else if (str == "interact")
+  {
+    return {ACTION_INTERACT};
+  }
+  else if (str == "camera_move_up")
+  {
+    return {ACTION_CAMERA_MOVE_UP};
+  }
+  else if (str == "camera_move_down")
+  {
+    return {ACTION_CAMERA_MOVE_DOWN};
+  }
+  else if (str == "toggle_debug_menu")
+  {
+    return {ACTION_TOGGLE_DEBUG_MENU};
+  }
+  else if (str == "toggle_noclip")
+  {
+    return {ACTION_TOGGLE_NOCLIP};
+  }
+  return std::unexpected{"Invalid action string"};
 }
 
 Keymap load_gkey(const std::filesystem::path& path)
 {
-  Keymap keymap{};
+  Keymap keymap = DEFAULT_KEYMAP;
   std::ifstream file{path};
-  ASSERT(!file.fail(), "File reading error.");
+  if (file.fail())
+  {
+    REPORT_ERROR("Failed to open keymap file");
+    return keymap;
+  }
   std::string line{};
   while (std::getline(file, line))
   {
@@ -56,20 +74,22 @@ Keymap load_gkey(const std::filesystem::path& path)
     }
     Parser_Pos pos{.line = line};
 
-    auto action = parser_word(pos);
+    auto action_str = parser_word(pos);
+    auto action = string_to_action(action_str);
+    if (!action)
+    {
+      REPORT_ERROR("Invalid action");
+      return keymap;
+    }
     parser_expect_and_skip(pos, ':');
     auto key_str = parser_word(pos);
     auto key = os_string_to_key(key_str);
-    ASSERT(key, "Invalid key string. ({})", key.error());
-    for (usize i = 0; i < ACTION_COUNT; ++i)
+    if (!key)
     {
-      auto action_str = action_to_string((Action) i);
-      ASSERT(action_str, "Invalid action. ({})", action_str.error());
-      if (action == action_str)
-      {
-        keymap.map[i] = *key;
-      }
+      REPORT_ERROR("Invalid key");
+      return keymap;
     }
+    keymap.map[*action] = *key;
   }
   return keymap;
 }
@@ -103,7 +123,6 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
     ASSERT(scene, "Failed to load scene {}", scene.error());
     game.scene = *scene;
   }
-  // m_sound_system.play_looped(SoundHandle::TEST_MUSIC, 0.1f);
   game.shadow_map = asset_set(g_assets, texture_init(TEXTURE_CUBEMAP, SHADOW_MAP_DIMENSIONS));
   {
     auto shader = shader_from_file(
@@ -111,12 +130,19 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
       "shaders/shadow_depth.frag",
       "shaders/shadow_depth.geom"
     );
-    ASSERT(shader, "Failed to create shadow map shader {}", shader.error());
-    game.shadow_depth_shader = asset_set(g_assets, *shader);
+    if (shader)
+    {
+      game.shadow_depth_shader = asset_set(g_assets, *shader);
+    }
+    else
+    {
+      REPORT_ERROR(shader.error());
+    }
   }
   render_create_framebuffer(game.shadow_map);
   // TODO: load this with FilterOption::NEAREST
   game.font_texture = load_texture(g_assets, "assets/font.png");
+  // m_sound_system.play_looped(SoundHandle::TEST_MUSIC, 0.1f);
   return game;
 }
 
@@ -133,8 +159,9 @@ void game_update_tick(GameData& game, f32 dt)
   {
     game.debug.menu.shown = !game.debug.menu.shown;
     game.debug.menu.drag = false;
+    game.debug.error_list.drag = false;
   }
-  if (os_key_just_pressed(key_state_from_action(ACTION_TOGGLE_CAMERA_MODE, game)))
+  if (os_key_just_pressed(key_state_from_action(ACTION_TOGGLE_NOCLIP, game)))
   {
     game.debug.noclip = !game.debug.noclip;
   }
@@ -333,115 +360,218 @@ void game_update_tick(GameData& game, f32 dt)
   ui_system_update(game.ui_system);
   if (game.debug.menu.shown)
   {
-    auto layout = ui_layout_begin(
-      "debug menu",
-      game.ui_system,
-      game.window->input,
-      game.debug.menu.pos,
-      {1280, 720},
-      CHAR_SIZE,
-      game.font_texture
-    );
     {
-      ui_element_begin(layout, UI_AUTO_ID);
-      defer(ui_element_end(layout, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL}));
-
+      auto debug_menu = ui_layout_begin(
+        "debug menu",
+        game.ui_system,
+        game.window->input,
+        game.debug.menu.pos,
+        {1280, 720},
+        CHAR_SIZE,
+        game.font_texture
+      );
       {
-        bool titlebar_clicked = false;
-        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &titlebar_clicked});
-        defer(ui_element_end(
-          layout,
-          {.sizing = {ui_sizing_fill(), ui_sizing_fit()},
-           .padding = ui_padding_all(4),
-           .child_gap = 4,
-           .child_alignment = {.y = UI_CHILD_ALIGNMENT_CENTER},
-           .bg_color = {0, 0, 0, 0.5f}}
-        ));
+        ui_element_begin(debug_menu, UI_AUTO_ID);
+        defer(ui_element_end(debug_menu, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL}));
 
         {
-          bool collapser_clicked = false;
-          ui_element_begin(layout, UI_AUTO_ID, {.clicked = &collapser_clicked});
+          bool titlebar_clicked = false;
+          ui_element_begin(debug_menu, UI_AUTO_ID, {.clicked = &titlebar_clicked});
           defer(ui_element_end(
-            layout,
-            {.sizing = {ui_sizing_fixed(16), ui_sizing_fixed(16)},
-             .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
-             .bg_color = {0.5f, 0.5f, 0.5f, 1}}
-          ));
-          if (game.debug.menu.open)
-          {
-            ui_text(layout, "v", 1.0f);
-          }
-          else
-          {
-            ui_text(layout, "-", 1.0f);
-          }
-          if (collapser_clicked)
-          {
-            game.debug.menu.open = !game.debug.menu.open;
-          }
-        }
-
-        ui_text(layout, "debug window (F1)", 1.0f);
-
-        if (titlebar_clicked)
-        {
-          game.debug.menu.drag = true;
-          game.debug.menu.drag_offset =
-            game.window->input.mouse_pos - vec2{layout.pos.x, layout.pos.y};
-        }
-        if (game.debug.menu.drag)
-        {
-          if (game.window->input.lmb.down)
-          {
-            vec2 new_pos = game.window->input.mouse_pos - game.debug.menu.drag_offset;
-            game.debug.menu.pos.x = new_pos.x;
-            game.debug.menu.pos.y = new_pos.y;
-          }
-          else
-          {
-            game.debug.menu.drag = false;
-          }
-        }
-      }
-
-      if (game.debug.menu.open)
-      {
-        ui_element_begin(layout, UI_AUTO_ID);
-        defer(ui_element_end(
-          layout,
-          {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
-           .padding = ui_padding_all(4),
-           .child_gap = 4,
-           .bg_color = {0.2f, 0.2f, 0.2f, 0.5f}}
-        ));
-
-        auto checkbox = [](UI_Layout& layout, UI_Id id, bool& value, std::string_view text)
-        {
-          bool checkbox_test = false;
-          ui_element_begin(layout, UI_AUTO_ID);
-          defer(ui_element_end(
-            layout,
-            {.layout_direction = UI_LAYOUT_DIRECTION_HORIZONTAL, .child_gap = 4}
+            debug_menu,
+            {.sizing = {ui_sizing_fill(), ui_sizing_fit()},
+             .padding = ui_padding_all(4),
+             .child_gap = 4,
+             .child_alignment = {.y = UI_CHILD_ALIGNMENT_CENTER},
+             .bg_color = {0, 0, 0, 0.5f}}
           ));
 
-          ui_element_begin(layout, id, {.clicked = &checkbox_test});
-          ui_element_end(
-            layout,
-            {.sizing = {ui_sizing_fixed(16), ui_sizing_fixed(16)},
-             .bg_color = value ? vec4{1, 1, 1, 1} : vec4{0.4f, 0.4f, 0.4f, 1},
-             .corner_radius = 0.5f}
+          {
+            bool collapser_clicked = false;
+            ui_element_begin(debug_menu, UI_AUTO_ID, {.clicked = &collapser_clicked});
+            defer(ui_element_end(
+              debug_menu,
+              {.sizing = {ui_sizing_fixed(16), ui_sizing_fixed(16)},
+               .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
+               .bg_color = {0.5f, 0.5f, 0.5f, 1}}
+            ));
+            if (game.debug.menu.open)
+            {
+              ui_text(debug_menu, "v", 1.0f);
+            }
+            else
+            {
+              ui_text(debug_menu, "-", 1.0f);
+            }
+            if (collapser_clicked)
+            {
+              game.debug.menu.open = !game.debug.menu.open;
+            }
+          }
+
+          ui_text(debug_menu, "debug window (F1)", 1.0f);
+
+          if (titlebar_clicked)
+          {
+            game.debug.menu.drag = true;
+            game.debug.menu.drag_offset =
+              game.window->input.mouse_pos - vec2{debug_menu.pos.x, debug_menu.pos.y};
+          }
+          if (game.debug.menu.drag)
+          {
+            if (game.window->input.lmb.down)
+            {
+              vec2 new_pos = game.window->input.mouse_pos - game.debug.menu.drag_offset;
+              game.debug.menu.pos.x = new_pos.x;
+              game.debug.menu.pos.y = new_pos.y;
+            }
+            else
+            {
+              game.debug.menu.drag = false;
+            }
+          }
+        }
+
+        if (game.debug.menu.open)
+        {
+          ui_element_begin(debug_menu, UI_AUTO_ID);
+          defer(ui_element_end(
+            debug_menu,
+            {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+             .padding = ui_padding_all(4),
+             .child_gap = 4,
+             .bg_color = {0.2f, 0.2f, 0.2f, 0.5f}}
+          ));
+
+          auto checkbox = [](UI_Layout& layout, UI_Id id, bool& value, std::string_view text)
+          {
+            bool checkbox_test = false;
+            ui_element_begin(layout, UI_AUTO_ID);
+            defer(ui_element_end(
+              layout,
+              {.layout_direction = UI_LAYOUT_DIRECTION_HORIZONTAL, .child_gap = 4}
+            ));
+
+            ui_element_begin(layout, id, {.clicked = &checkbox_test});
+            ui_element_end(
+              layout,
+              {.sizing = {ui_sizing_fixed(16), ui_sizing_fixed(16)},
+               .bg_color = value ? vec4{1, 1, 1, 1} : vec4{0.4f, 0.4f, 0.4f, 1},
+               .corner_radius = 0.5f}
+            );
+            if (checkbox_test)
+            {
+              value = !value;
+            }
+            ui_text(layout, text, 1.0f);
+          };
+          checkbox(
+            debug_menu,
+            UI_AUTO_ID,
+            game.debug.display_bounding_boxes,
+            "display bounding boxes"
           );
-          if (checkbox_test)
-          {
-            value = !value;
-          }
-          ui_text(layout, text, 1.0f);
-        };
-        checkbox(layout, UI_AUTO_ID, game.debug.display_bounding_boxes, "display bounding boxes");
-        checkbox(layout, UI_AUTO_ID, game.debug.noclip, "noclip (F2)");
+          checkbox(debug_menu, UI_AUTO_ID, game.debug.noclip, "noclip (F2)");
+        }
       }
+      ui_layout_end(debug_menu);
     }
-    ui_layout_end(layout);
+    {
+      auto error_list = ui_layout_begin(
+        "error list",
+        game.ui_system,
+        game.window->input,
+        game.debug.error_list.pos,
+        {1280, 720},
+        CHAR_SIZE,
+        game.font_texture
+      );
+      {
+        ui_element_begin(error_list, UI_AUTO_ID);
+        defer(ui_element_end(error_list, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL}));
+
+        {
+          bool titlebar_clicked = false;
+          ui_element_begin(error_list, UI_AUTO_ID, {.clicked = &titlebar_clicked});
+          defer(ui_element_end(
+            error_list,
+            {.sizing = {ui_sizing_fill(), ui_sizing_fit()},
+             .padding = ui_padding_all(4),
+             .child_gap = 4,
+             .child_alignment = {.y = UI_CHILD_ALIGNMENT_CENTER},
+             .bg_color = {0.8f, 0, 0, 0.5f}}
+          ));
+
+          {
+            bool collapser_clicked = false;
+            ui_element_begin(error_list, UI_AUTO_ID, {.clicked = &collapser_clicked});
+            defer(ui_element_end(
+              error_list,
+              {.sizing = {ui_sizing_fixed(16), ui_sizing_fixed(16)},
+               .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
+               .bg_color = {0.8f, 0.5f, 0.5f, 1}}
+            ));
+            if (game.debug.error_list.open)
+            {
+              ui_text(error_list, "v", 1.0f);
+            }
+            else
+            {
+              ui_text(error_list, "-", 1.0f);
+            }
+            if (collapser_clicked)
+            {
+              game.debug.error_list.open = !game.debug.error_list.open;
+            }
+          }
+
+          ui_text(error_list, std::format("{} errors (F1)", g_error_list.size()), 1.0f);
+
+          if (titlebar_clicked)
+          {
+            game.debug.error_list.drag = true;
+            game.debug.error_list.drag_offset =
+              game.window->input.mouse_pos - vec2{error_list.pos.x, error_list.pos.y};
+          }
+          if (game.debug.error_list.drag)
+          {
+            if (game.window->input.lmb.down)
+            {
+              vec2 new_pos = game.window->input.mouse_pos - game.debug.error_list.drag_offset;
+              game.debug.error_list.pos.x = new_pos.x;
+              game.debug.error_list.pos.y = new_pos.y;
+            }
+            else
+            {
+              game.debug.error_list.drag = false;
+            }
+          }
+        }
+
+        if (game.debug.error_list.open && !g_error_list.empty())
+        {
+          ui_element_begin(error_list, UI_AUTO_ID);
+          defer(ui_element_end(
+            error_list,
+            {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+             .padding = ui_padding_all(4),
+             .child_gap = 4,
+             .bg_color = {0.2f, 0.2f, 0.2f, 0.5f}}
+          ));
+
+          for (usize i = 0; i < g_error_list.size(); ++i)
+          {
+            auto& err = g_error_list[i];
+            ui_text(
+              error_list,
+              std::format("{}. ({}:{}) {}", i + 1, err.function, err.line, err.message),
+              1.0f
+            );
+          }
+        }
+      }
+      ui_layout_end(error_list);
+    }
   }
 }
 
