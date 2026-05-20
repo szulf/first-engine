@@ -81,6 +81,7 @@ using Render_PassFlags = u32;
 using Render_PassOnShaderBindCallback = std::function<void(Shader& shader)>;
 struct Render_Pass
 {
+  f32 t{};
   Render_PassFlags flags{};
   const Camera* camera{};
   std::vector<Render_Cmd3D> cmds_3d{};

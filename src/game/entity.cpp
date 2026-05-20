@@ -72,7 +72,7 @@ std::expected<Entity, std::string_view> entity_from_file(const std::filesystem::
     if (key == "pos")
     {
       entity.pos = gfmt_parse_vec3(pos);
-      entity.rendered_pos = entity.prev_pos = entity.pos;
+      entity.prev_pos = entity.pos;
     }
     else if (key == "controlled_by_player")
     {
@@ -84,7 +84,7 @@ std::expected<Entity, std::string_view> entity_from_file(const std::filesystem::
     else if (key == "rotation")
     {
       entity.rotation = parser_number_f32(pos);
-      entity.rendered_rotation = entity.prev_rotation = entity.rotation;
+      entity.prev_rotation = entity.rotation;
     }
     else if (key == "target_rotation")
     {
@@ -185,6 +185,16 @@ bool entities_collide(const Entity& ea, const Entity& eb)
          az + (ea.bounding_box.y / 2.0f) > bz - (eb.bounding_box.y / 2.0f);
 }
 
+vec3 entity_render_pos(const Entity& entity, f32 t)
+{
+  return entity.pos * t + entity.prev_pos * (1.0f - t);
+}
+
+f32 entity_render_rotation(const Entity& entity, f32 t)
+{
+  return entity.rotation * t + entity.prev_rotation * (1.0f - t);
+}
+
 std::expected<Scene, std::string_view> scene_from_file(const std::filesystem::path& path)
 {
   if (path.extension() != ".gscn")
@@ -230,7 +240,7 @@ std::expected<Scene, std::string_view> scene_from_file(const std::filesystem::pa
       scene.entities.push_back(*entity);
     }
     auto& entity = scene.entities[scene.entities.size() - 1];
-    entity.prev_pos = entity.rendered_pos = entity.pos = gfmt_parse_vec3(pos);
+    entity.prev_pos = entity.pos = gfmt_parse_vec3(pos);
   }
 
   return scene;

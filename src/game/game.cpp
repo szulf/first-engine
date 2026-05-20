@@ -105,7 +105,6 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
     .type = CAMERA_TYPE_PERSPECTIVE,
     .pos = {0, 12, 8},
     .prev_pos = {0, 12, 8},
-    .rendered_pos = {0, 12, 8},
     .yaw = -90,
     .pitch = -55,
     .fov_type = FOV_TYPE_VERTICAL,
@@ -575,29 +574,20 @@ void game_update_tick(GameData& game, f32 dt)
   }
 }
 
-void game_update_frame(GameData& game, f32 alpha)
+void game_update_frame(GameData& game, f32 t)
 {
+  UNUSED(t);
   if (game.debug.noclip)
   {
-    vec2 offset = game.window->input.mouse_delta * CAMERA_SENSITIVITY;
+    vec2 window_center =
+      (vec2{(f32) game.window->dimensions.x, (f32) game.window->dimensions.y} / 2.0f);
+    vec2 delta = game.window->input.mouse_pos - window_center;
+    vec2 offset = delta * CAMERA_SENSITIVITY;
     camera_look_around(game.debug_camera, offset);
-    camera_update(game.debug_camera, alpha);
-  }
-  else
-  {
-    for (usize i = 0; i < game.scene.entities.size(); ++i)
-    {
-      auto& entity = game.scene.entities[i];
-      entity.rendered_pos = entity.pos * alpha + entity.prev_pos * (1.0f - alpha);
-      vec2 prev_rot_vec = {-std::sin(entity.prev_rotation), std::cos(entity.prev_rotation)};
-      vec2 rot_vec = {-std::sin(entity.rotation), std::cos(entity.rotation)};
-      vec2 rendered_rot_vec = rot_vec * alpha + prev_rot_vec * (1.0f - alpha);
-      entity.rendered_rotation = std::atan2(-rendered_rot_vec.x, rendered_rot_vec.y);
-    }
   }
 }
 
-void game_render(GameData& game)
+void game_render(GameData& game, f32 t)
 {
   // NOTE: shadow map pass
   Camera shadow_map_camera{};
@@ -618,7 +608,6 @@ void game_render(GameData& game)
       .type = CAMERA_TYPE_PERSPECTIVE,
       .pos = pos,
       .prev_pos = pos,
-      .rendered_pos = pos,
       .yaw = std::numbers::pi_v<f32>,
       .fov_type = FOV_TYPE_VERTICAL,
       .fov = 0.5f * std::numbers::pi_v<f32>,
@@ -640,6 +629,7 @@ void game_render(GameData& game)
     };
 
     Render_Pass pass = {
+      .t = t,
       .camera = &shadow_map_camera,
     };
     render_pass_render_to(pass, game.shadow_map);
@@ -664,7 +654,7 @@ void game_render(GameData& game)
       {
         render_pass_append(
           pass,
-          render_mesh(entity.mesh, entity.rendered_pos, entity.rendered_rotation)
+          render_mesh(entity.mesh, entity_render_pos(entity, t), entity_render_rotation(entity, t))
         );
       }
     }
@@ -675,6 +665,7 @@ void game_render(GameData& game)
   // NOTE: main draw pass
   {
     Render_Pass pass = {
+      .t = t,
       .camera = game.used_camera,
       .ambient_color = game.scene.ambient_color,
     };
@@ -694,12 +685,17 @@ void game_render(GameData& game)
       {
         render_pass_append(
           pass,
-          render_mesh(entity.mesh, entity.rendered_pos, entity.rendered_rotation, entity.tint)
+          render_mesh(
+            entity.mesh,
+            entity_render_pos(entity, t),
+            entity_render_rotation(entity, t),
+            entity.tint
+          )
         );
       }
       if (entity.flags & ENTITY_EMITS_LIGHT)
       {
-        vec3 pos = entity.rendered_pos;
+        vec3 pos = entity_render_pos(entity, t);
         pos.y += entity.light_height_offset;
         render_pass_set_light(pass, pos, entity.light_color);
       }
@@ -710,17 +706,22 @@ void game_render(GameData& game)
         {
           render_pass_append(
             pass,
-            render_line(entity.rendered_pos, 0.6f, entity.rendered_rotation, {1.0f, 0.0f, 0.0f})
+            render_line(
+              entity_render_pos(entity, t),
+              0.6f,
+              entity_render_rotation(entity, t),
+              {1, 0, 0}
+            )
           );
         }
-        if (entity.flags & ENTITY_COLLIDABLE && f32_equal(entity.pos.y, 0.0f))
+        if (entity.flags & ENTITY_COLLIDABLE && f32_equal(entity.pos.y, 0))
         {
           render_pass_append(
             pass,
             render_cube_wires(
-              entity.rendered_pos,
-              {entity.bounding_box.x, 1.0f, entity.bounding_box.y},
-              {0.0f, 1.0f, 0.0f}
+              entity_render_pos(entity, t),
+              {entity.bounding_box.x, 1, entity.bounding_box.y},
+              {0, 1, 0}
             )
           );
         }
@@ -728,7 +729,7 @@ void game_render(GameData& game)
         {
           render_pass_append(
             pass,
-            render_ring(entity.rendered_pos, entity.interactable_radius, {1.0f, 1.0f, 0.0f})
+            render_ring(entity_render_pos(entity, t), entity.interactable_radius, {1, 1, 0})
           );
         }
       }

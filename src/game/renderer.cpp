@@ -115,7 +115,6 @@ void render_init()
     .type = CAMERA_TYPE_ORTHOGRAPHIC,
     .pos = {0, 0, 1},
     .prev_pos = {0, 0, 1},
-    .rendered_pos = {0, 0, 1},
     .yaw = -90,
     .pitch = 0,
     .fov_type = FOV_TYPE_VERTICAL,
@@ -283,7 +282,7 @@ void render_pass_finish(Render_Pass& pass)
 
   STD140Camera camera_std140 = {};
   camera_std140.view_pos = pass.camera->pos;
-  camera_std140.proj_view = camera_projection(*pass.camera) * camera_look_at(*pass.camera);
+  camera_std140.proj_view = camera_projection(*pass.camera) * camera_view(*pass.camera, pass.t);
   camera_std140.far_plane = pass.camera->far_plane;
   glBindBuffer(GL_UNIFORM_BUFFER, g_render_data.camera_ubo);
   glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(STD140Camera), &camera_std140);
@@ -385,7 +384,7 @@ void render_pass_finish(Render_Pass& pass)
   g_render_data.camera_2d.viewport = pass.camera->viewport;
   camera_std140.view_pos = g_render_data.camera_2d.pos;
   camera_std140.proj_view =
-    camera_projection(g_render_data.camera_2d) * camera_look_at(g_render_data.camera_2d);
+    camera_projection(g_render_data.camera_2d) * camera_view(g_render_data.camera_2d, pass.t);
   camera_std140.far_plane = g_render_data.camera_2d.far_plane;
   glBindBuffer(GL_UNIFORM_BUFFER, g_render_data.camera_ubo);
   glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(STD140Camera), &camera_std140);

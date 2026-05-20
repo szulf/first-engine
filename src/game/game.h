@@ -87,8 +87,8 @@ struct GameData
 GameData game_init(OS_Window& window, OS_Audio& audio);
 void game_deinit(GameData& game);
 void game_update_tick(GameData& game, f32 dt);
-void game_update_frame(GameData& game, f32 alpha);
-void game_render(GameData& game);
+void game_update_frame(GameData& game, f32 t);
+void game_render(GameData& game, f32 t);
 
 inline OS_KeyState key_state_from_action(Action action, GameData& game)
 {

@@ -45,9 +45,9 @@ i32 main()
       accumulator -= DT;
     }
 
-    game_update_frame(game, ((f32) accumulator.count() / (f32) std::nano::den) / DT_F32);
-
-    game_render(game);
+    f32 t = ((f32) accumulator.count() / (f32) std::nano::den) / DT_F32;
+    game_update_frame(game, t);
+    game_render(game, t);
 
     // auto end_time = std::chrono::high_resolution_clock::now();
     // std::println(

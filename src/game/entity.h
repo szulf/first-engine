@@ -33,10 +33,8 @@ struct Entity
   // NOTE: common
   vec3 pos{};
   vec3 prev_pos{};
-  vec3 rendered_pos{};
   f32 rotation{};
   f32 prev_rotation{};
-  f32 rendered_rotation{};
   f32 target_rotation{};
   vec3 velocity{};
   vec3 tint = {1.0f, 1.0f, 1.0f};
@@ -58,6 +56,8 @@ struct Entity
 
 std::expected<Entity, std::string_view> entity_from_file(const std::filesystem::path& path);
 bool entities_collide(const Entity& ea, const Entity& eb);
+vec3 entity_render_pos(const Entity& entity, f32 t);
+f32 entity_render_rotation(const Entity& entity, f32 t);
 
 struct Scene
 {
