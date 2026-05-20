@@ -126,7 +126,7 @@ struct Render_Data;
 struct Mesh
 {
   std::vector<Vertex> vertices{};
-  std::vector<u32> indices{};
+  usize index_count{};
   std::vector<Submesh> submeshes{};
   RenderPrimitive primitive{};
   u32 vbo{};

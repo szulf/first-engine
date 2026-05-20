@@ -72,8 +72,8 @@ struct Render_Light
 
 enum Render_PassFlagsEnum
 {
-  PASS_OVERRIDED_FRAMEBUFFER = 1 << 0,
-  PASS_OVERRIDED_SHADER = 1 << 1,
+  PASS_OVERRIDEN_FRAMEBUFFER = 1 << 0,
+  PASS_OVERRIDEN_SHADER = 1 << 1,
 };
 using Render_PassFlags = u32;
 
@@ -89,7 +89,7 @@ struct Render_Pass
   Render_Light light{};
   vec3 ambient_color = {1, 1, 1};
   u32 framebuffer{};
-  ShaderHandle overidded_shader{};
+  ShaderHandle overriden_shader{};
 };
 
 void render_pass_finish(Render_Pass& pass);

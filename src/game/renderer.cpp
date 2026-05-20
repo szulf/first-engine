@@ -266,7 +266,7 @@ void render_pass_finish(Render_Pass& pass)
     }
   );
 
-  if (pass.flags & PASS_OVERRIDED_FRAMEBUFFER)
+  if (pass.flags & PASS_OVERRIDEN_FRAMEBUFFER)
   {
     glBindFramebuffer(GL_FRAMEBUFFER, pass.framebuffer);
   }
@@ -321,9 +321,9 @@ void render_pass_finish(Render_Pass& pass)
     }
 
     ShaderHandle handle = g_render_data.default_shader;
-    if (pass.flags & PASS_OVERRIDED_SHADER)
+    if (pass.flags & PASS_OVERRIDEN_SHADER)
     {
-      handle = pass.overidded_shader;
+      handle = pass.overriden_shader;
     }
     else if (material.specular_exponent != 0.0f)
     {
@@ -467,14 +467,14 @@ void render_pass_render_to(Render_Pass& pass, TextureHandle texture)
     g_render_data.framebuffers.contains(texture),
     "No framebuffer associated with this texture"
   );
-  pass.flags |= PASS_OVERRIDED_FRAMEBUFFER;
+  pass.flags |= PASS_OVERRIDEN_FRAMEBUFFER;
   pass.framebuffer = g_render_data.framebuffers[texture];
 }
 
 void render_pass_override_shader(Render_Pass& pass, ShaderHandle shader)
 {
-  pass.flags |= PASS_OVERRIDED_SHADER;
-  pass.overidded_shader = shader;
+  pass.flags |= PASS_OVERRIDEN_SHADER;
+  pass.overriden_shader = shader;
 }
 
 void render_pass_on_shader_bind(Render_Pass& pass, Render_PassOnShaderBindCallback&& on_bind)

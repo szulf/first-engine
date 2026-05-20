@@ -353,7 +353,7 @@ Mesh mesh_init(
 {
   Mesh mesh{};
   mesh.vertices = vertices;
-  mesh.indices = indices;
+  mesh.index_count = indices.size();
   mesh.submeshes = submeshes;
   mesh.primitive = primitive;
 
