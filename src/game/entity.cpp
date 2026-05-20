@@ -192,6 +192,11 @@ vec3 entity_render_pos(const Entity& entity, f32 t)
 
 f32 entity_render_rotation(const Entity& entity, f32 t)
 {
+  // NOTE: checking if they have opposite signs
+  if (entity.rotation * entity.prev_rotation < 0)
+  {
+    return entity.prev_rotation;
+  }
   return entity.rotation * t + entity.prev_rotation * (1.0f - t);
 }
 
