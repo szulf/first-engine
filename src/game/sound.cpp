@@ -290,7 +290,6 @@ void sound_system_start(Sound_System& system)
 void sound_system_deinit(Sound_System& system)
 {
   system.thread.request_stop();
-  spsc_queue_deinit(system.cmds);
 }
 
 void sound_play_once(Sound_System& system, Sound_Handle sound, f32 volume)

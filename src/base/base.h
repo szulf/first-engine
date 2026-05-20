@@ -1,4 +1,5 @@
-#pragma once
+#ifndef BASE_BASE_H
+#define BASE_BASE_H
 
 #include <cstdint>
 #include <cstddef>
@@ -82,4 +83,6 @@ enum AtomicMemoryOrder
 #  error Compiler intrinsics for atomic operations not supported for this compiler
 #else
 #  error Compiler intrinsics for atomic operations not supported for this compiler
+#endif
+
 #endif

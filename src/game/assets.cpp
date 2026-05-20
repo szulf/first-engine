@@ -1,6 +1,5 @@
 #include "assets.h"
 
-#include <GL/glcorearb.h>
 #include <expected>
 #include <filesystem>
 #include <fstream>

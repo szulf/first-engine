@@ -1,10 +1,10 @@
-#pragma once
+#ifndef GAME_ENTITY_H
+#define GAME_ENTITY_H
 
 #include <string>
 #include <vector>
 
 #include "base/base.h"
-
 #include "assets.h"
 
 #define PLAYER_MOVEMENT_SPEED 8.0f
@@ -66,3 +66,5 @@ struct Scene
 };
 
 std::expected<Scene, std::string_view> scene_from_file(const std::filesystem::path& path);
+
+#endif

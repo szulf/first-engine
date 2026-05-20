@@ -1,5 +1,5 @@
-#ifndef GL_FUNCTIONS_H
-#define GL_FUNCTIONS_H
+#ifndef OS_GL_FUNCTIONS_H
+#define OS_GL_FUNCTIONS_H
 
 #include <GL/glcorearb.h>
 

@@ -1,5 +1,5 @@
-#ifndef VERTEX_H
-#define VERTEX_H
+#ifndef GAME_VERTEX_H
+#define GAME_VERTEX_H
 
 #include "base/math.h"
 

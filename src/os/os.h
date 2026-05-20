@@ -1,5 +1,5 @@
-#ifndef OS_H
-#define OS_H
+#ifndef OS_OS_H
+#define OS_OS_H
 
 #include <expected>
 #include <string>

@@ -1,5 +1,5 @@
-#ifndef CAMERA_H
-#define CAMERA_H
+#ifndef GAME_CAMERA_H
+#define GAME_CAMERA_H
 
 #include "base/base.h"
 #include "base/math.h"

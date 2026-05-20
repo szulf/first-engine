@@ -1,10 +1,8 @@
-#ifndef GAME_H
-#define GAME_H
+#ifndef GAME_GAME_H
+#define GAME_GAME_H
 
 #include "base/base.h"
-
 #include "os/os.h"
-
 #include "sound.h"
 #include "camera.h"
 #include "entity.h"

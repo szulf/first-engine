@@ -1,7 +1,6 @@
 #include "image.h"
 
 #include <cstring>
-
 #include "stb/image.h"
 
 Image image_init(const u8* data, const uvec2& dimensions)

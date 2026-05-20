@@ -1,11 +1,10 @@
-#ifndef RENDERER_H
-#define RENDERER_H
+#ifndef GAME_RENDERER_H
+#define GAME_RENDERER_H
 
 #include <vector>
 #include <functional>
 
 #include "base/base.h"
-
 #include "assets.h"
 #include "camera.h"
 

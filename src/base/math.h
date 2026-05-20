@@ -1,4 +1,5 @@
-#pragma once
+#ifndef BASE_MATH_H
+#define BASE_MATH_H
 
 #include "base.h"
 
@@ -110,3 +111,5 @@ struct Rectangle
   vec2 dimensions{};
 };
 bool operator==(const Rectangle& a, const Rectangle& b);
+
+#endif

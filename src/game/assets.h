@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GAME_ASSETS_H
+#define GAME_ASSETS_H
 
 #include <vector>
 #include <unordered_map>
@@ -7,7 +8,6 @@
 
 #include "base/base.h"
 #include "base/math.h"
-
 #include "vertex.h"
 #include "image.h"
 
@@ -207,3 +207,5 @@ inline Shader& asset_get(AssetStore& assets, ShaderHandle handle)
 }
 
 extern AssetStore g_assets;
+
+#endif

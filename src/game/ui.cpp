@@ -5,8 +5,8 @@
 #include <cmath>
 
 #include "base/base.h"
-#include "game/renderer.h"
 #include "os/os.h"
+#include "renderer.h"
 
 void ui_system_update(UI_System& system)
 {

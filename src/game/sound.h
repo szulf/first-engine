@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GAME_SOUND_H
+#define GAME_SOUND_H
 
 #include <thread>
 #include <vector>
@@ -6,7 +7,6 @@
 
 #include "base/base.h"
 #include "base/spsc_queue.h"
-
 #include "os/os.h"
 
 enum Sound_Handle
@@ -72,3 +72,5 @@ void sound_play_once(Sound_System& system, Sound_Handle sound, f32 volume = 1.0f
 // NOTE: assumes only 1 looped sound source per sound handle
 void sound_play_looped(Sound_System& system, Sound_Handle sound, f32 volume = 1.0f);
 void sound_stop_looped(Sound_System& system, Sound_Handle sound);
+
+#endif

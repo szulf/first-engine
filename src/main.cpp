@@ -1,7 +1,6 @@
-#include "base/base.h"
-
 #include <chrono>
 
+#include "base/base.h"
 #include "os/os.h"
 #include "game/game.h"
 

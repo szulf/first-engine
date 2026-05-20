@@ -1,5 +1,5 @@
-#ifndef IMAGE_H
-#define IMAGE_H
+#ifndef GAME_IMAGE_H
+#define GAME_IMAGE_H
 
 #include <filesystem>
 #include <expected>

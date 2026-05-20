@@ -1,8 +1,7 @@
 #include "gl_functions.h"
 
 #include <print>
-
-#include <SDL3/SDL.h>
+#include "sdl3/include/SDL3/SDL.h"
 
 #define LOAD_SDL_GL_PROC(type, name) name = (type) SDL_GL_GetProcAddress(#name)
 
@@ -178,7 +177,6 @@ void APIENTRY debug_callback(
     message
   );
 }
-
 #endif
 
 PFNGLVIEWPORTPROC glViewport;

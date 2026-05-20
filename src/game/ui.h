@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GAME_UI_H
+#define GAME_UI_H
 
 #include <vector>
 
@@ -186,3 +187,5 @@ void ui_element_begin(UI_Layout& layout, UI_Id id, const UI_StateOptions& state_
 void ui_element_end(UI_Layout& layout, const UI_ElementConfigNormal& config = {});
 
 void ui_text(UI_Layout& layout, std::string_view text, f32 size);
+
+#endif

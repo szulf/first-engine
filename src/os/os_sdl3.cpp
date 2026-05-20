@@ -1,10 +1,9 @@
 #include "os.h"
 
 #include <expected>
-
-#include "base/base.h"
 #include "sdl3/include/SDL3/SDL.h"
 
+#include "base/base.h"
 #include "gl_functions.h"
 
 void os_init()

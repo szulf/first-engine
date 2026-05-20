@@ -1,8 +1,9 @@
-#pragma once
-
-#include "base/base.h"
+#ifndef GAME_PARSER_H
+#define GAME_PARSER_H
 
 #include <string_view>
+
+#include "base/base.h"
 
 struct Parser_Pos
 {
@@ -26,3 +27,5 @@ inline bool parser_size_ok(Parser_Pos& pos)
 {
   return pos.pos < pos.line.size();
 }
+
+#endif
