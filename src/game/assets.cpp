@@ -330,10 +330,10 @@ void shader_set(Shader& shader, std::string_view name, const mat4& value)
   glUniformMatrix4fv(glGetUniformLocation(shader.id, name.data()), 1, false, value.data[0]);
 }
 
-void shader_set(Shader& shader, std::string_view name, TextureHandle handle)
+void shader_set(Shader& shader, std::string_view name, TextureHandle handle, AssetStore& assets)
 {
   ASSERT(shader.texture_slot < 16, "Reached max active textures.");
-  texture_activate(asset_get(g_assets, handle), shader.texture_slot);
+  texture_activate(asset_get(assets, handle), shader.texture_slot);
   shader_set(shader, name, (i32) shader.texture_slot);
   ++shader.texture_slot;
 }
@@ -517,7 +517,7 @@ static vec3 obj_parse_vec3(Parser_Pos& pos)
   return out;
 }
 
-static void load_mtl_file(AssetStore& assets, const std::filesystem::path& path)
+static void load_mtl_file(const std::filesystem::path& path, AssetStore& assets)
 {
   std::string mat_name{};
   Material mat{};
@@ -571,7 +571,7 @@ static void load_mtl_file(AssetStore& assets, const std::filesystem::path& path)
     else if (key == "map_Kd")
     {
       auto filename = parser_word(pos);
-      mat.diffuse_map = load_texture(g_assets, path.parent_path() / filename);
+      mat.diffuse_map = load_texture(assets, path.parent_path() / filename);
     }
     else if (key == "Ks")
     {
@@ -617,7 +617,7 @@ static void load_mtl_file(AssetStore& assets, const std::filesystem::path& path)
   }
   if (parsing)
   {
-    auto material_handle = asset_set(g_assets, mat);
+    auto material_handle = asset_set(assets, mat);
     assets.material_handles.insert_or_assign(mat_name, material_handle);
   }
 }
@@ -673,7 +673,7 @@ MeshHandle load_obj(AssetStore& assets, const std::filesystem::path& path)
     if (key == "mtllib")
     {
       auto mtl_filename = parser_word(pos);
-      load_mtl_file(assets, path.parent_path() / mtl_filename);
+      load_mtl_file(path.parent_path() / mtl_filename, assets);
     }
     else if (key == "o")
     {
@@ -725,7 +725,7 @@ MeshHandle load_obj(AssetStore& assets, const std::filesystem::path& path)
   }
 
   return asset_set(
-    g_assets,
+    assets,
     mesh_init(
       ctx.vertices,
       ctx.indices,
@@ -752,5 +752,3 @@ TextureHandle load_texture(AssetStore& assets, const std::filesystem::path& path
   assets.texture_handles.insert_or_assign(path.string(), handle);
   return handle;
 }
-
-AssetStore g_assets = {};

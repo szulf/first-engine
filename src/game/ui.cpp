@@ -17,6 +17,7 @@ UI_Layout ui_layout_begin(
   UI_Id id,
   UI_System& system,
   const OS_Input& input,
+  AssetStore& assets,
   const vec3& pos,
   const vec2& max_dimensions,
   const vec2& char_size,
@@ -29,6 +30,7 @@ UI_Layout ui_layout_begin(
     .id = id_internal,
     .system = &system,
     .input = &input,
+    .assets = &assets,
     .pos = pos,
     .max_dimensions = max_dimensions,
     .char_size = char_size,
@@ -591,7 +593,8 @@ static void ui_generate_render_cmds(UI_Layout& layout, UI_ElementIdx idx = 0)
             layout.char_size,
             {.corner_radius = 0.0f,
              .tint = {1, 1, 1, 1},
-             .clip_rectangle = std::make_optional(child.clip_rectangle)}
+             .clip_rectangle = std::make_optional(child.clip_rectangle)},
+            *layout.assets
           ));
         }
       }

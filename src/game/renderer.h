@@ -8,8 +8,8 @@
 #include "assets.h"
 #include "camera.h"
 
-void render_init();
-void render_create_framebuffer(TextureHandle texture);
+void render_init(AssetStore& assets);
+void render_create_framebuffer(TextureHandle texture, AssetStore& assets);
 
 enum Render_UBOIndices
 {
@@ -92,14 +92,10 @@ struct Render_Pass
   ShaderHandle overriden_shader{};
 };
 
-void render_pass_finish(Render_Pass& pass);
+void render_pass_finish(Render_Pass& pass, AssetStore& assets);
 void render_pass_render_to(Render_Pass& pass, TextureHandle texture);
 void render_pass_override_shader(Render_Pass& pass, ShaderHandle shader);
 void render_pass_on_shader_bind(Render_Pass& pass, Render_PassOnShaderBindCallback&& on_bind);
-void render_pass_append(Render_Pass& pass, const Render_Cmd2D& cmd);
-void render_pass_append(Render_Pass& pass, const std::vector<Render_Cmd2D>& cmd);
-void render_pass_append(Render_Pass& pass, const Render_Cmd3D& cmd);
-void render_pass_append(Render_Pass& pass, const std::vector<Render_Cmd3D>& cmd);
 // NOTE: supports rendering only a single point light since that is what i need for the game,
 // would not be too hard to implement more lights (will implement directional light later)
 void render_pass_set_light(Render_Pass& pass, const vec3& pos, const vec3& color);
@@ -125,18 +121,23 @@ Render_Cmd2D render_texture_part(
   const vec2& size,
   const vec2& in_texture_pos,
   const vec2& in_texture_size,
-  const Render_Options2D& args = {}
+  const Render_Options2D& args,
+  AssetStore& assets
 );
 
 // NOTE: 3D
-std::vector<Render_Cmd3D> render_mesh(
+void render_mesh(
+  std::vector<Render_Cmd3D>& cmds,
   MeshHandle handle,
   const vec3& pos,
   f32 rotation,
-  const vec3& tint = {1.0f, 1.0f, 1.0f}
+  const vec3& tint,
+  AssetStore& assets
 );
-Render_Cmd3D render_cube_wires(const vec3& pos, const vec3& size, const vec3& color);
-Render_Cmd3D render_ring(const vec3& pos, f32 radius, const vec3& color);
-Render_Cmd3D render_line(const vec3& pos, f32 length, f32 rotation, const vec3& color);
+Render_Cmd3D
+render_cube_wires(const vec3& pos, const vec3& size, const vec3& color, AssetStore& assets);
+Render_Cmd3D render_ring(const vec3& pos, f32 radius, const vec3& color, AssetStore& assets);
+Render_Cmd3D
+render_line(const vec3& pos, f32 length, f32 rotation, const vec3& color, AssetStore& assets);
 
 #endif

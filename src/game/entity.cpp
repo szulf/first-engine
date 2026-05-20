@@ -4,12 +4,13 @@
 #include <fstream>
 
 #include "parser.h"
+#include "assets.h"
 
-vec2 bounding_box_from_mesh(MeshHandle handle)
+vec2 bounding_box_from_mesh(MeshHandle handle, AssetStore& assets)
 {
   vec3 max_corner = {std::numeric_limits<f32>::min(), 0, std::numeric_limits<f32>::min()};
   vec3 min_corner = {std::numeric_limits<f32>::max(), 0, std::numeric_limits<f32>::max()};
-  const auto& mesh = asset_get(g_assets, handle);
+  const auto& mesh = asset_get(assets, handle);
 
   for (usize vertex_idx = 0; vertex_idx < mesh.vertices.size(); ++vertex_idx)
   {
@@ -46,7 +47,8 @@ static vec2 gfmt_parse_vec2(Parser_Pos& pos)
   return out;
 }
 
-std::expected<Entity, std::string_view> entity_from_file(const std::filesystem::path& path)
+std::expected<Entity, std::string_view>
+entity_from_file(const std::filesystem::path& path, AssetStore& assets)
 {
   if (path.extension() != ".gent")
   {
@@ -122,7 +124,7 @@ std::expected<Entity, std::string_view> entity_from_file(const std::filesystem::
     else if (key == "mesh")
     {
       entity.mesh_path = parser_word(pos);
-      entity.mesh = load_obj(g_assets, entity.mesh_path);
+      entity.mesh = load_obj(assets, entity.mesh_path);
     }
     else if (key == "toggleable")
     {
@@ -165,7 +167,7 @@ std::expected<Entity, std::string_view> entity_from_file(const std::filesystem::
   }
   if (entity.flags & ENTITY_DYNAMIC_BOUNDING_BOX)
   {
-    entity.bounding_box = bounding_box_from_mesh(entity.mesh);
+    entity.bounding_box = bounding_box_from_mesh(entity.mesh, assets);
   }
   return {entity};
 }
@@ -200,7 +202,8 @@ f32 entity_render_rotation(const Entity& entity, f32 t)
   return entity.rotation * t + entity.prev_rotation * (1.0f - t);
 }
 
-std::expected<Scene, std::string_view> scene_from_file(const std::filesystem::path& path)
+std::expected<Scene, std::string_view>
+scene_from_file(const std::filesystem::path& path, AssetStore& assets)
 {
   if (path.extension() != ".gscn")
   {
@@ -236,7 +239,7 @@ std::expected<Scene, std::string_view> scene_from_file(const std::filesystem::pa
     }
     else
     {
-      auto entity = entity_from_file((path.parent_path() / key).replace_extension(".gent"));
+      auto entity = entity_from_file((path.parent_path() / key).replace_extension(".gent"), assets);
       if (!entity)
       {
         return std::unexpected{entity.error()};

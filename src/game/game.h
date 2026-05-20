@@ -52,6 +52,7 @@ struct GameData
   OS_Window* window{};
   Sound_System sound_system;
   UI_System ui_system{};
+  AssetStore assets{};
 
   Scene scene{};
   Keymap keymap{};

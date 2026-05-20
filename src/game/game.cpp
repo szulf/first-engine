@@ -116,13 +116,13 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
   camera_update_vectors(game.gameplay_camera);
   game.debug_camera = game.gameplay_camera;
   game.used_camera = &game.gameplay_camera;
-  render_init();
+  render_init(game.assets);
   {
-    auto scene = scene_from_file("data/main.gscn");
+    auto scene = scene_from_file("data/main.gscn", game.assets);
     ASSERT(scene, "Failed to load scene {}", scene.error());
     game.scene = *scene;
   }
-  game.shadow_map = asset_set(g_assets, texture_init(TEXTURE_CUBEMAP, SHADOW_MAP_DIMENSIONS));
+  game.shadow_map = asset_set(game.assets, texture_init(TEXTURE_CUBEMAP, SHADOW_MAP_DIMENSIONS));
   {
     auto shader = shader_from_file(
       "shaders/shadow_depth.vert",
@@ -131,16 +131,16 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
     );
     if (shader)
     {
-      game.shadow_depth_shader = asset_set(g_assets, *shader);
+      game.shadow_depth_shader = asset_set(game.assets, *shader);
     }
     else
     {
       REPORT_ERROR(shader.error());
     }
   }
-  render_create_framebuffer(game.shadow_map);
+  render_create_framebuffer(game.shadow_map, game.assets);
   // TODO: load this with FilterOption::NEAREST
-  game.font_texture = load_texture(g_assets, "assets/font.png");
+  game.font_texture = load_texture(game.assets, "assets/font.png");
   // m_sound_system.play_looped(SoundHandle::TEST_MUSIC, 0.1f);
   return game;
 }
@@ -364,6 +364,7 @@ void game_update_tick(GameData& game, f32 dt)
         "debug menu",
         game.ui_system,
         game.window->input,
+        game.assets,
         game.debug.menu.pos,
         {1280, 720},
         CHAR_SIZE,
@@ -480,6 +481,7 @@ void game_update_tick(GameData& game, f32 dt)
         "error list",
         game.ui_system,
         game.window->input,
+        game.assets,
         game.debug.error_list.pos,
         {1280, 720},
         CHAR_SIZE,
@@ -652,14 +654,18 @@ void game_render(GameData& game, f32 t)
       auto& entity = game.scene.entities[i];
       if (entity.flags & ENTITY_CONTROLLED_BY_PLAYER && entity.flags & ENTITY_VISIBLE)
       {
-        render_pass_append(
-          pass,
-          render_mesh(entity.mesh, entity_render_pos(entity, t), entity_render_rotation(entity, t))
+        render_mesh(
+          pass.cmds_3d,
+          entity.mesh,
+          entity_render_pos(entity, t),
+          entity_render_rotation(entity, t),
+          {1, 1, 1},
+          game.assets
         );
       }
     }
 
-    render_pass_finish(pass);
+    render_pass_finish(pass, game.assets);
   }
 
   // NOTE: main draw pass
@@ -673,7 +679,7 @@ void game_render(GameData& game, f32 t)
       pass,
       [&](Shader& shader)
       {
-        shader_set(shader, "shadow_map", game.shadow_map);
+        shader_set(shader, "shadow_map", game.shadow_map, game.assets);
         shader_set(shader, "shadow_map_camera_far_plane", shadow_map_camera.far_plane);
       }
     );
@@ -683,14 +689,13 @@ void game_render(GameData& game, f32 t)
       const auto& entity = game.scene.entities[i];
       if (entity.flags & ENTITY_VISIBLE)
       {
-        render_pass_append(
-          pass,
-          render_mesh(
-            entity.mesh,
-            entity_render_pos(entity, t),
-            entity_render_rotation(entity, t),
-            entity.tint
-          )
+        render_mesh(
+          pass.cmds_3d,
+          entity.mesh,
+          entity_render_pos(entity, t),
+          entity_render_rotation(entity, t),
+          entity.tint,
+          game.assets
         );
       }
       if (entity.flags & ENTITY_EMITS_LIGHT)
@@ -704,39 +709,41 @@ void game_render(GameData& game, f32 t)
       {
         if (entity.flags & ENTITY_CONTROLLED_BY_PLAYER)
         {
-          render_pass_append(
-            pass,
-            render_line(
-              entity_render_pos(entity, t),
-              0.6f,
-              entity_render_rotation(entity, t),
-              {1, 0, 0}
-            )
-          );
+          pass.cmds_3d.push_back(render_line(
+            entity_render_pos(entity, t),
+            0.6f,
+            entity_render_rotation(entity, t),
+            {1, 0, 0},
+            game.assets
+          ));
         }
         if (entity.flags & ENTITY_COLLIDABLE && f32_equal(entity.pos.y, 0))
         {
-          render_pass_append(
-            pass,
-            render_cube_wires(
-              entity_render_pos(entity, t),
-              {entity.bounding_box.x, 1, entity.bounding_box.y},
-              {0, 1, 0}
-            )
-          );
+          pass.cmds_3d.push_back(render_cube_wires(
+            entity_render_pos(entity, t),
+            {entity.bounding_box.x, 1, entity.bounding_box.y},
+            {0, 1, 0},
+            game.assets
+          ));
         }
         if (entity.flags & ENTITY_TOGGLEABLE)
         {
-          render_pass_append(
-            pass,
-            render_ring(entity_render_pos(entity, t), entity.interactable_radius, {1, 1, 0})
-          );
+          pass.cmds_3d.push_back(render_ring(
+            entity_render_pos(entity, t),
+            entity.interactable_radius,
+            {1, 1, 0},
+            game.assets
+          ));
         }
       }
     }
 
-    render_pass_append(pass, game.ui_system.render_cmds);
+    pass.cmds_2d.insert(
+      pass.cmds_2d.end(),
+      game.ui_system.render_cmds.begin(),
+      game.ui_system.render_cmds.end()
+    );
 
-    render_pass_finish(pass);
+    render_pass_finish(pass, game.assets);
   }
 }

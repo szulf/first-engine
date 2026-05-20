@@ -97,19 +97,20 @@ static constexpr uvec2 blank_texture_dimensions = {1, 1};
 static MeshHandle static_model_init(
   const std::vector<Vertex>& vertices,
   const std::vector<u32>& indices,
-  RenderPrimitive primitive
+  RenderPrimitive primitive,
+  AssetStore& assets
 )
 {
   Material material = {};
   material.diffuse_color = {1.0f, 1.0f, 1.0f};
-  auto material_handle = asset_set(g_assets, material);
+  auto material_handle = asset_set(assets, material);
   return asset_set(
-    g_assets,
+    assets,
     mesh_init(vertices, indices, {{0, indices.size(), material_handle}}, primitive, g_render_data)
   );
 }
 
-void render_init()
+void render_init(AssetStore& assets)
 {
   g_render_data.camera_2d = {
     .type = CAMERA_TYPE_ORTHOGRAPHIC,
@@ -153,7 +154,7 @@ void render_init()
     auto shader = shader_from_file("shaders/shader.vert", "shaders/default.frag");
     if (shader)
     {
-      g_render_data.default_shader = asset_set(g_assets, *shader);
+      g_render_data.default_shader = asset_set(assets, *shader);
     }
     else
     {
@@ -164,7 +165,7 @@ void render_init()
     auto shader = shader_from_file("shaders/quads.vert", "shaders/quads.frag");
     if (shader)
     {
-      g_render_data.quads_shader = asset_set(g_assets, *shader);
+      g_render_data.quads_shader = asset_set(assets, *shader);
     }
     else
     {
@@ -175,7 +176,7 @@ void render_init()
     auto shader = shader_from_file("shaders/shader.vert", "shaders/lighting.frag");
     if (shader)
     {
-      g_render_data.lighting_shader = asset_set(g_assets, *shader);
+      g_render_data.lighting_shader = asset_set(assets, *shader);
     }
     else
     {
@@ -186,26 +187,30 @@ void render_init()
   g_render_data.cube_wires = static_model_init(
     {cube_vertices, cube_vertices + ARRAY_SIZE(cube_vertices)},
     {cube_wires_indices, cube_wires_indices + ARRAY_SIZE(cube_wires_indices)},
-    RENDER_PRIMITIVE_LINE_STRIP
+    RENDER_PRIMITIVE_LINE_STRIP,
+    assets
   );
   g_render_data.ring = static_model_init(
     {ring_vertices, ring_vertices + ARRAY_SIZE(ring_vertices)},
     {ring_indices, ring_indices + ARRAY_SIZE(ring_indices)},
-    RENDER_PRIMITIVE_LINE_STRIP
+    RENDER_PRIMITIVE_LINE_STRIP,
+    assets
   );
   g_render_data.line = static_model_init(
     {line_vertices, line_vertices + ARRAY_SIZE(line_vertices)},
     {line_indices, line_indices + ARRAY_SIZE(line_indices)},
-    RENDER_PRIMITIVE_LINE_STRIP
+    RENDER_PRIMITIVE_LINE_STRIP,
+    assets
   );
   g_render_data.quad = static_model_init(
     {quad_vertices, quad_vertices + ARRAY_SIZE(quad_vertices)},
     {quad_indices, quad_indices + ARRAY_SIZE(quad_indices)},
-    RENDER_PRIMITIVE_TRIANGLES
+    RENDER_PRIMITIVE_TRIANGLES,
+    assets
   );
 
   g_render_data.blank_texture = asset_set(
-    g_assets,
+    assets,
     texture_from_image(
       image_init(blank_texture_data, blank_texture_dimensions),
       WRAP_OPTION_REPEAT,
@@ -215,15 +220,15 @@ void render_init()
     )
   );
 
-  asset_store_bind_render_data(g_assets, g_render_data);
+  asset_store_bind_render_data(assets, g_render_data);
 }
 
-void render_create_framebuffer(TextureHandle texture)
+void render_create_framebuffer(TextureHandle texture, AssetStore& assets)
 {
   u32 id{};
   glGenFramebuffers(1, &id);
   glBindFramebuffer(GL_FRAMEBUFFER, id);
-  glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, asset_get(g_assets, texture).id, 0);
+  glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, asset_get(assets, texture).id, 0);
   glDrawBuffer(GL_NONE);
   glReadBuffer(GL_NONE);
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -247,7 +252,7 @@ static GLenum render_primitive_to_gl_primitive(RenderPrimitive primitive)
   }
 }
 
-void render_pass_finish(Render_Pass& pass)
+void render_pass_finish(Render_Pass& pass, AssetStore& assets)
 {
   // NOTE: 3D
   std::ranges::sort(
@@ -299,9 +304,9 @@ void render_pass_finish(Render_Pass& pass)
   for (usize cmd_idx = 0; cmd_idx < pass.cmds_3d.size();)
   {
     const auto& cmd = pass.cmds_3d[cmd_idx];
-    const auto& mesh = asset_get(g_assets, cmd.mesh);
+    const auto& mesh = asset_get(assets, cmd.mesh);
     const auto& submesh = mesh.submeshes[cmd.submesh_idx];
-    const auto& material = asset_get(g_assets, cmd.material);
+    const auto& material = asset_get(assets, cmd.material);
 
     usize batch_idx = cmd_idx + 1;
     while ((batch_idx < pass.cmds_3d.size() && batch_idx - cmd_idx < RENDER_MAX_INSTANCES) &&
@@ -329,7 +334,7 @@ void render_pass_finish(Render_Pass& pass)
     {
       handle = g_render_data.lighting_shader;
     }
-    auto& shader = asset_get(g_assets, handle);
+    auto& shader = asset_get(assets, handle);
 
     shader_use(shader);
     if (pass.on_shader_bind)
@@ -341,7 +346,7 @@ void render_pass_finish(Render_Pass& pass)
     shader_set(shader, "material.diffuse", material.diffuse_color);
     shader_set(shader, "material.specular", material.specular_color);
     shader_set(shader, "material.specular_exponent", material.specular_exponent);
-    shader_set(shader, "material.diffuse_map", material.diffuse_map);
+    shader_set(shader, "material.diffuse_map", material.diffuse_map, assets);
 
     glBindBuffer(GL_ARRAY_BUFFER, g_render_data.instance_data_buffer);
     glBufferSubData(
@@ -389,7 +394,7 @@ void render_pass_finish(Render_Pass& pass)
   glBindBuffer(GL_UNIFORM_BUFFER, g_render_data.camera_ubo);
   glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(STD140Camera), &camera_std140);
 
-  const auto& quad = asset_get(g_assets, g_render_data.quad);
+  const auto& quad = asset_get(assets, g_render_data.quad);
   for (usize cmd_idx = 0; cmd_idx < pass.cmds_2d.size();)
   {
     const auto& cmd = pass.cmds_2d[cmd_idx];
@@ -410,9 +415,9 @@ void render_pass_finish(Render_Pass& pass)
       instance_data.push_back(pass.cmds_2d[i].instance_data);
     }
 
-    auto& shader = asset_get(g_assets, g_render_data.quads_shader);
+    auto& shader = asset_get(assets, g_render_data.quads_shader);
     shader_use(shader);
-    shader_set(shader, "diffuse_map", cmd.texture);
+    shader_set(shader, "diffuse_map", cmd.texture, assets);
 
     glBindBuffer(GL_ARRAY_BUFFER, g_render_data.instance_data_buffer);
     glBufferSubData(
@@ -480,26 +485,6 @@ void render_pass_override_shader(Render_Pass& pass, ShaderHandle shader)
 void render_pass_on_shader_bind(Render_Pass& pass, Render_PassOnShaderBindCallback&& on_bind)
 {
   pass.on_shader_bind = std::move(on_bind);
-}
-
-void render_pass_append(Render_Pass& pass, const Render_Cmd2D& cmd)
-{
-  pass.cmds_2d.push_back(cmd);
-}
-
-void render_pass_append(Render_Pass& pass, const std::vector<Render_Cmd2D>& cmd)
-{
-  pass.cmds_2d.insert(pass.cmds_2d.end(), cmd.begin(), cmd.end());
-}
-
-void render_pass_append(Render_Pass& pass, const Render_Cmd3D& cmd)
-{
-  pass.cmds_3d.push_back(cmd);
-}
-
-void render_pass_append(Render_Pass& pass, const std::vector<Render_Cmd3D>& cmd)
-{
-  pass.cmds_3d.insert(pass.cmds_3d.end(), cmd.begin(), cmd.end());
 }
 
 void render_pass_set_light(Render_Pass& pass, const vec3& pos, const vec3& color)
@@ -572,10 +557,11 @@ Render_Cmd2D render_texture_part(
   const vec2& size,
   const vec2& in_texture_pos,
   const vec2& in_texture_size,
-  const Render_Options2D& args
+  const Render_Options2D& args,
+  AssetStore& assets
 )
 {
-  uvec2 dims = asset_get(g_assets, texture).dimensions;
+  uvec2 dims = asset_get(assets, texture).dimensions;
   vec2 dims_f32 = {(f32) dims.x, (f32) dims.y};
   return {
     .texture = texture,
@@ -598,14 +584,19 @@ Render_Cmd2D render_texture_part(
 
 // NOTE: 3D
 
-std::vector<Render_Cmd3D>
-render_mesh(MeshHandle handle, const vec3& pos, f32 rotation, const vec3& tint)
+void render_mesh(
+  std::vector<Render_Cmd3D>& cmds,
+  MeshHandle handle,
+  const vec3& pos,
+  f32 rotation,
+  const vec3& tint,
+  AssetStore& assets
+)
 {
-  std::vector<Render_Cmd3D> out{};
-  auto& mesh = asset_get(g_assets, handle);
+  auto& mesh = asset_get(assets, handle);
   for (usize i = 0; i < mesh.submeshes.size(); ++i)
   {
-    out.push_back({
+    cmds.push_back({
       .material = mesh.submeshes[i].material,
       .mesh = handle,
       .submesh_idx = i,
@@ -616,13 +607,13 @@ render_mesh(MeshHandle handle, const vec3& pos, f32 rotation, const vec3& tint)
         },
     });
   }
-  return out;
 }
 
-Render_Cmd3D render_cube_wires(const vec3& pos, const vec3& size, const vec3& color)
+Render_Cmd3D
+render_cube_wires(const vec3& pos, const vec3& size, const vec3& color, AssetStore& assets)
 {
   return {
-    .material = asset_get(g_assets, g_render_data.cube_wires).submeshes[0].material,
+    .material = asset_get(assets, g_render_data.cube_wires).submeshes[0].material,
     .mesh = g_render_data.cube_wires,
     .submesh_idx = 0,
     .instance_data =
@@ -633,11 +624,11 @@ Render_Cmd3D render_cube_wires(const vec3& pos, const vec3& size, const vec3& co
   };
 }
 
-Render_Cmd3D render_ring(const vec3& pos, f32 radius, const vec3& color)
+Render_Cmd3D render_ring(const vec3& pos, f32 radius, const vec3& color, AssetStore& assets)
 {
   auto diameter = 2.0f * radius;
   return {
-    .material = asset_get(g_assets, g_render_data.ring).submeshes[0].material,
+    .material = asset_get(assets, g_render_data.ring).submeshes[0].material,
     .mesh = g_render_data.ring,
     .submesh_idx = 0,
     .instance_data =
@@ -648,10 +639,11 @@ Render_Cmd3D render_ring(const vec3& pos, f32 radius, const vec3& color)
   };
 }
 
-Render_Cmd3D render_line(const vec3& pos, f32 length, f32 rotation, const vec3& color)
+Render_Cmd3D
+render_line(const vec3& pos, f32 length, f32 rotation, const vec3& color, AssetStore& assets)
 {
   return {
-    .material = asset_get(g_assets, g_render_data.line).submeshes[0].material,
+    .material = asset_get(assets, g_render_data.line).submeshes[0].material,
     .mesh = g_render_data.line,
     .submesh_idx = 0,
     .instance_data =

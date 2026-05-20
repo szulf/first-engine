@@ -154,8 +154,9 @@ void ui_system_update(UI_System& system);
 struct UI_Layout
 {
   UI_IdInternal id{};
-  UI_System* system;
-  const OS_Input* input;
+  UI_System* system{};
+  const OS_Input* input{};
+  AssetStore* assets{};
   // NOTE: weird hack to get the union working, because c++
   std::vector<std::string> strings{};
   std::vector<UI_Element> elements{};
@@ -175,6 +176,7 @@ UI_Layout ui_layout_begin(
   UI_Id id,
   UI_System& system,
   const OS_Input& input,
+  AssetStore& assets,
   const vec3& pos,
   const vec2& max_dimensions,
   const vec2& char_size,

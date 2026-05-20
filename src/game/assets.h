@@ -11,6 +11,8 @@
 #include "vertex.h"
 #include "image.h"
 
+struct AssetStore;
+
 enum WrapOption
 {
   WRAP_OPTION_REPEAT,
@@ -87,7 +89,7 @@ void shader_set(Shader& shader, std::string_view name, i32 value);
 void shader_set(Shader& shader, std::string_view name, f32 value);
 void shader_set(Shader& shader, std::string_view name, const vec3& value);
 void shader_set(Shader& shader, std::string_view name, const mat4& value);
-void shader_set(Shader& shader, std::string_view name, TextureHandle handle);
+void shader_set(Shader& shader, std::string_view name, TextureHandle handle, AssetStore& assets);
 void shader_reset_texture_slot(Shader& shader);
 
 struct ShaderHandle
@@ -205,7 +207,5 @@ inline Shader& asset_get(AssetStore& assets, ShaderHandle handle)
 {
   return assets.shaders[handle.id];
 }
-
-extern AssetStore g_assets;
 
 #endif

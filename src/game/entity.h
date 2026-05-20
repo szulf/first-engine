@@ -14,7 +14,7 @@
 #define LIGHT_BULB_ON_TINT vec3{1.0f, 1.0f, 1.0f}
 #define LIGHT_BULB_OFF_TINT vec3{0.1f, 0.1f, 0.1f}
 
-vec2 bounding_box_from_mesh(MeshHandle mesh);
+vec2 bounding_box_from_mesh(MeshHandle handle, AssetStore& assets);
 
 enum EntityFlagsEnum
 {
@@ -54,7 +54,8 @@ struct Entity
   std::string mesh_path{};
 };
 
-std::expected<Entity, std::string_view> entity_from_file(const std::filesystem::path& path);
+std::expected<Entity, std::string_view>
+entity_from_file(const std::filesystem::path& path, AssetStore& assets);
 bool entities_collide(const Entity& ea, const Entity& eb);
 vec3 entity_render_pos(const Entity& entity, f32 t);
 f32 entity_render_rotation(const Entity& entity, f32 t);
@@ -65,6 +66,7 @@ struct Scene
   std::vector<Entity> entities{};
 };
 
-std::expected<Scene, std::string_view> scene_from_file(const std::filesystem::path& path);
+std::expected<Scene, std::string_view>
+scene_from_file(const std::filesystem::path& path, AssetStore& assets);
 
 #endif
