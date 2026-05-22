@@ -38,6 +38,8 @@ struct Entity
   f32 target_rotation{};
   vec3 velocity{};
   vec3 tint = {1.0f, 1.0f, 1.0f};
+  // NOTE: controlled by player
+  f32 interaction_radius{};
   // NOTE: collidable
   vec2 bounding_box{};
   // NOTE: toggleable
@@ -47,8 +49,6 @@ struct Entity
   vec3 light_color{};
   // NOTE: visible
   MeshHandle mesh{};
-  // NOTE: deprecated
-  f32 interactable_radius{};
   // NOTE: serialization
   std::string name{};
   std::string mesh_path{};

@@ -18,6 +18,11 @@ f32 radians(f32 deg)
   return deg * 0.01745329251994329576923690768489f;
 }
 
+f32 square(f32 value)
+{
+  return value * value;
+}
+
 vec2 operator-(const vec2& v)
 {
   return {-v.x, -v.y};

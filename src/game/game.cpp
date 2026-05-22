@@ -326,26 +326,23 @@ void game_update_tick(GameData& game, f32 dt)
         // NOTE: interactions
         if (os_key_just_pressed(key_state_from_action(ACTION_INTERACT, game)))
         {
-          for (usize interactable_idx = 0; interactable_idx < game.scene.entities.size();
-               ++interactable_idx)
+          for (usize toggleable_idx = 0; toggleable_idx < game.scene.entities.size();
+               ++toggleable_idx)
           {
-            auto& interactable = game.scene.entities[interactable_idx];
-            if (!(interactable.flags & ENTITY_TOGGLEABLE))
+            auto& toggleable = game.scene.entities[toggleable_idx];
+            if (!(toggleable.flags & ENTITY_TOGGLEABLE))
             {
               continue;
             }
-            auto vec = interactable.pos - entity.pos;
+            auto vec = toggleable.pos - entity.pos;
             f32 dist = length2(vec);
-            f32 orientation = std::atan2(-vec.x, vec.z);
-            orientation = wrap_to_neg_pi_to_pi(orientation);
-            if (dist < (interactable.interactable_radius * interactable.interactable_radius) &&
-                std::abs(entity.rotation - orientation) < 1.0f)
+            if (dist < square(entity.interaction_radius))
             {
               // TODO: this is light bulb specific behaviour, how do i work with other
               // interactables?
-              interactable.flags ^= ENTITY_EMITS_LIGHT;
-              interactable.tint =
-                interactable.flags & ENTITY_EMITS_LIGHT ? LIGHT_BULB_ON_TINT : LIGHT_BULB_OFF_TINT;
+              toggleable.flags ^= ENTITY_EMITS_LIGHT;
+              toggleable.tint =
+                toggleable.flags & ENTITY_EMITS_LIGHT ? LIGHT_BULB_ON_TINT : LIGHT_BULB_OFF_TINT;
               sound_play_once(game.sound_system, SOUND_HANDLE_SHOTGUN, 0.1f);
               sound_stop_looped(game.sound_system, SOUND_HANDLE_TEST_MUSIC);
             }
@@ -716,6 +713,12 @@ void game_render(GameData& game, f32 t)
             {1, 0, 0},
             game.assets
           ));
+          pass.cmds_3d.push_back(render_ring(
+            entity_render_pos(entity, t),
+            entity.interaction_radius,
+            {1, 1, 0},
+            game.assets
+          ));
         }
         if (entity.flags & ENTITY_COLLIDABLE && f32_equal(entity.pos.y, 0))
         {
@@ -723,15 +726,6 @@ void game_render(GameData& game, f32 t)
             entity_render_pos(entity, t),
             {entity.bounding_box.x, 1, entity.bounding_box.y},
             {0, 1, 0},
-            game.assets
-          ));
-        }
-        if (entity.flags & ENTITY_TOGGLEABLE)
-        {
-          pass.cmds_3d.push_back(render_ring(
-            entity_render_pos(entity, t),
-            entity.interactable_radius,
-            {1, 1, 0},
             game.assets
           ));
         }

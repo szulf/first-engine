@@ -85,3 +85,7 @@
 2. better errors than std::string_view
 3. do i need rendered_pos in things?
 4. no more #pragma once and include order
+
+## 7. BIG TODO: new interaction mechanic
+
+1. move the interaction radius to the player

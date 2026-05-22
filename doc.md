@@ -1,6 +1,9 @@
-## BIG TODO: get rid of c++ bs
+## BIG TODO: new interaction mechanic
 
 ## SMALL TODOS: (ordered)
+
+2. get the mouse click position
+3. do the interaction
 
 ---
 
@@ -21,9 +24,6 @@
 
 ### Game Mechanics:
 
-- change the interaction mechanic, interaction by key is stupid for my game,
-  - i need more interaction by mouse click and the interaction radius would be on the player and
-  - not on the interactable entities
 - placing/destroying something on the ground
 - inventory system
 - better collision detection

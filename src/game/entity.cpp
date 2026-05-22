@@ -133,9 +133,9 @@ entity_from_file(const std::filesystem::path& path, AssetStore& assets)
         entity.flags |= ENTITY_TOGGLEABLE;
       }
     }
-    else if (key == "interactable_radius")
+    else if (key == "interaction_radius")
     {
-      entity.interactable_radius = parser_number_f32(pos);
+      entity.interaction_radius = parser_number_f32(pos);
     }
     else if (key == "emits_light")
     {

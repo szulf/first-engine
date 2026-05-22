@@ -10,6 +10,7 @@
 bool f32_equal(f32 a, f32 b);
 f32 wrap_to_neg_pi_to_pi(f32 value);
 f32 radians(f32 deg);
+f32 square(f32 value);
 
 struct vec2
 {

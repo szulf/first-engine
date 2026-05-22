@@ -7,3 +7,5 @@ dynamically_calculated_bounding_box : true
 
 visible: true
 mesh : assets/bean.obj
+
+interaction_radius : 2.0
