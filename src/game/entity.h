@@ -14,6 +14,9 @@
 #define LIGHT_BULB_ON_TINT vec3{1.0f, 1.0f, 1.0f}
 #define LIGHT_BULB_OFF_TINT vec3{0.1f, 0.1f, 0.1f}
 
+static constexpr vec3 TOGGLEABLE_DISABLED_HOVER_COLOR = {0.4f, 0.4f, 0.4f};
+static constexpr vec3 TOGGLEABLE_ENABLED_HOVER_COLOR = {0.3f, 1, 0.3f};
+
 vec2 bounding_box_from_mesh(MeshHandle handle, AssetStore& assets);
 
 enum EntityFlagsEnum
@@ -43,7 +46,8 @@ struct Entity
   // NOTE: collidable
   vec2 bounding_box{};
   // NOTE: toggleable
-  bool toggle{};
+  bool toggled{};
+  bool hovered{};
   // NOTE: emits light
   f32 light_height_offset{};
   vec3 light_color{};

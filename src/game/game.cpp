@@ -323,8 +323,7 @@ void game_update_tick(GameData& game, f32 dt)
           }
         }
 
-        // NOTE: interactions
-        if (os_key_just_pressed(key_state_from_action(ACTION_INTERACT, game)))
+        vec3 mouse_click_world_pos{};
         {
           vec2 ndc = ((game.window->input.mouse_pos / game.window->dimensions) * 2) - vec2{1, 1};
           ndc.y = -ndc.y;
@@ -335,8 +334,39 @@ void game_update_tick(GameData& game, f32 dt)
           vec4 ray_world = inverse(camera_view(game.gameplay_camera, 0)) * ray_view;
           vec3 ray = normalize(vec3{ray_world.x, ray_world.y, ray_world.z});
           f32 t = (0 - game.gameplay_camera.pos.y) / ray.y;
-          vec3 mouse_click_world_pos = game.gameplay_camera.pos + t * ray;
+          mouse_click_world_pos = game.gameplay_camera.pos + t * ray;
+        }
 
+        for (usize toggleable_idx = 0; toggleable_idx < game.scene.entities.size();
+             ++toggleable_idx)
+        {
+          auto& toggleable = game.scene.entities[toggleable_idx];
+          if (!(toggleable.flags & ENTITY_TOGGLEABLE))
+          {
+            continue;
+          }
+          toggleable.hovered = false;
+          f32 dist2_from_mouse = length2(toggleable.pos - mouse_click_world_pos);
+          f32 max_mouse_dist2 = 0.2f;
+          // TODO: this could probably be better
+          if (toggleable.flags & ENTITY_COLLIDABLE)
+          {
+            max_mouse_dist2 =
+              (toggleable.bounding_box.x / 2.0f) + (toggleable.bounding_box.y / 2.0f) / 2.0f;
+          }
+          f32 dist2_from_player = length2(toggleable.pos - entity.pos);
+          if (dist2_from_player < square(entity.interaction_radius) &&
+              dist2_from_mouse < max_mouse_dist2)
+          {
+            toggleable.hovered = true;
+          }
+        }
+
+        // NOTE: interactions
+        // TODO: display the bounding/interaction box on hover
+        // or some better way of highlighting the entity
+        if (os_key_just_pressed(key_state_from_action(ACTION_INTERACT, game)))
+        {
           for (usize toggleable_idx = 0; toggleable_idx < game.scene.entities.size();
                ++toggleable_idx)
           {
@@ -345,18 +375,9 @@ void game_update_tick(GameData& game, f32 dt)
             {
               continue;
             }
-            f32 dist2_from_mouse = length2(toggleable.pos - mouse_click_world_pos);
-            f32 max_mouse_dist2 = 0.2f;
-            // TODO: this could probably be better
-            if (toggleable.flags & ENTITY_COLLIDABLE)
+            if (toggleable.hovered)
             {
-              max_mouse_dist2 =
-                (toggleable.bounding_box.x / 2.0f) + (toggleable.bounding_box.y / 2.0f) / 2.0f;
-            }
-            f32 dist2_from_player = length2(toggleable.pos - entity.pos);
-            if (dist2_from_player < square(entity.interaction_radius) &&
-                dist2_from_mouse < max_mouse_dist2)
-            {
+              toggleable.toggled = !toggleable.toggled;
               // TODO: this is light bulb specific behaviour, how do i work with other
               // interactables?
               toggleable.flags ^= ENTITY_EMITS_LIGHT;
@@ -713,6 +734,15 @@ void game_render(GameData& game, f32 t)
           entity.tint,
           game.assets
         );
+      }
+      if (entity.flags & ENTITY_TOGGLEABLE && entity.hovered)
+      {
+        pass.cmds_3d.push_back(render_cube_wires(
+          entity_render_pos(entity, t),
+          {entity.bounding_box.x, 1, entity.bounding_box.y},
+          entity.toggled ? TOGGLEABLE_ENABLED_HOVER_COLOR : TOGGLEABLE_DISABLED_HOVER_COLOR,
+          game.assets
+        ));
       }
       if (entity.flags & ENTITY_EMITS_LIGHT)
       {

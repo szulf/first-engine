@@ -1,6 +1,8 @@
-## BIG TODO: new interaction mechanic
+## BIG TODO: placing/destroying something on the ground
 
 ## SMALL TODOS: (ordered)
+
+
 
 ---
 
@@ -21,7 +23,6 @@
 
 ### Game Mechanics:
 
-- placing/destroying something on the ground
 - inventory system
 - better collision detection
 
