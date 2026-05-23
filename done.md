@@ -89,3 +89,4 @@
 ## 7. BIG TODO: new interaction mechanic
 
 1. move the interaction radius to the player
+2. get the mouse click position in 3 dimensions and do the interaction

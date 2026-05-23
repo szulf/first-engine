@@ -528,7 +528,7 @@ vec4 operator*(const mat4& m, const vec4& v)
   {
     for (usize j = 0; j < 4; ++j)
     {
-      out.data[i] += m.data[i][j] * v.data[j];
+      out.data[i] += m.data[j][i] * v.data[j];
     }
   }
   return out;

@@ -326,6 +326,17 @@ void game_update_tick(GameData& game, f32 dt)
         // NOTE: interactions
         if (os_key_just_pressed(key_state_from_action(ACTION_INTERACT, game)))
         {
+          vec2 ndc = ((game.window->input.mouse_pos / game.window->dimensions) * 2) - vec2{1, 1};
+          ndc.y = -ndc.y;
+          vec4 ray_clip = {ndc.x, ndc.y, -1, 1};
+          vec4 ray_view = inverse(camera_projection(game.gameplay_camera)) * ray_clip;
+          ray_view.z = -1;
+          ray_view.w = 0;
+          vec4 ray_world = inverse(camera_view(game.gameplay_camera, 0)) * ray_view;
+          vec3 ray = normalize(vec3{ray_world.x, ray_world.y, ray_world.z});
+          f32 t = (0 - game.gameplay_camera.pos.y) / ray.y;
+          vec3 mouse_click_world_pos = game.gameplay_camera.pos + t * ray;
+
           for (usize toggleable_idx = 0; toggleable_idx < game.scene.entities.size();
                ++toggleable_idx)
           {
@@ -334,9 +345,17 @@ void game_update_tick(GameData& game, f32 dt)
             {
               continue;
             }
-            auto vec = toggleable.pos - entity.pos;
-            f32 dist = length2(vec);
-            if (dist < square(entity.interaction_radius))
+            f32 dist2_from_mouse = length2(toggleable.pos - mouse_click_world_pos);
+            f32 max_mouse_dist2 = 0.2f;
+            // TODO: this could probably be better
+            if (toggleable.flags & ENTITY_COLLIDABLE)
+            {
+              max_mouse_dist2 =
+                (toggleable.bounding_box.x / 2.0f) + (toggleable.bounding_box.y / 2.0f) / 2.0f;
+            }
+            f32 dist2_from_player = length2(toggleable.pos - entity.pos);
+            if (dist2_from_player < square(entity.interaction_radius) &&
+                dist2_from_mouse < max_mouse_dist2)
             {
               // TODO: this is light bulb specific behaviour, how do i work with other
               // interactables?
