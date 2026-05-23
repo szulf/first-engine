@@ -109,7 +109,7 @@ static void texture__init(
   }
 }
 
-Texture texture_init(TextureType type, const uvec2& dimensions)
+Texture texture_init(TextureType type, const vec2& dimensions)
 {
   Texture texture{};
   texture.type = type;

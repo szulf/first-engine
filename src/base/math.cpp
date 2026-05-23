@@ -430,6 +430,81 @@ mat4 rotate(mat4 mat, f32 rad, const vec3& axis)
   return mat;
 }
 
+mat4 transpose(const mat4& mat)
+{
+  mat4 t{};
+  for (i32 i = 0; i < 4; ++i)
+  {
+    for (i32 j = 0; j < 4; ++j)
+    {
+      t.data[j][i] = mat.data[i][j];
+    }
+  }
+  return t;
+}
+
+static f32 minor(const mat4& m, i32 i, i32 j)
+{
+  i32 r1 = !i;
+  i32 r2 = 2 - (i / 2);
+  i32 r3 = 3 - (i / 3);
+
+  i32 c1 = !j;
+  i32 c2 = 2 - (j / 2);
+  i32 c3 = 3 - (j / 3);
+
+  f32 sarrus = 0;
+  sarrus += m.data[c1][r1] * m.data[c2][r2] * m.data[c3][r3];
+  sarrus += m.data[c2][r1] * m.data[c3][r2] * m.data[c1][r3];
+  sarrus += m.data[c3][r1] * m.data[c1][r2] * m.data[c2][r3];
+
+  sarrus -= m.data[c1][r3] * m.data[c2][r2] * m.data[c3][r1];
+  sarrus -= m.data[c2][r3] * m.data[c3][r2] * m.data[c1][r1];
+  sarrus -= m.data[c3][r3] * m.data[c1][r2] * m.data[c2][r1];
+
+  sarrus *= (f32) std::pow(-1, (i + 1) + (j + 1));
+  return sarrus;
+}
+
+// NOTE: always uses column one
+static f32 determinant(const mat4& m)
+{
+  f32 out = 0;
+  for (i32 row = 0; row < 4; ++row)
+  {
+    out += minor(m, row, 0) * m.data[0][row];
+  }
+  return out;
+}
+
+mat4 inverse(const mat4& a)
+{
+  f32 det = determinant(a);
+  ASSERT(!f32_equal(det, 0), "Determinant of a matrix cannot be 0");
+
+  mat4 d{};
+  for (i32 i = 0; i < 4; ++i)
+  {
+    for (i32 j = 0; j < 4; ++j)
+    {
+      d.data[j][i] = minor(a, i, j);
+    }
+  }
+  d = transpose(d);
+
+  mat4 inv{};
+  // TODO: this is a bad name probably
+  f32 temp = 1.0f / det;
+  for (i32 i = 0; i < 4; ++i)
+  {
+    for (i32 j = 0; j < 4; ++j)
+    {
+      inv.data[j][i] = temp * d.data[j][i];
+    }
+  }
+  return inv;
+}
+
 mat4 operator*(const mat4& a, const mat4& b)
 {
   mat4 out = {};

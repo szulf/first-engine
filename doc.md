@@ -2,7 +2,7 @@
 
 ## SMALL TODOS: (ordered)
 
-2. get the mouse click position
+2. get the mouse click position in 3 dimensions
 3. do the interaction
 
 ---

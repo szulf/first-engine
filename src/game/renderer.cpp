@@ -92,7 +92,7 @@ static constexpr Vertex quad_vertices[] = {
 static constexpr u32 quad_indices[] = {0, 1, 3, 1, 2, 3};
 
 static constexpr u8 blank_texture_data[] = {0xFF, 0xFF, 0xFF, 0xFF};
-static constexpr uvec2 blank_texture_dimensions = {1, 1};
+static constexpr vec2 blank_texture_dimensions = {1, 1};
 
 static MeshHandle static_model_init(
   const std::vector<Vertex>& vertices,
@@ -433,7 +433,7 @@ void render_pass_finish(Render_Pass& pass, AssetStore& assets)
     {
       GLint y_clip_pos = std::max(
         (GLint) (g_render_data.camera_2d.viewport.y -
-                 (u32) (cmd.clip_rectangle->pos.y + cmd.clip_rectangle->dimensions.y)),
+                 (f32) (cmd.clip_rectangle->pos.y + cmd.clip_rectangle->dimensions.y)),
         0
       );
       glScissor(
@@ -561,8 +561,7 @@ Render_Cmd2D render_texture_part(
   AssetStore& assets
 )
 {
-  uvec2 dims = asset_get(assets, texture).dimensions;
-  vec2 dims_f32 = {(f32) dims.x, (f32) dims.y};
+  vec2 dims = asset_get(assets, texture).dimensions;
   return {
     .texture = texture,
     .z_idx = pos.z,
@@ -574,8 +573,8 @@ Render_Cmd2D render_texture_part(
           0.0f
         ),
         .tint = args.tint,
-        .uv_scale = in_texture_size / dims_f32,
-        .uv_offset = in_texture_pos / dims_f32,
+        .uv_scale = in_texture_size / dims,
+        .uv_offset = in_texture_pos / dims,
         .corner_radius = args.corner_radius,
       },
     .clip_rectangle = args.clip_rectangle,

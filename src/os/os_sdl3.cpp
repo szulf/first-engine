@@ -210,7 +210,7 @@ struct OS_Window::PlatformData
 };
 
 std::expected<OS_Window, std::string_view>
-os_window_open(std::string_view name, const uvec2& dimensions)
+os_window_open(std::string_view name, const vec2& dimensions)
 {
   OS_Window window = {
     .name = std::string{name},
@@ -455,8 +455,8 @@ void os_window_update(OS_Window& window)
       break;
       case SDL_EVENT_WINDOW_RESIZED:
       {
-        window.dimensions.x = (u32) e.window.data1;
-        window.dimensions.y = (u32) e.window.data2;
+        window.dimensions.x = (f32) e.window.data1;
+        window.dimensions.y = (f32) e.window.data2;
       }
       break;
       case SDL_EVENT_KEY_UP:

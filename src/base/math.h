@@ -101,6 +101,8 @@ mat4 scale(mat4 mat, f32 scale);
 mat4 scale(mat4 mat, const vec3& scale);
 mat4 translate(mat4 mat, const vec3& position);
 mat4 rotate(mat4 mat, f32 rad, const vec3& axis);
+mat4 transpose(const mat4& mat);
+mat4 inverse(const mat4& mat);
 mat4 operator*(const mat4& a, const mat4& b);
 vec4 operator*(const mat4& m, const vec4& v);
 

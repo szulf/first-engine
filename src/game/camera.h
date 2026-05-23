@@ -31,7 +31,7 @@ struct Camera
   f32 fov{};
   f32 near_plane{};
   f32 far_plane{};
-  uvec2 viewport{};
+  vec2 viewport{};
   vec3 front{};
   vec3 up{};
   vec3 right{};

@@ -38,12 +38,12 @@ enum TextureType
 // - f32 depth component cubemap textures
 struct Texture
 {
-  uvec2 dimensions{};
+  vec2 dimensions{};
   TextureType type{};
   u32 id{};
 };
 
-Texture texture_init(TextureType type, const uvec2& dimensions);
+Texture texture_init(TextureType type, const vec2& dimensions);
 Texture texture_from_image(
   const Image& img,
   WrapOption wrap_s = WRAP_OPTION_REPEAT,

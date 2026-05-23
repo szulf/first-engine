@@ -88,14 +88,14 @@ struct OS_Window
 {
   std::string name{};
   bool running{};
-  uvec2 dimensions{};
+  vec2 dimensions{};
   OS_Input input{};
   struct PlatformData;
   PlatformData* platform_data{};
 };
 
 std::expected<OS_Window, std::string_view>
-os_window_open(std::string_view name, const uvec2& dimensions);
+os_window_open(std::string_view name, const vec2& dimensions);
 void os_window_close(OS_Window& window);
 void os_window_update(OS_Window& window);
 void os_window_swap_buffers(OS_Window& window);

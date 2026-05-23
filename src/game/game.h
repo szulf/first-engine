@@ -44,7 +44,7 @@ static constexpr Keymap DEFAULT_KEYMAP = []() -> Keymap
   return k;
 }();
 
-#define SHADOW_MAP_DIMENSIONS uvec2{1024, 1024}
+static constexpr vec2 SHADOW_MAP_DIMENSIONS = {1024, 1024};
 #define CHAR_SIZE vec2{9, 16}
 
 struct GameData
