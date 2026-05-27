@@ -1,6 +1,12 @@
-## BIG TODO: 
+## BIG TODO: placing/destroying something on the ground
 
 ## SMALL TODOS: (ordered)
+
+1. add new block types (conveyor and storage)
+2. block placing/destroying mechanic
+3. check collisions with already existing entities
+4. ui to select which block to place
+5. serialization of the world
 
 ---
 

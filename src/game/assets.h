@@ -176,39 +176,39 @@ inline void asset_store_bind_render_data(AssetStore& assets, Render_Data& render
 inline TextureHandle asset_set(AssetStore& assets, const Texture& texture)
 {
   assets.textures.push_back(texture);
-  return {.id = assets.textures.size() - 1};
+  return {.id = assets.textures.size()};
 }
 inline MaterialHandle asset_set(AssetStore& assets, const Material& material)
 {
   assets.materials.push_back(material);
-  return {.id = assets.materials.size() - 1};
+  return {.id = assets.materials.size()};
 }
 inline MeshHandle asset_set(AssetStore& assets, const Mesh& mesh)
 {
   assets.meshes.push_back(mesh);
-  return {.id = assets.meshes.size() - 1};
+  return {.id = assets.meshes.size()};
 }
 inline ShaderHandle asset_set(AssetStore& assets, const Shader& shader)
 {
   assets.shaders.push_back(shader);
-  return {.id = assets.shaders.size() - 1};
+  return {.id = assets.shaders.size()};
 }
 
 inline Texture& asset_get(AssetStore& assets, TextureHandle handle)
 {
-  return assets.textures[handle.id];
+  return assets.textures[handle.id - 1];
 }
 inline Material& asset_get(AssetStore& assets, MaterialHandle handle)
 {
-  return assets.materials[handle.id];
+  return assets.materials[handle.id - 1];
 }
 inline Mesh& asset_get(AssetStore& assets, MeshHandle handle)
 {
-  return assets.meshes[handle.id];
+  return assets.meshes[handle.id - 1];
 }
 inline Shader& asset_get(AssetStore& assets, ShaderHandle handle)
 {
-  return assets.shaders[handle.id];
+  return assets.shaders[handle.id - 1];
 }
 
 #endif

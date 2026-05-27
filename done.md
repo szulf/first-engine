@@ -91,3 +91,6 @@
 1. move the interaction radius to the player
 2. get the mouse click position in 3 dimensions and do the interaction
 3. add a hover indication on toggleable entities
+
+## 8. BIG TODO: placing/destroying something on the ground
+
