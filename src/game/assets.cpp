@@ -497,6 +497,23 @@ void mesh_use(const Mesh& mesh)
   glBindVertexArray(mesh.vao);
 }
 
+vec2 bounding_box_from_mesh(MeshHandle handle, AssetStore& assets)
+{
+  vec3 max_corner = {std::numeric_limits<f32>::min(), 0, std::numeric_limits<f32>::min()};
+  vec3 min_corner = {std::numeric_limits<f32>::max(), 0, std::numeric_limits<f32>::max()};
+  const auto& mesh = asset_get(assets, handle);
+
+  for (usize vertex_idx = 0; vertex_idx < mesh.vertices.size(); ++vertex_idx)
+  {
+    auto& vertex = mesh.vertices[vertex_idx];
+    max_corner.x = std::max(max_corner.x, vertex.pos.x);
+    min_corner.x = std::min(min_corner.x, vertex.pos.x);
+    max_corner.z = std::max(max_corner.z, vertex.pos.z);
+    min_corner.z = std::min(min_corner.z, vertex.pos.z);
+  }
+  return {max_corner.x - min_corner.x, max_corner.z - min_corner.z};
+}
+
 struct OBJContext
 {
   std::vector<Vertex> vertices;
@@ -653,6 +670,11 @@ static void obj_parse_vertex(OBJContext& ctx, Parser_Pos& pos)
 MeshHandle load_obj(AssetStore& assets, const std::filesystem::path& path)
 {
   ASSERT(assets.render_data, "Need to bind render data, before loading meshes.");
+  if (assets.mesh_handles.contains(path.string()))
+  {
+    return assets.mesh_handles[path.string()];
+  }
+
   OBJContext ctx{};
   std::ifstream file{path};
   if (file.fail())
@@ -724,7 +746,7 @@ MeshHandle load_obj(AssetStore& assets, const std::filesystem::path& path)
     }
   }
 
-  return asset_set(
+  auto handle = asset_set(
     assets,
     mesh_init(
       ctx.vertices,
@@ -734,6 +756,8 @@ MeshHandle load_obj(AssetStore& assets, const std::filesystem::path& path)
       *assets.render_data
     )
   );
+  assets.mesh_handles.insert_or_assign(path.string(), handle);
+  return handle;
 }
 
 TextureHandle load_texture(AssetStore& assets, const std::filesystem::path& path)

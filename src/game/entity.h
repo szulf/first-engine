@@ -3,63 +3,69 @@
 
 #include <string>
 #include <vector>
+#include <expected>
 
 #include "base/base.h"
 #include "assets.h"
 
-#define PLAYER_MOVEMENT_SPEED 8.0f
-#define PLAYER_ROTATE_SPEED (3 * std::numbers::pi_v<f32>)
-#define PLAYER_MASS 80.0f
-
-#define LIGHT_BULB_ON_TINT vec3{1.0f, 1.0f, 1.0f}
-#define LIGHT_BULB_OFF_TINT vec3{0.1f, 0.1f, 0.1f}
-
-static constexpr vec3 TOGGLEABLE_DISABLED_HOVER_COLOR = {0.4f, 0.4f, 0.4f};
-static constexpr vec3 TOGGLEABLE_ENABLED_HOVER_COLOR = {0.3f, 1, 0.3f};
-
-vec2 bounding_box_from_mesh(MeshHandle handle, AssetStore& assets);
-
-enum EntityFlagsEnum
+enum EntityType
 {
-  ENTITY_CONTROLLED_BY_PLAYER = 1 << 0,
-  ENTITY_COLLIDABLE = 1 << 1,
-  ENTITY_TOGGLEABLE = 1 << 2,
-  ENTITY_EMITS_LIGHT = 1 << 3,
-  ENTITY_VISIBLE = 1 << 4,
-  ENTITY_DYNAMIC_BOUNDING_BOX = 1 << 5,
+  ENTITY_PLAYER,
+  ENTITY_BLOCK,
+  ENTITY_LIGHT_BULB,
 };
-using EntityFlags = u64;
+
+std::expected<EntityType, std::string_view> entity_type_from_string(std::string_view str);
+
+struct EntityPlayer
+{
+  static constexpr f32 MOVEMENT_SPEED = 8;
+  static constexpr f32 ROTATION_SPEED = 3 * std::numbers::pi_v<f32>;
+  static constexpr f32 MASS = 80;
+  static constexpr f32 INTERACTION_RADIUS = 2;
+  static constexpr std::string_view MESH_PATH = "assets/bean.obj";
+};
+
+struct EntityBlock
+{
+  static constexpr std::string_view MESH_PATH = "assets/cube.obj";
+};
+
+struct EntityLightBulb
+{
+  static constexpr vec3 ON_TINT = {1, 1, 1};
+  static constexpr vec3 OFF_TINT = {0.1f, 0.1f, 0.1f};
+  static constexpr vec3 ON_HOVER_COLOR = {0.3f, 1, 0.3f};
+  static constexpr vec3 OFF_HOVER_COLOR = {0.4f, 0.4f, 0.4f};
+  static constexpr f32 LIGHT_HEIGHT_OFFSET = -0.25f;
+  static constexpr vec3 LIGHT_COLOR = {1, 1, 0.7f};
+  static constexpr std::string_view MESH_PATH = "assets/light_bulb.obj";
+  bool on{};
+  bool hovered{};
+};
 
 struct Entity
 {
-  EntityFlags flags{};
-  // NOTE: common
+  EntityType type{};
   vec3 pos{};
   vec3 prev_pos{};
   f32 rotation{};
   f32 prev_rotation{};
   f32 target_rotation{};
   vec3 velocity{};
-  vec3 tint = {1.0f, 1.0f, 1.0f};
-  // NOTE: controlled by player
-  f32 interaction_radius{};
-  // NOTE: collidable
   vec2 bounding_box{};
-  // NOTE: toggleable
-  bool toggled{};
-  bool hovered{};
-  // NOTE: emits light
-  f32 light_height_offset{};
-  vec3 light_color{};
-  // NOTE: visible
+  vec3 tint = {1.0f, 1.0f, 1.0f};
   MeshHandle mesh{};
-  // NOTE: serialization
   std::string name{};
   std::string mesh_path{};
+  union
+  {
+    EntityPlayer player;
+    EntityBlock block;
+    EntityLightBulb light_bulb;
+  };
 };
 
-std::expected<Entity, std::string_view>
-entity_from_file(const std::filesystem::path& path, AssetStore& assets);
 bool entities_collide(const Entity& ea, const Entity& eb);
 vec3 entity_render_pos(const Entity& entity, f32 t);
 f32 entity_render_rotation(const Entity& entity, f32 t);

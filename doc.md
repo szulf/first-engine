@@ -1,8 +1,6 @@
-## BIG TODO: placing/destroying something on the ground
+## BIG TODO: 
 
 ## SMALL TODOS: (ordered)
-
-
 
 ---
 

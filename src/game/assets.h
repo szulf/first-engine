@@ -151,6 +151,8 @@ struct MeshHandle
   usize id;
 };
 
+vec2 bounding_box_from_mesh(MeshHandle handle, AssetStore& assets);
+
 struct AssetStore
 {
   Render_Data* render_data{};
@@ -160,6 +162,7 @@ struct AssetStore
   std::vector<Shader> shaders{};
   std::unordered_map<std::string, TextureHandle> texture_handles{};
   std::unordered_map<std::string, MaterialHandle> material_handles{};
+  std::unordered_map<std::string, MeshHandle> mesh_handles{};
 };
 
 MeshHandle load_obj(AssetStore& assets, const std::filesystem::path& path);

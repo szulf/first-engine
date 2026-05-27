@@ -2,25 +2,27 @@
 
 #include <filesystem>
 #include <fstream>
+#include <cmath>
 
 #include "parser.h"
 #include "assets.h"
+#include "sound.h"
 
-vec2 bounding_box_from_mesh(MeshHandle handle, AssetStore& assets)
+std::expected<EntityType, std::string_view> entity_type_from_string(std::string_view str)
 {
-  vec3 max_corner = {std::numeric_limits<f32>::min(), 0, std::numeric_limits<f32>::min()};
-  vec3 min_corner = {std::numeric_limits<f32>::max(), 0, std::numeric_limits<f32>::max()};
-  const auto& mesh = asset_get(assets, handle);
-
-  for (usize vertex_idx = 0; vertex_idx < mesh.vertices.size(); ++vertex_idx)
+  if (str == "player")
   {
-    auto& vertex = mesh.vertices[vertex_idx];
-    max_corner.x = std::max(max_corner.x, vertex.pos.x);
-    min_corner.x = std::min(min_corner.x, vertex.pos.x);
-    max_corner.z = std::max(max_corner.z, vertex.pos.z);
-    min_corner.z = std::min(min_corner.z, vertex.pos.z);
+    return {ENTITY_PLAYER};
   }
-  return {max_corner.x - min_corner.x, max_corner.z - min_corner.z};
+  else if (str == "block")
+  {
+    return {ENTITY_BLOCK};
+  }
+  else if (str == "light_bulb")
+  {
+    return {ENTITY_LIGHT_BULB};
+  }
+  return std::unexpected{"Invalid entity type string"};
 }
 
 static vec3 gfmt_parse_vec3(Parser_Pos& pos)
@@ -34,142 +36,6 @@ static vec3 gfmt_parse_vec3(Parser_Pos& pos)
   out.z = parser_number_f32(pos);
   parser_expect_and_skip(pos, ')');
   return out;
-}
-
-static vec2 gfmt_parse_vec2(Parser_Pos& pos)
-{
-  vec2 out{};
-  parser_expect_and_skip(pos, '(');
-  out.x = parser_number_f32(pos);
-  parser_expect_and_skip(pos, ',');
-  out.y = parser_number_f32(pos);
-  parser_expect_and_skip(pos, ')');
-  return out;
-}
-
-std::expected<Entity, std::string_view>
-entity_from_file(const std::filesystem::path& path, AssetStore& assets)
-{
-  if (path.extension() != ".gent")
-  {
-    return std::unexpected{"Invalid filepath provided, expected a file with a '.gent' extension"};
-  }
-  std::ifstream file{path};
-  if (file.fail())
-  {
-    return std::unexpected{"Failed to read entity file"};
-  }
-  Entity entity{};
-  std::string line{};
-  while (std::getline(file, line))
-  {
-    if (line.empty() || line[0] == '#')
-    {
-      continue;
-    }
-    Parser_Pos pos{.line = line};
-
-    auto key = parser_word(pos);
-    parser_expect_and_skip(pos, ':');
-    if (key == "pos")
-    {
-      entity.pos = gfmt_parse_vec3(pos);
-      entity.prev_pos = entity.pos;
-    }
-    else if (key == "controlled_by_player")
-    {
-      if (parser_boolean(pos))
-      {
-        entity.flags |= ENTITY_CONTROLLED_BY_PLAYER;
-      }
-    }
-    else if (key == "rotation")
-    {
-      entity.rotation = parser_number_f32(pos);
-      entity.prev_rotation = entity.rotation;
-    }
-    else if (key == "target_rotation")
-    {
-      entity.target_rotation = parser_number_f32(pos);
-    }
-    else if (key == "velocity")
-    {
-      entity.velocity = gfmt_parse_vec3(pos);
-    }
-    else if (key == "collidable")
-    {
-      if (parser_boolean(pos))
-      {
-        entity.flags |= ENTITY_COLLIDABLE;
-      }
-    }
-    else if (key == "dynamically_calculated_bounding_box")
-    {
-      if (parser_boolean(pos))
-      {
-        entity.flags |= ENTITY_DYNAMIC_BOUNDING_BOX;
-      }
-    }
-    else if (key == "bounding_box")
-    {
-      entity.bounding_box = gfmt_parse_vec2(pos);
-    }
-    else if (key == "visible")
-    {
-      if (parser_boolean(pos))
-      {
-        entity.flags |= ENTITY_VISIBLE;
-      }
-    }
-    else if (key == "mesh")
-    {
-      entity.mesh_path = parser_word(pos);
-      entity.mesh = load_obj(assets, entity.mesh_path);
-    }
-    else if (key == "toggleable")
-    {
-      if (parser_boolean(pos))
-      {
-        entity.flags |= ENTITY_TOGGLEABLE;
-      }
-    }
-    else if (key == "interaction_radius")
-    {
-      entity.interaction_radius = parser_number_f32(pos);
-    }
-    else if (key == "emits_light")
-    {
-      if (parser_boolean(pos))
-      {
-        entity.flags |= ENTITY_EMITS_LIGHT;
-      }
-    }
-    else if (key == "light_height_offset")
-    {
-      entity.light_height_offset = parser_number_f32(pos);
-    }
-    else if (key == "light_color")
-    {
-      entity.light_color = gfmt_parse_vec3(pos);
-    }
-    else if (key == "tint")
-    {
-      entity.tint = gfmt_parse_vec3(pos);
-    }
-    else if (key == "name")
-    {
-      entity.name = parser_word(pos);
-    }
-    else
-    {
-      return std::unexpected{"Invalid key in entity file"};
-    }
-  }
-  if (entity.flags & ENTITY_DYNAMIC_BOUNDING_BOX)
-  {
-    entity.bounding_box = bounding_box_from_mesh(entity.mesh, assets);
-  }
-  return {entity};
 }
 
 // NOTE: not combined with ui bounds checking,
@@ -202,6 +68,20 @@ f32 entity_render_rotation(const Entity& entity, f32 t)
   return entity.rotation * t + entity.prev_rotation * (1.0f - t);
 }
 
+static std::string_view mesh_path_from_entity_type(EntityType type)
+{
+  switch (type)
+  {
+    case ENTITY_PLAYER:
+      return EntityPlayer::MESH_PATH;
+    case ENTITY_BLOCK:
+      return EntityBlock::MESH_PATH;
+    case ENTITY_LIGHT_BULB:
+      return EntityLightBulb::MESH_PATH;
+  }
+  ASSERT(false, "Invalid entity type");
+}
+
 std::expected<Scene, std::string_view>
 scene_from_file(const std::filesystem::path& path, AssetStore& assets)
 {
@@ -216,7 +96,6 @@ scene_from_file(const std::filesystem::path& path, AssetStore& assets)
   }
   Scene scene{};
   std::string line{};
-  std::unordered_map<std::string, Entity> entity_cache{};
   while (std::getline(file, line))
   {
     if (line.empty() || line[0] == '#')
@@ -233,22 +112,21 @@ scene_from_file(const std::filesystem::path& path, AssetStore& assets)
       continue;
     }
 
-    if (entity_cache.contains(key))
+    auto entity_type = entity_type_from_string(key);
+    if (!entity_type)
     {
-      scene.entities.push_back(entity_cache[key]);
+      return std::unexpected{entity_type.error()};
     }
-    else
+    Entity entity{};
+    entity.type = *entity_type;
+    if (entity.type == ENTITY_LIGHT_BULB)
     {
-      auto entity = entity_from_file((path.parent_path() / key).replace_extension(".gent"), assets);
-      if (!entity)
-      {
-        return std::unexpected{entity.error()};
-      }
-      entity_cache.insert_or_assign(key, *entity);
-      scene.entities.push_back(*entity);
+      entity.tint = EntityLightBulb::OFF_TINT;
     }
-    auto& entity = scene.entities[scene.entities.size() - 1];
+    entity.mesh = load_obj(assets, mesh_path_from_entity_type(entity.type));
+    entity.bounding_box = bounding_box_from_mesh(entity.mesh, assets);
     entity.prev_pos = entity.pos = gfmt_parse_vec3(pos);
+    scene.entities.push_back(entity);
   }
 
   return scene;

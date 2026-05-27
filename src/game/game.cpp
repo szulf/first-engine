@@ -207,13 +207,27 @@ void game_update_tick(GameData& game, f32 dt)
     game.used_camera = &game.gameplay_camera;
     os_show_mouse_pointer();
 
+    vec3 mouse_click_world_pos{};
+    {
+      vec2 ndc = ((game.window->input.mouse_pos / game.window->dimensions) * 2) - vec2{1, 1};
+      ndc.y = -ndc.y;
+      vec4 ray_clip = {ndc.x, ndc.y, -1, 1};
+      vec4 ray_view = inverse(camera_projection(game.gameplay_camera)) * ray_clip;
+      ray_view.z = -1;
+      ray_view.w = 0;
+      vec4 ray_world = inverse(camera_view(game.gameplay_camera, 0)) * ray_view;
+      vec3 ray = normalize(vec3{ray_world.x, ray_world.y, ray_world.z});
+      f32 t = (0 - game.gameplay_camera.pos.y) / ray.y;
+      mouse_click_world_pos = game.gameplay_camera.pos + t * ray;
+    }
+
     for (usize i = 0; i < game.scene.entities.size(); ++i)
     {
       auto& entity = game.scene.entities[i];
       entity.prev_pos = entity.pos;
       entity.prev_rotation = entity.rotation;
 
-      if (entity.flags & ENTITY_CONTROLLED_BY_PLAYER)
+      if (entity.type == ENTITY_PLAYER)
       {
         // NOTE: rotation
         {
@@ -223,7 +237,7 @@ void game_update_tick(GameData& game, f32 dt)
             entity.target_rotation = rot;
           }
           f32 direction = wrap_to_neg_pi_to_pi(entity.target_rotation - entity.rotation);
-          entity.rotation += direction * PLAYER_ROTATE_SPEED * dt;
+          entity.rotation += direction * EntityPlayer::ROTATION_SPEED * dt;
           entity.rotation = wrap_to_neg_pi_to_pi(entity.rotation);
         }
 
@@ -231,17 +245,17 @@ void game_update_tick(GameData& game, f32 dt)
         // TODO: this is still a little wrong in some cases,
         // maybe use a better algorithm overall to improve this
         {
-          acceleration *= PLAYER_MOVEMENT_SPEED;
+          static constexpr f32 FRICTION_COEFFICIENT = 0.35f;
+          static constexpr f32 NORMAL_FORCE = EntityPlayer::MASS * G_F32;
+          static constexpr f32 FRICTION_MAGNITUDE = FRICTION_COEFFICIENT * NORMAL_FORCE;
 
-          static const f32 friction_coefficient = 0.35f;
-          static const f32 normal_force = PLAYER_MASS * G_F32;
-          static const f32 friction_magnitude = friction_coefficient * normal_force;
+          acceleration *= EntityPlayer::MOVEMENT_SPEED;
 
           vec3 friction_dir = -normalize(entity.velocity);
-          vec3 friction_force = friction_dir * friction_magnitude;
+          vec3 friction_force = friction_dir * FRICTION_MAGNITUDE;
 
           vec3 drag = -3.0f * entity.velocity;
-          vec3 friction = (friction_force / PLAYER_MASS) + drag;
+          vec3 friction = (friction_force / EntityPlayer::MASS) + drag;
 
           acceleration += friction;
           auto new_pos = 0.5f * acceleration * (dt * dt) + entity.velocity * dt + entity.pos;
@@ -253,7 +267,7 @@ void game_update_tick(GameData& game, f32 dt)
                ++collidable_idx)
           {
             auto& c = game.scene.entities[collidable_idx];
-            if (&c == &entity || !(c.flags & ENTITY_COLLIDABLE) || !f32_equal(c.pos.y, 0))
+            if (c.type == ENTITY_PLAYER || !f32_equal(c.pos.y, 0))
             {
               continue;
             }
@@ -323,69 +337,32 @@ void game_update_tick(GameData& game, f32 dt)
           }
         }
 
-        vec3 mouse_click_world_pos{};
+        // NOTE: interactions
+        for (usize idx = 0; idx < game.scene.entities.size(); ++idx)
         {
-          vec2 ndc = ((game.window->input.mouse_pos / game.window->dimensions) * 2) - vec2{1, 1};
-          ndc.y = -ndc.y;
-          vec4 ray_clip = {ndc.x, ndc.y, -1, 1};
-          vec4 ray_view = inverse(camera_projection(game.gameplay_camera)) * ray_clip;
-          ray_view.z = -1;
-          ray_view.w = 0;
-          vec4 ray_world = inverse(camera_view(game.gameplay_camera, 0)) * ray_view;
-          vec3 ray = normalize(vec3{ray_world.x, ray_world.y, ray_world.z});
-          f32 t = (0 - game.gameplay_camera.pos.y) / ray.y;
-          mouse_click_world_pos = game.gameplay_camera.pos + t * ray;
-        }
-
-        for (usize toggleable_idx = 0; toggleable_idx < game.scene.entities.size();
-             ++toggleable_idx)
-        {
-          auto& toggleable = game.scene.entities[toggleable_idx];
-          if (!(toggleable.flags & ENTITY_TOGGLEABLE))
+          auto& bulb = game.scene.entities[idx];
+          if (bulb.type != ENTITY_LIGHT_BULB)
           {
             continue;
           }
-          toggleable.hovered = false;
-          f32 dist2_from_mouse = length2(toggleable.pos - mouse_click_world_pos);
-          f32 max_mouse_dist2 = 0.2f;
+          bulb.light_bulb.hovered = false;
+          f32 dist2_from_mouse = length2(bulb.pos - mouse_click_world_pos);
           // TODO: this could probably be better
-          if (toggleable.flags & ENTITY_COLLIDABLE)
-          {
-            max_mouse_dist2 =
-              (toggleable.bounding_box.x / 2.0f) + (toggleable.bounding_box.y / 2.0f) / 2.0f;
-          }
-          f32 dist2_from_player = length2(toggleable.pos - entity.pos);
-          if (dist2_from_player < square(entity.interaction_radius) &&
+          f32 max_mouse_dist2 = (bulb.bounding_box.x / 2.0f) + (bulb.bounding_box.y / 2.0f) / 2.0f;
+          f32 dist2_from_player = length2(bulb.pos - entity.pos);
+          if (dist2_from_player < square(EntityPlayer::INTERACTION_RADIUS) &&
               dist2_from_mouse < max_mouse_dist2)
           {
-            toggleable.hovered = true;
+            bulb.light_bulb.hovered = true;
           }
-        }
 
-        // NOTE: interactions
-        // TODO: display the bounding/interaction box on hover
-        // or some better way of highlighting the entity
-        if (os_key_just_pressed(key_state_from_action(ACTION_INTERACT, game)))
-        {
-          for (usize toggleable_idx = 0; toggleable_idx < game.scene.entities.size();
-               ++toggleable_idx)
+          if (bulb.light_bulb.hovered &&
+              os_key_just_pressed(key_state_from_action(ACTION_INTERACT, game)))
           {
-            auto& toggleable = game.scene.entities[toggleable_idx];
-            if (!(toggleable.flags & ENTITY_TOGGLEABLE))
-            {
-              continue;
-            }
-            if (toggleable.hovered)
-            {
-              toggleable.toggled = !toggleable.toggled;
-              // TODO: this is light bulb specific behaviour, how do i work with other
-              // interactables?
-              toggleable.flags ^= ENTITY_EMITS_LIGHT;
-              toggleable.tint =
-                toggleable.flags & ENTITY_EMITS_LIGHT ? LIGHT_BULB_ON_TINT : LIGHT_BULB_OFF_TINT;
-              sound_play_once(game.sound_system, SOUND_HANDLE_SHOTGUN, 0.1f);
-              sound_stop_looped(game.sound_system, SOUND_HANDLE_TEST_MUSIC);
-            }
+            bulb.light_bulb.on = !bulb.light_bulb.on;
+            bulb.tint = bulb.light_bulb.on ? EntityLightBulb::ON_TINT : EntityLightBulb::OFF_TINT;
+            sound_play_once(game.sound_system, SOUND_HANDLE_SHOTGUN, 0.1f);
+            sound_stop_looped(game.sound_system, SOUND_HANDLE_TEST_MUSIC);
           }
         }
       }
@@ -635,10 +612,10 @@ void game_render(GameData& game, f32 t)
     for (usize i = 0; i < game.scene.entities.size(); ++i)
     {
       auto& entity = game.scene.entities[i];
-      if (entity.flags & ENTITY_EMITS_LIGHT)
+      if (entity.type == ENTITY_LIGHT_BULB)
       {
         pos = entity.pos;
-        pos.y += entity.light_height_offset;
+        pos.y += EntityLightBulb::LIGHT_HEIGHT_OFFSET;
         break;
       }
     }
@@ -689,7 +666,7 @@ void game_render(GameData& game, f32 t)
     for (usize i = 0; i < game.scene.entities.size(); ++i)
     {
       auto& entity = game.scene.entities[i];
-      if (entity.flags & ENTITY_CONTROLLED_BY_PLAYER && entity.flags & ENTITY_VISIBLE)
+      if (entity.type == ENTITY_PLAYER)
       {
         render_mesh(
           pass.cmds_3d,
@@ -724,36 +701,37 @@ void game_render(GameData& game, f32 t)
     for (usize i = 0; i < game.scene.entities.size(); ++i)
     {
       const auto& entity = game.scene.entities[i];
-      if (entity.flags & ENTITY_VISIBLE)
+      render_mesh(
+        pass.cmds_3d,
+        entity.mesh,
+        entity_render_pos(entity, t),
+        entity_render_rotation(entity, t),
+        entity.tint,
+        game.assets
+      );
+      if (entity.type == ENTITY_LIGHT_BULB)
       {
-        render_mesh(
-          pass.cmds_3d,
-          entity.mesh,
-          entity_render_pos(entity, t),
-          entity_render_rotation(entity, t),
-          entity.tint,
-          game.assets
-        );
-      }
-      if (entity.flags & ENTITY_TOGGLEABLE && entity.hovered)
-      {
-        pass.cmds_3d.push_back(render_cube_wires(
-          entity_render_pos(entity, t),
-          {entity.bounding_box.x, 1, entity.bounding_box.y},
-          entity.toggled ? TOGGLEABLE_ENABLED_HOVER_COLOR : TOGGLEABLE_DISABLED_HOVER_COLOR,
-          game.assets
-        ));
-      }
-      if (entity.flags & ENTITY_EMITS_LIGHT)
-      {
-        vec3 pos = entity_render_pos(entity, t);
-        pos.y += entity.light_height_offset;
-        render_pass_set_light(pass, pos, entity.light_color);
+        if (entity.light_bulb.hovered)
+        {
+          pass.cmds_3d.push_back(render_cube_wires(
+            entity_render_pos(entity, t),
+            {entity.bounding_box.x, 1, entity.bounding_box.y},
+            entity.light_bulb.on ? EntityLightBulb::ON_HOVER_COLOR
+                                 : EntityLightBulb::OFF_HOVER_COLOR,
+            game.assets
+          ));
+        }
+        if (entity.light_bulb.on)
+        {
+          vec3 pos = entity_render_pos(entity, t);
+          pos.y += EntityLightBulb::LIGHT_HEIGHT_OFFSET;
+          render_pass_set_light(pass, pos, EntityLightBulb::LIGHT_COLOR);
+        }
       }
 
       if (game.debug.display_bounding_boxes)
       {
-        if (entity.flags & ENTITY_CONTROLLED_BY_PLAYER)
+        if (entity.type == ENTITY_PLAYER)
         {
           pass.cmds_3d.push_back(render_line(
             entity_render_pos(entity, t),
@@ -764,12 +742,12 @@ void game_render(GameData& game, f32 t)
           ));
           pass.cmds_3d.push_back(render_ring(
             entity_render_pos(entity, t),
-            entity.interaction_radius,
+            EntityPlayer::INTERACTION_RADIUS,
             {1, 1, 0},
             game.assets
           ));
         }
-        if (entity.flags & ENTITY_COLLIDABLE && f32_equal(entity.pos.y, 0))
+        if (f32_equal(entity.pos.y, 0))
         {
           pass.cmds_3d.push_back(render_cube_wires(
             entity_render_pos(entity, t),
