@@ -207,7 +207,7 @@ void game_update_tick(GameData& game, f32 dt)
     game.used_camera = &game.gameplay_camera;
     os_show_mouse_pointer();
 
-    vec3 mouse_click_world_pos{};
+    vec3 mouse_world_pos{};
     {
       vec2 ndc = ((game.window->input.mouse_pos / game.window->dimensions) * 2) - vec2{1, 1};
       ndc.y = -ndc.y;
@@ -218,17 +218,42 @@ void game_update_tick(GameData& game, f32 dt)
       vec4 ray_world = inverse(camera_view(game.gameplay_camera, 0)) * ray_view;
       vec3 ray = normalize(vec3{ray_world.x, ray_world.y, ray_world.z});
       f32 t = (0 - game.gameplay_camera.pos.y) / ray.y;
-      mouse_click_world_pos = game.gameplay_camera.pos + t * ray;
-      game.mouse_click_tile_pos.x = std::round(mouse_click_world_pos.x);
-      game.mouse_click_tile_pos.z = std::round(mouse_click_world_pos.z);
+      mouse_world_pos = game.gameplay_camera.pos + t * ray;
+      game.mouse_tile_pos.x = std::round(mouse_world_pos.x);
+      game.mouse_tile_pos.z = std::round(mouse_world_pos.z);
     }
 
+    // TODO: placing and destroying should only be in my interaction range
+
     // NOTE: placing blocks
+    // TODO: this is so so ugly
+    bool block_exists_at_mouse_click = false;
+    for (usize i = 0; i < game.scene.entities.size(); ++i)
+    {
+      if (f32_equal(game.scene.entities[i].pos.y, 0) &&
+          entities_collide(
+            game.scene.entities[i],
+            {.type = ENTITY_BLOCK, .pos = game.mouse_tile_pos}
+          ))
+      {
+        block_exists_at_mouse_click = true;
+      }
+    }
     if (game.window->input.rmb.down)
     {
-      auto entity = entity_new(ENTITY_BLOCK, game.assets);
-      entity.pos = game.mouse_click_tile_pos;
-      game.scene.entities.push_back(entity);
+      if (block_exists_at_mouse_click)
+      {
+        if (os_key_just_pressed(game.window->input.rmb))
+        {
+          sound_play_once(game.sound_system, SOUND_HANDLE_SINE, 0.04f);
+        }
+      }
+      else
+      {
+        auto entity = entity_new(ENTITY_BLOCK, game.assets);
+        entity.pos = game.mouse_tile_pos;
+        game.scene.entities.push_back(entity);
+      }
     }
 
     // NOTE: entity update
@@ -240,7 +265,7 @@ void game_update_tick(GameData& game, f32 dt)
 
       // NOTE: destroying blocks
       if (game.window->input.lmb.down && entity.type != ENTITY_PLAYER &&
-          entity.pos == game.mouse_click_tile_pos)
+          entity.pos == game.mouse_tile_pos)
       {
         game.scene.entities.erase(game.scene.entities.begin() + (isize) i);
         --i;
@@ -366,7 +391,7 @@ void game_update_tick(GameData& game, f32 dt)
             continue;
           }
           bulb.light_bulb.hovered = false;
-          f32 dist2_from_mouse = length2(bulb.pos - mouse_click_world_pos);
+          f32 dist2_from_mouse = length2(bulb.pos - mouse_world_pos);
           // TODO: this could probably be better
           f32 max_mouse_dist2 = (ENTITY_BOUNDING_BOX[bulb.type].x / 2.0f) +
                                 (ENTITY_BOUNDING_BOX[bulb.type].y / 2.0f) / 2.0f;
@@ -781,7 +806,7 @@ void game_render(GameData& game, f32 t)
     }
 
     pass.cmds_3d.push_back(render_cube_wires(
-      game.mouse_click_tile_pos,
+      game.mouse_tile_pos,
       {1, 1, 1},
       EntityLightBulb::OFF_HOVER_COLOR,
       game.assets
