@@ -33,17 +33,35 @@ std::expected<EntityType, std::string_view> entity_type_from_string(std::string_
   return std::unexpected{"Invalid entity type string"};
 }
 
-static vec3 gfmt_parse_vec3(Parser_Pos& pos)
+static std::string_view mesh_path_from_entity_type(EntityType type)
 {
-  vec3 out{};
-  parser_expect_and_skip(pos, '(');
-  out.x = parser_number_f32(pos);
-  parser_expect_and_skip(pos, ',');
-  out.y = parser_number_f32(pos);
-  parser_expect_and_skip(pos, ',');
-  out.z = parser_number_f32(pos);
-  parser_expect_and_skip(pos, ')');
-  return out;
+  switch (type)
+  {
+    case ENTITY_PLAYER:
+      return EntityPlayer::MESH_PATH;
+    case ENTITY_BLOCK:
+      return EntityBlock::MESH_PATH;
+    case ENTITY_LIGHT_BULB:
+      return EntityLightBulb::MESH_PATH;
+    case ENTITY_CONVEYOR:
+      return EntityConveyor::MESH_PATH;
+    case ENTITY_STORAGE:
+      return EntityStorage::MESH_PATH;
+  }
+  ASSERT(false, "Invalid entity type");
+}
+
+Entity entity_new(EntityType type, AssetStore& assets)
+{
+  Entity entity{};
+  entity.type = type;
+  if (entity.type == ENTITY_LIGHT_BULB)
+  {
+    entity.tint = EntityLightBulb::OFF_TINT;
+  }
+  entity.mesh = load_obj(assets, mesh_path_from_entity_type(type));
+  entity.bounding_box = bounding_box_from_mesh(entity.mesh, assets);
+  return entity;
 }
 
 // NOTE: not combined with ui bounds checking,
@@ -76,22 +94,17 @@ f32 entity_render_rotation(const Entity& entity, f32 t)
   return entity.rotation * t + entity.prev_rotation * (1.0f - t);
 }
 
-static std::string_view mesh_path_from_entity_type(EntityType type)
+static vec3 gscn_parse_vec3(Parser_Pos& pos)
 {
-  switch (type)
-  {
-    case ENTITY_PLAYER:
-      return EntityPlayer::MESH_PATH;
-    case ENTITY_BLOCK:
-      return EntityBlock::MESH_PATH;
-    case ENTITY_LIGHT_BULB:
-      return EntityLightBulb::MESH_PATH;
-    case ENTITY_CONVEYOR:
-      return EntityConveyor::MESH_PATH;
-    case ENTITY_STORAGE:
-      return EntityStorage::MESH_PATH;
-  }
-  ASSERT(false, "Invalid entity type");
+  vec3 out{};
+  parser_expect_and_skip(pos, '(');
+  out.x = parser_number_f32(pos);
+  parser_expect_and_skip(pos, ',');
+  out.y = parser_number_f32(pos);
+  parser_expect_and_skip(pos, ',');
+  out.z = parser_number_f32(pos);
+  parser_expect_and_skip(pos, ')');
+  return out;
 }
 
 std::expected<Scene, std::string_view>
@@ -120,7 +133,7 @@ scene_from_file(const std::filesystem::path& path, AssetStore& assets)
     parser_expect_and_skip(pos, ':');
     if (key == "ambient_color")
     {
-      scene.ambient_color = gfmt_parse_vec3(pos);
+      scene.ambient_color = gscn_parse_vec3(pos);
       continue;
     }
 
@@ -129,15 +142,8 @@ scene_from_file(const std::filesystem::path& path, AssetStore& assets)
     {
       return std::unexpected{entity_type.error()};
     }
-    Entity entity{};
-    entity.type = *entity_type;
-    if (entity.type == ENTITY_LIGHT_BULB)
-    {
-      entity.tint = EntityLightBulb::OFF_TINT;
-    }
-    entity.mesh = load_obj(assets, mesh_path_from_entity_type(entity.type));
-    entity.bounding_box = bounding_box_from_mesh(entity.mesh, assets);
-    entity.prev_pos = entity.pos = gfmt_parse_vec3(pos);
+    auto entity = entity_new(*entity_type, assets);
+    entity.prev_pos = entity.pos = gscn_parse_vec3(pos);
     scene.entities.push_back(entity);
   }
 

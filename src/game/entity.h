@@ -80,6 +80,7 @@ struct Entity
   };
 };
 
+Entity entity_new(EntityType type, AssetStore& assets);
 bool entities_collide(const Entity& ea, const Entity& eb);
 vec3 entity_render_pos(const Entity& entity, f32 t);
 f32 entity_render_rotation(const Entity& entity, f32 t);

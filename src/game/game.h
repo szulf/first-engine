@@ -65,6 +65,8 @@ struct GameData
   ShaderHandle shadow_depth_shader{};
   TextureHandle font_texture{};
 
+  vec3 mouse_click_tile_pos{};
+
   struct DebugOptions
   {
     struct Menu

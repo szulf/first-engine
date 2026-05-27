@@ -219,13 +219,33 @@ void game_update_tick(GameData& game, f32 dt)
       vec3 ray = normalize(vec3{ray_world.x, ray_world.y, ray_world.z});
       f32 t = (0 - game.gameplay_camera.pos.y) / ray.y;
       mouse_click_world_pos = game.gameplay_camera.pos + t * ray;
+      game.mouse_click_tile_pos.x = std::round(mouse_click_world_pos.x);
+      game.mouse_click_tile_pos.z = std::round(mouse_click_world_pos.z);
     }
 
+    // NOTE: placing blocks
+    if (game.window->input.rmb.down)
+    {
+      auto entity = entity_new(ENTITY_BLOCK, game.assets);
+      entity.pos = game.mouse_click_tile_pos;
+      game.scene.entities.push_back(entity);
+    }
+
+    // NOTE: entity update
     for (usize i = 0; i < game.scene.entities.size(); ++i)
     {
       auto& entity = game.scene.entities[i];
       entity.prev_pos = entity.pos;
       entity.prev_rotation = entity.rotation;
+
+      // NOTE: destroying blocks
+      if (game.window->input.lmb.down && entity.type != ENTITY_PLAYER &&
+          entity.pos == game.mouse_click_tile_pos)
+      {
+        game.scene.entities.erase(game.scene.entities.begin() + (isize) i);
+        --i;
+        continue;
+      }
 
       if (entity.type == ENTITY_PLAYER)
       {
@@ -758,6 +778,13 @@ void game_render(GameData& game, f32 t)
         }
       }
     }
+
+    pass.cmds_3d.push_back(render_cube_wires(
+      game.mouse_click_tile_pos,
+      {1, 1, 1},
+      EntityLightBulb::OFF_HOVER_COLOR,
+      game.assets
+    ));
 
     pass.cmds_2d.insert(
       pass.cmds_2d.end(),
