@@ -5,6 +5,7 @@ struct Material
   vec3 ambient;
   vec3 diffuse;
   sampler2D diffuse_map;
+  bool use_diffuse_map;
   vec3 specular;
   float specular_exponent;
 };
@@ -50,9 +51,17 @@ layout(std140) uniform Lights
 void main()
 {
   vec3 norm = normalize(vert_out.normal);
-  // TODO: this shouldnt ignore the a component of tint
-  vec3 object_color =
-    (vec3(texture(material.diffuse_map, vert_out.uv)) + material.diffuse) * vert_out.tint.rgb;
+  // TODO: this shouldnt ignore the a component of tint or the diffuse map
+  vec3 object_color;
+  if (material.use_diffuse_map)
+  {
+    object_color = texture(material.diffuse_map, vert_out.uv).rgb;
+  }
+  else
+  {
+    object_color = material.diffuse;
+  }
+  object_color *= vert_out.tint.rgb;
 
   float dist = length(light.pos - vert_out.frag_pos);
   float attenuation =

@@ -346,7 +346,16 @@ void render_pass_finish(Render_Pass& pass, AssetStore& assets)
     shader_set(shader, "material.diffuse", material.diffuse_color);
     shader_set(shader, "material.specular", material.specular_color);
     shader_set(shader, "material.specular_exponent", material.specular_exponent);
-    shader_set(shader, "material.diffuse_map", material.diffuse_map, assets);
+    if (material.diffuse_map.id)
+    {
+      shader_set(shader, "material.diffuse_map", material.diffuse_map, assets);
+      shader_set(shader, "material.use_diffuse_map", true);
+    }
+    else
+    {
+      shader_set(shader, "material.diffuse_map", g_render_data.blank_texture, assets);
+      shader_set(shader, "material.use_diffuse_map", false);
+    }
 
     glBindBuffer(GL_ARRAY_BUFFER, g_render_data.instance_data_buffer);
     glBufferSubData(
