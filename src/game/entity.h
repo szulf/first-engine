@@ -15,9 +15,24 @@ enum EntityType
   ENTITY_LIGHT_BULB,
   ENTITY_CONVEYOR,
   ENTITY_STORAGE,
+  ENTITY_TYPE_COUNT,
 };
 
+std::string_view entity_type_to_string(EntityType type);
 std::expected<EntityType, std::string_view> entity_type_from_string(std::string_view str);
+
+static constexpr std::array<std::string_view, ENTITY_TYPE_COUNT> ENTITY_MESH_PATH = []()
+{
+  std::array<std::string_view, ENTITY_TYPE_COUNT> out{};
+  out[ENTITY_PLAYER] = "assets/bean.obj";
+  out[ENTITY_BLOCK] = "assets/cube.obj";
+  out[ENTITY_LIGHT_BULB] = "assets/light_bulb.obj";
+  out[ENTITY_CONVEYOR] = "assets/conveyor.obj";
+  out[ENTITY_STORAGE] = "assets/storage.obj";
+  return out;
+}();
+
+extern std::array<vec2, ENTITY_TYPE_COUNT> ENTITY_BOUNDING_BOX;
 
 struct EntityPlayer
 {
@@ -25,12 +40,10 @@ struct EntityPlayer
   static constexpr f32 ROTATION_SPEED = 3 * std::numbers::pi_v<f32>;
   static constexpr f32 MASS = 80;
   static constexpr f32 INTERACTION_RADIUS = 2;
-  static constexpr std::string_view MESH_PATH = "assets/bean.obj";
 };
 
 struct EntityBlock
 {
-  static constexpr std::string_view MESH_PATH = "assets/cube.obj";
 };
 
 struct EntityLightBulb
@@ -41,19 +54,16 @@ struct EntityLightBulb
   static constexpr vec3 OFF_HOVER_COLOR = {0.4f, 0.4f, 0.4f};
   static constexpr f32 LIGHT_HEIGHT_OFFSET = -0.25f;
   static constexpr vec3 LIGHT_COLOR = {1, 1, 0.7f};
-  static constexpr std::string_view MESH_PATH = "assets/light_bulb.obj";
   bool on{};
   bool hovered{};
 };
 
 struct EntityConveyor
 {
-  static constexpr std::string_view MESH_PATH = "assets/conveyor.obj";
 };
 
 struct EntityStorage
 {
-  static constexpr std::string_view MESH_PATH = "assets/storage.obj";
 };
 
 struct Entity
@@ -65,7 +75,6 @@ struct Entity
   f32 prev_rotation{};
   f32 target_rotation{};
   vec3 velocity{};
-  vec2 bounding_box{};
   vec3 tint = {1.0f, 1.0f, 1.0f};
   MeshHandle mesh{};
   std::string name{};

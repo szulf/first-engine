@@ -300,23 +300,23 @@ void game_update_tick(GameData& game, f32 dt)
             }
 
             Entity p = {};
+            p.type = entity.type;
             p.pos = new_pos;
-            p.bounding_box = entity.bounding_box;
 
             if (!entities_collide(p, c))
             {
               continue;
             }
 
-            auto collidable_front = c.pos.z + (0.5f * c.bounding_box.y);
-            auto collidable_back = c.pos.z - (0.5f * c.bounding_box.y);
-            auto collidable_left = c.pos.x - (0.5f * c.bounding_box.x);
-            auto collidable_right = c.pos.x + (0.5f * c.bounding_box.x);
+            auto collidable_front = c.pos.z + (0.5f * ENTITY_BOUNDING_BOX[c.type].y);
+            auto collidable_back = c.pos.z - (0.5f * ENTITY_BOUNDING_BOX[c.type].y);
+            auto collidable_left = c.pos.x - (0.5f * ENTITY_BOUNDING_BOX[c.type].x);
+            auto collidable_right = c.pos.x + (0.5f * ENTITY_BOUNDING_BOX[c.type].x);
 
-            auto entity_front = p.pos.z + (0.5f * p.bounding_box.y);
-            auto entity_back = p.pos.z - (0.5f * p.bounding_box.y);
-            auto entity_left = p.pos.x - (0.5f * p.bounding_box.x);
-            auto entity_right = p.pos.x + (0.5f * p.bounding_box.x);
+            auto entity_front = p.pos.z + (0.5f * ENTITY_BOUNDING_BOX[p.type].y);
+            auto entity_back = p.pos.z - (0.5f * ENTITY_BOUNDING_BOX[p.type].y);
+            auto entity_left = p.pos.x - (0.5f * ENTITY_BOUNDING_BOX[p.type].x);
+            auto entity_right = p.pos.x + (0.5f * ENTITY_BOUNDING_BOX[p.type].x);
 
             auto back_overlap = std::abs(entity_back - collidable_front);
             auto front_overlap = std::abs(entity_front - collidable_back);
@@ -368,7 +368,8 @@ void game_update_tick(GameData& game, f32 dt)
           bulb.light_bulb.hovered = false;
           f32 dist2_from_mouse = length2(bulb.pos - mouse_click_world_pos);
           // TODO: this could probably be better
-          f32 max_mouse_dist2 = (bulb.bounding_box.x / 2.0f) + (bulb.bounding_box.y / 2.0f) / 2.0f;
+          f32 max_mouse_dist2 = (ENTITY_BOUNDING_BOX[bulb.type].x / 2.0f) +
+                                (ENTITY_BOUNDING_BOX[bulb.type].y / 2.0f) / 2.0f;
           f32 dist2_from_player = length2(bulb.pos - entity.pos);
           if (dist2_from_player < square(EntityPlayer::INTERACTION_RADIUS) &&
               dist2_from_mouse < max_mouse_dist2)
@@ -735,7 +736,7 @@ void game_render(GameData& game, f32 t)
         {
           pass.cmds_3d.push_back(render_cube_wires(
             entity_render_pos(entity, t),
-            {entity.bounding_box.x, 1, entity.bounding_box.y},
+            {ENTITY_BOUNDING_BOX[entity.type].x, 1, ENTITY_BOUNDING_BOX[entity.type].y},
             entity.light_bulb.on ? EntityLightBulb::ON_HOVER_COLOR
                                  : EntityLightBulb::OFF_HOVER_COLOR,
             game.assets
@@ -771,7 +772,7 @@ void game_render(GameData& game, f32 t)
         {
           pass.cmds_3d.push_back(render_cube_wires(
             entity_render_pos(entity, t),
-            {entity.bounding_box.x, 1, entity.bounding_box.y},
+            {ENTITY_BOUNDING_BOX[entity.type].x, 1, ENTITY_BOUNDING_BOX[entity.type].y},
             {0, 1, 0},
             game.assets
           ));

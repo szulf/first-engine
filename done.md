@@ -96,3 +96,4 @@
 
 1. add new block types (conveyor and storage)
 2. block placing/destroying mechanic
+3. check collisions with already existing entities

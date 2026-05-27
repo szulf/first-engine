@@ -8,6 +8,28 @@
 #include "assets.h"
 #include "sound.h"
 
+std::array<vec2, ENTITY_TYPE_COUNT> ENTITY_BOUNDING_BOX{};
+
+std::string_view entity_type_to_string(EntityType type)
+{
+  switch (type)
+  {
+    case ENTITY_PLAYER:
+      return "player";
+    case ENTITY_BLOCK:
+      return "block";
+    case ENTITY_LIGHT_BULB:
+      return "light_bulb";
+    case ENTITY_CONVEYOR:
+      return "conveyor";
+    case ENTITY_STORAGE:
+      return "storage";
+    case ENTITY_TYPE_COUNT:
+    default:
+      ASSERT(false, "Invalid entity type");
+  }
+}
+
 std::expected<EntityType, std::string_view> entity_type_from_string(std::string_view str)
 {
   if (str == "player")
@@ -33,24 +55,6 @@ std::expected<EntityType, std::string_view> entity_type_from_string(std::string_
   return std::unexpected{"Invalid entity type string"};
 }
 
-static std::string_view mesh_path_from_entity_type(EntityType type)
-{
-  switch (type)
-  {
-    case ENTITY_PLAYER:
-      return EntityPlayer::MESH_PATH;
-    case ENTITY_BLOCK:
-      return EntityBlock::MESH_PATH;
-    case ENTITY_LIGHT_BULB:
-      return EntityLightBulb::MESH_PATH;
-    case ENTITY_CONVEYOR:
-      return EntityConveyor::MESH_PATH;
-    case ENTITY_STORAGE:
-      return EntityStorage::MESH_PATH;
-  }
-  ASSERT(false, "Invalid entity type");
-}
-
 Entity entity_new(EntityType type, AssetStore& assets)
 {
   Entity entity{};
@@ -59,8 +63,11 @@ Entity entity_new(EntityType type, AssetStore& assets)
   {
     entity.tint = EntityLightBulb::OFF_TINT;
   }
-  entity.mesh = load_obj(assets, mesh_path_from_entity_type(type));
-  entity.bounding_box = bounding_box_from_mesh(entity.mesh, assets);
+  entity.mesh = load_obj(assets, ENTITY_MESH_PATH[type]);
+  if (ENTITY_BOUNDING_BOX[type] == vec2{})
+  {
+    ENTITY_BOUNDING_BOX[type] = bounding_box_from_mesh(entity.mesh, assets);
+  }
   return entity;
 }
 
@@ -73,10 +80,14 @@ bool entities_collide(const Entity& ea, const Entity& eb)
   auto& bx = eb.pos.x;
   auto& bz = eb.pos.z;
 
-  return ax - (ea.bounding_box.x / 2.0f) < bx + (eb.bounding_box.x / 2.0f) &&
-         ax + (ea.bounding_box.x / 2.0f) > bx - (eb.bounding_box.x / 2.0f) &&
-         az - (ea.bounding_box.y / 2.0f) < bz + (eb.bounding_box.y / 2.0f) &&
-         az + (ea.bounding_box.y / 2.0f) > bz - (eb.bounding_box.y / 2.0f);
+  return ax - (ENTITY_BOUNDING_BOX[ea.type].x / 2.0f) <
+           bx + (ENTITY_BOUNDING_BOX[eb.type].x / 2.0f) &&
+         ax + (ENTITY_BOUNDING_BOX[ea.type].x / 2.0f) >
+           bx - (ENTITY_BOUNDING_BOX[eb.type].x / 2.0f) &&
+         az - (ENTITY_BOUNDING_BOX[ea.type].y / 2.0f) <
+           bz + (ENTITY_BOUNDING_BOX[eb.type].y / 2.0f) &&
+         az + (ENTITY_BOUNDING_BOX[ea.type].y / 2.0f) >
+           bz - (ENTITY_BOUNDING_BOX[eb.type].y / 2.0f);
 }
 
 vec3 entity_render_pos(const Entity& entity, f32 t)
