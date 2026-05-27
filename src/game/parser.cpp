@@ -22,9 +22,10 @@ void parser_expect_and_skip(Parser_Pos& pos, char c)
 std::string_view parser_word(Parser_Pos& pos)
 {
   usize word_length{};
-  while (parser_size_ok(pos) && (std::isalnum(parser_curr_char(pos)) ||
-                                 parser_curr_char(pos) == '#' || parser_curr_char(pos) == '.' ||
-                                 parser_curr_char(pos) == '_' || parser_curr_char(pos) == '/'))
+  while (parser_size_ok(pos) &&
+         (std::isalnum(parser_curr_char(pos)) || parser_curr_char(pos) == '#' ||
+          parser_curr_char(pos) == '.' || parser_curr_char(pos) == '_' ||
+          parser_curr_char(pos) == '/' || parser_curr_char(pos) == '-'))
   {
     ++word_length;
     ++pos.pos;

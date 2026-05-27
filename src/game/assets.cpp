@@ -667,6 +667,13 @@ static void obj_parse_vertex(OBJContext& ctx, Parser_Pos& pos)
   ++ctx.submeshes[ctx.submeshes.size() - 1].index_count;
 }
 
+static void start_new_submesh(OBJContext& ctx)
+{
+  ctx.submeshes.push_back({
+    .index_offset = ctx.indices.size(),
+  });
+}
+
 MeshHandle load_obj(AssetStore& assets, const std::filesystem::path& path)
 {
   ASSERT(assets.render_data, "Need to bind render data, before loading meshes.");
@@ -699,9 +706,7 @@ MeshHandle load_obj(AssetStore& assets, const std::filesystem::path& path)
     }
     else if (key == "o")
     {
-      ctx.submeshes.push_back({
-        .index_offset = ctx.indices.size(),
-      });
+      start_new_submesh(ctx);
     }
     else if (key == "v")
     {
@@ -727,7 +732,13 @@ MeshHandle load_obj(AssetStore& assets, const std::filesystem::path& path)
     else if (key == "usemtl")
     {
       auto name = parser_word(pos);
-      ctx.submeshes[ctx.submeshes.size() - 1].material = assets.material_handles[std::string{name}];
+      // NOTE: if a single vertex group in obj has multiple materials
+      // i split them into multiple submeshes
+      if (ctx.submeshes.back().material.id)
+      {
+        start_new_submesh(ctx);
+      }
+      ctx.submeshes.back().material = assets.material_handles[std::string{name}];
     }
     else if (key == "f")
     {
