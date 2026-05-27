@@ -22,6 +22,14 @@ std::expected<EntityType, std::string_view> entity_type_from_string(std::string_
   {
     return {ENTITY_LIGHT_BULB};
   }
+  else if (str == "conveyor")
+  {
+    return {ENTITY_CONVEYOR};
+  }
+  else if (str == "storage")
+  {
+    return {ENTITY_STORAGE};
+  }
   return std::unexpected{"Invalid entity type string"};
 }
 
@@ -78,6 +86,10 @@ static std::string_view mesh_path_from_entity_type(EntityType type)
       return EntityBlock::MESH_PATH;
     case ENTITY_LIGHT_BULB:
       return EntityLightBulb::MESH_PATH;
+    case ENTITY_CONVEYOR:
+      return EntityConveyor::MESH_PATH;
+    case ENTITY_STORAGE:
+      return EntityStorage::MESH_PATH;
   }
   ASSERT(false, "Invalid entity type");
 }

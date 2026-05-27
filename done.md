@@ -94,3 +94,5 @@
 
 ## 8. BIG TODO: placing/destroying something on the ground
 
+1. add new block types (conveyor and storage)
+

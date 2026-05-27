@@ -13,6 +13,8 @@ enum EntityType
   ENTITY_PLAYER,
   ENTITY_BLOCK,
   ENTITY_LIGHT_BULB,
+  ENTITY_CONVEYOR,
+  ENTITY_STORAGE,
 };
 
 std::expected<EntityType, std::string_view> entity_type_from_string(std::string_view str);
@@ -44,6 +46,16 @@ struct EntityLightBulb
   bool hovered{};
 };
 
+struct EntityConveyor
+{
+  static constexpr std::string_view MESH_PATH = "assets/conveyor.obj";
+};
+
+struct EntityStorage
+{
+  static constexpr std::string_view MESH_PATH = "assets/storage.obj";
+};
+
 struct Entity
 {
   EntityType type{};
@@ -63,6 +75,8 @@ struct Entity
     EntityPlayer player;
     EntityBlock block;
     EntityLightBulb light_bulb;
+    EntityConveyor conveyor;
+    EntityStorage storage;
   };
 };
 

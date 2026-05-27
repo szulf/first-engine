@@ -1,7 +1,0 @@
-name : ground
-
-visible : true
-mesh : assets/cube.obj
-
-collidable : true
-dynamically_calculated_bounding_box : true
