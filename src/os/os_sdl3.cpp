@@ -319,6 +319,26 @@ static std::expected<SDL_Keycode, std::string_view> sdlk_from_key(OS_Key key)
       return {SDLK_Y};
     case OS_KEY_Z:
       return {SDLK_Z};
+    case OS_KEY_0:
+      return {SDLK_0};
+    case OS_KEY_1:
+      return {SDLK_1};
+    case OS_KEY_2:
+      return {SDLK_2};
+    case OS_KEY_3:
+      return {SDLK_3};
+    case OS_KEY_4:
+      return {SDLK_4};
+    case OS_KEY_5:
+      return {SDLK_5};
+    case OS_KEY_6:
+      return {SDLK_6};
+    case OS_KEY_7:
+      return {SDLK_7};
+    case OS_KEY_8:
+      return {SDLK_8};
+    case OS_KEY_9:
+      return {SDLK_9};
     case OS_KEY_F1:
       return {SDLK_F1};
     case OS_KEY_F2:
@@ -409,6 +429,26 @@ static std::expected<OS_Key, std::string_view> key_from_sdlk(SDL_Keycode sdlk)
       return {OS_KEY_Y};
     case SDLK_Z:
       return {OS_KEY_Z};
+    case SDLK_0:
+      return {OS_KEY_0};
+    case SDLK_1:
+      return {OS_KEY_1};
+    case SDLK_2:
+      return {OS_KEY_2};
+    case SDLK_3:
+      return {OS_KEY_3};
+    case SDLK_4:
+      return {OS_KEY_4};
+    case SDLK_5:
+      return {OS_KEY_5};
+    case SDLK_6:
+      return {OS_KEY_6};
+    case SDLK_7:
+      return {OS_KEY_7};
+    case SDLK_8:
+      return {OS_KEY_8};
+    case SDLK_9:
+      return {OS_KEY_9};
     case SDLK_F1:
       return {OS_KEY_F1};
     case SDLK_F2:

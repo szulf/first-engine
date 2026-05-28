@@ -94,6 +94,39 @@ Keymap load_gkey(const std::filesystem::path& path)
   return keymap;
 }
 
+static TextureHandle create_entity_icon(EntityType entity_type, AssetStore& assets)
+{
+  Camera icon_camera = {
+    .type = CAMERA_TYPE_PERSPECTIVE,
+    .pos = {0, 0.9f, 1.8f},
+    .prev_pos = {0, 0.9f, 1.8f},
+    .yaw = -90,
+    .pitch = -30,
+    .fov_type = FOV_TYPE_VERTICAL,
+    .fov = -0.25f * std::numbers::pi_v<f32>,
+    .near_plane = 0.1f,
+    .far_plane = 5,
+    .viewport = {256, 256},
+  };
+  camera_update_vectors(icon_camera);
+
+  TextureHandle icon = asset_set(assets, texture_init(TEXTURE_2D, {256, 256}));
+  render_create_framebuffer(icon, assets);
+  Render_Pass pass{.camera = &icon_camera};
+  render_pass_render_to(pass, icon);
+  render_pass_override_shader(pass, g_render_data.default_shader);
+  render_mesh(
+    pass.cmds_3d,
+    load_obj(assets, ENTITY_MESH_PATH[entity_type]),
+    {0, 0, 0},
+    -0.25f * std::numbers::pi_v<f32>,
+    {1, 1, 1},
+    assets
+  );
+  render_pass_finish(pass, assets);
+  return icon;
+}
+
 GameData game_init(OS_Window& window, OS_Audio& audio)
 {
   GameData game{};
@@ -142,6 +175,11 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
   // TODO: load this with FilterOption::NEAREST
   game.font_texture = load_texture(game.assets, "assets/font.png");
   // m_sound_system.play_looped(SoundHandle::TEST_MUSIC, 0.1f);
+
+  game.entity_block_icon = create_entity_icon(ENTITY_BLOCK, game.assets);
+  game.entity_conveyor_icon = create_entity_icon(ENTITY_CONVEYOR, game.assets);
+  game.entity_storage_icon = create_entity_icon(ENTITY_STORAGE, game.assets);
+
   return game;
 }
 
@@ -213,6 +251,20 @@ void game_update_tick(GameData& game, f32 dt)
     game.used_camera = &game.gameplay_camera;
     os_show_mouse_pointer();
 
+    // TODO: make this keybinds actions
+    if (os_key_just_pressed(game.window->input.keys[OS_KEY_1]))
+    {
+      game.selected_entity_to_place = ENTITY_BLOCK;
+    }
+    if (os_key_just_pressed(game.window->input.keys[OS_KEY_2]))
+    {
+      game.selected_entity_to_place = ENTITY_CONVEYOR;
+    }
+    if (os_key_just_pressed(game.window->input.keys[OS_KEY_3]))
+    {
+      game.selected_entity_to_place = ENTITY_STORAGE;
+    }
+
     // NOTE: calculate mouse position in world space
     vec3 mouse_world_pos{};
     {
@@ -267,7 +319,7 @@ void game_update_tick(GameData& game, f32 dt)
             if (f32_equal(game.scene.entities[i].pos.y, 0) &&
                 entities_collide(
                   game.scene.entities[i],
-                  {.type = ENTITY_BLOCK, .pos = game.mouse_tile_pos}
+                  {.type = game.selected_entity_to_place, .pos = game.mouse_tile_pos}
                 ))
             {
               block_exists_at_mouse = true;
@@ -276,7 +328,7 @@ void game_update_tick(GameData& game, f32 dt)
 
           if (!block_exists_at_mouse)
           {
-            auto placed_entity = entity_new(ENTITY_BLOCK, game.assets);
+            auto placed_entity = entity_new(game.selected_entity_to_place, game.assets);
             placed_entity.pos = game.mouse_tile_pos;
             game.entity_place_queue.push_back(placed_entity);
           }
@@ -437,6 +489,72 @@ void game_update_tick(GameData& game, f32 dt)
 
   // NOTE: ui
   ui_system_update(game.ui_system);
+  {
+    auto block_selection_menu = ui_layout_begin(
+      "block selection menu",
+      game.ui_system,
+      game.window->input,
+      game.assets,
+      {100 - 64, game.window->dimensions.y - 100},
+      {1280, 720},
+      CHAR_SIZE,
+      game.font_texture
+    );
+    {
+      ui_element_begin(block_selection_menu, UI_AUTO_ID);
+      defer(ui_element_end(
+        block_selection_menu,
+        {.padding = ui_padding_all(4), .child_gap = 4, .bg_color = {0.7f, 0.7f, 0.7f, 1}}
+      ));
+
+      auto block_panel = [](UI_Layout& layout, TextureHandle texture, bool is_selected)
+      {
+        bool clicked_parent = false;
+        bool clicked_child = false;
+        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_parent});
+        defer(ui_element_end(
+          layout,
+          {.sizing = {ui_sizing_fixed(64), ui_sizing_fixed(64)},
+           .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
+           .bg_color = is_selected ? vec4{0.5f, 0.5f, 0.5f, 1} : vec4{0.3f, 0.3f, 0.3f, 1}}
+        ));
+        {
+          ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_child});
+          ui_element_end(
+            layout,
+            {.sizing = {ui_sizing_fixed(56), ui_sizing_fixed(56)}, .texture = texture}
+          );
+        }
+        return clicked_parent || clicked_child;
+      };
+
+      if (block_panel(
+            block_selection_menu,
+            game.entity_block_icon,
+            game.selected_entity_to_place == ENTITY_BLOCK
+          ))
+      {
+        game.selected_entity_to_place = ENTITY_BLOCK;
+      }
+      if (block_panel(
+            block_selection_menu,
+            game.entity_conveyor_icon,
+            game.selected_entity_to_place == ENTITY_CONVEYOR
+          ))
+      {
+        game.selected_entity_to_place = ENTITY_CONVEYOR;
+      }
+      if (block_panel(
+            block_selection_menu,
+            game.entity_storage_icon,
+            game.selected_entity_to_place == ENTITY_STORAGE
+          ))
+      {
+        game.selected_entity_to_place = ENTITY_STORAGE;
+      }
+    }
+    ui_layout_end(block_selection_menu);
+  }
   if (game.debug.menu.shown)
   {
     {

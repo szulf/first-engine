@@ -8,7 +8,7 @@
 #include "assets.h"
 #include "camera.h"
 
-static Render_Data g_render_data{};
+Render_Data g_render_data{};
 
 struct STD140Camera
 {
@@ -223,16 +223,38 @@ void render_init(AssetStore& assets)
   asset_store_bind_render_data(assets, g_render_data);
 }
 
-void render_create_framebuffer(TextureHandle texture, AssetStore& assets)
+// NOTE: doesnt attach depth on 2d textures
+void render_create_framebuffer(TextureHandle handle, AssetStore& assets)
 {
+  auto& texture = asset_get(assets, handle);
   u32 id{};
   glGenFramebuffers(1, &id);
   glBindFramebuffer(GL_FRAMEBUFFER, id);
-  glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, asset_get(assets, texture).id, 0);
-  glDrawBuffer(GL_NONE);
-  glReadBuffer(GL_NONE);
+  switch (texture.type)
+  {
+    case TEXTURE_2D:
+    {
+      glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture.id, 0);
+      u32 rbo{};
+      glGenRenderbuffers(1, &rbo);
+      glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+      glRenderbufferStorage(
+        GL_RENDERBUFFER,
+        GL_DEPTH_COMPONENT24,
+        (i32) texture.dimensions.x,
+        (i32) texture.dimensions.y
+      );
+      glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo);
+    }
+    break;
+    case TEXTURE_CUBEMAP:
+      glFramebufferTexture(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, texture.id, 0);
+      glDrawBuffer(GL_NONE);
+      glReadBuffer(GL_NONE);
+      break;
+  }
   glBindFramebuffer(GL_FRAMEBUFFER, 0);
-  g_render_data.framebuffers.insert_or_assign(texture, id);
+  g_render_data.framebuffers.insert_or_assign(handle, id);
 }
 
 static GLenum render_primitive_to_gl_primitive(RenderPrimitive primitive)
@@ -282,7 +304,7 @@ void render_pass_finish(Render_Pass& pass, AssetStore& assets)
 
   glDisable(GL_SCISSOR_TEST);
   glViewport(0, 0, (GLsizei) pass.camera->viewport.x, (GLsizei) pass.camera->viewport.y);
-  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
   STD140Camera camera_std140 = {};

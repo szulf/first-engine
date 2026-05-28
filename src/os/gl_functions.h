@@ -62,6 +62,10 @@ extern PFNGLDELETEPROGRAMPROC glDeleteProgram;
 extern PFNGLDELETETEXTURESPROC glDeleteTextures;
 extern PFNGLBLENDFUNCPROC glBlendFunc;
 extern PFNGLSCISSORPROC glScissor;
+extern PFNGLGENRENDERBUFFERSPROC glGenRenderbuffers;
+extern PFNGLBINDRENDERBUFFERPROC glBindRenderbuffer;
+extern PFNGLRENDERBUFFERSTORAGEPROC glRenderbufferStorage;
+extern PFNGLFRAMEBUFFERRENDERBUFFERPROC glFramebufferRenderbuffer;
 void setup_gl_functions();
 
 #ifdef MODE_DEBUG

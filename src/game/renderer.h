@@ -33,6 +33,7 @@ struct Render_Data
   TextureHandle blank_texture{};
   std::unordered_map<TextureHandle, u32> framebuffers{};
 };
+extern Render_Data g_render_data;
 
 #define RENDER_MAX_INSTANCES 10000
 struct Render_InstanceData
