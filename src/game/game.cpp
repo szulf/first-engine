@@ -850,7 +850,7 @@ void game_render(GameData& game, f32 t)
     for (usize i = 0; i < game.scene.entities.size(); ++i)
     {
       auto& entity = game.scene.entities[i];
-      if (entity.type == ENTITY_PLAYER)
+      if (f32_equal(entity.pos.y, 0) && entity.type != ENTITY_LIGHT_BULB)
       {
         render_mesh(
           pass.cmds_3d,
