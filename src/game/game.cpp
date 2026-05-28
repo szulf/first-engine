@@ -150,6 +150,12 @@ void game_deinit(GameData& game)
   sound_system_deinit(game.sound_system);
 }
 
+static bool in_player_interaction_radius(const Entity& player, const vec3& pos)
+{
+  f32 dist2_from_player = length2(pos - player.pos);
+  return dist2_from_player < square(EntityPlayer::INTERACTION_RADIUS);
+}
+
 void game_update_tick(GameData& game, f32 dt)
 {
   game.gameplay_camera.viewport = game.debug_camera.viewport = game.window->dimensions;
@@ -207,6 +213,7 @@ void game_update_tick(GameData& game, f32 dt)
     game.used_camera = &game.gameplay_camera;
     os_show_mouse_pointer();
 
+    // NOTE: calculate mouse position in world space
     vec3 mouse_world_pos{};
     {
       vec2 ndc = ((game.window->input.mouse_pos / game.window->dimensions) * 2) - vec2{1, 1};
@@ -223,57 +230,72 @@ void game_update_tick(GameData& game, f32 dt)
       game.mouse_tile_pos.z = std::round(mouse_world_pos.z);
     }
 
-    // TODO: placing and destroying should only be in my interaction range
+    // NOTE: actually place entities
+    for (usize place_idx = 0; place_idx < game.entity_place_queue.size(); ++place_idx)
+    {
+      game.scene.entities.push_back(game.entity_place_queue[place_idx]);
+    }
+    game.entity_place_queue.clear();
 
-    // NOTE: placing blocks
-    // TODO: this is so so ugly
-    bool block_exists_at_mouse_click = false;
-    for (usize i = 0; i < game.scene.entities.size(); ++i)
+    // NOTE: actually remove entities
+    for (usize remove_idx = 0; remove_idx < game.entity_idx_remove_queue.size(); ++remove_idx)
     {
-      if (f32_equal(game.scene.entities[i].pos.y, 0) &&
-          entities_collide(
-            game.scene.entities[i],
-            {.type = ENTITY_BLOCK, .pos = game.mouse_tile_pos}
-          ))
-      {
-        block_exists_at_mouse_click = true;
-      }
+      game.scene.entities.erase(
+        game.scene.entities.begin() + (isize) game.entity_idx_remove_queue[remove_idx]
+      );
     }
-    if (game.window->input.rmb.down)
-    {
-      if (block_exists_at_mouse_click)
-      {
-        if (os_key_just_pressed(game.window->input.rmb))
-        {
-          sound_play_once(game.sound_system, SOUND_HANDLE_SINE, 0.04f);
-        }
-      }
-      else
-      {
-        auto entity = entity_new(ENTITY_BLOCK, game.assets);
-        entity.pos = game.mouse_tile_pos;
-        game.scene.entities.push_back(entity);
-      }
-    }
+    game.entity_idx_remove_queue.clear();
 
     // NOTE: entity update
-    for (usize i = 0; i < game.scene.entities.size(); ++i)
+    for (usize entity_idx = 0; entity_idx < game.scene.entities.size(); ++entity_idx)
     {
-      auto& entity = game.scene.entities[i];
+      auto& entity = game.scene.entities[entity_idx];
       entity.prev_pos = entity.pos;
       entity.prev_rotation = entity.rotation;
 
-      // NOTE: destroying blocks
-      if (game.window->input.lmb.down && entity.type != ENTITY_PLAYER &&
-          entity.pos == game.mouse_tile_pos)
-      {
-        game.scene.entities.erase(game.scene.entities.begin() + (isize) i);
-        --i;
-        continue;
-      }
-
       if (entity.type == ENTITY_PLAYER)
       {
+        game.mouse_in_player_interaction_radius =
+          in_player_interaction_radius(entity, game.mouse_tile_pos);
+
+        // NOTE: queue entites to place
+        if (game.window->input.rmb.down && game.mouse_in_player_interaction_radius)
+        {
+          bool block_exists_at_mouse = false;
+          for (usize i = 0; i < game.scene.entities.size(); ++i)
+          {
+            if (f32_equal(game.scene.entities[i].pos.y, 0) &&
+                entities_collide(
+                  game.scene.entities[i],
+                  {.type = ENTITY_BLOCK, .pos = game.mouse_tile_pos}
+                ))
+            {
+              block_exists_at_mouse = true;
+            }
+          }
+
+          if (!block_exists_at_mouse)
+          {
+            auto placed_entity = entity_new(ENTITY_BLOCK, game.assets);
+            placed_entity.pos = game.mouse_tile_pos;
+            game.entity_place_queue.push_back(placed_entity);
+          }
+        }
+
+        // NOTE: queue entities to remove
+        if (game.window->input.lmb.down && game.mouse_in_player_interaction_radius)
+        {
+          for (usize i = 0; i < game.scene.entities.size(); ++i)
+          {
+            if (game.scene.entities[i].type != ENTITY_PLAYER &&
+                game.scene.entities[i].pos == game.mouse_tile_pos)
+            {
+              game.entity_idx_remove_queue.push_back(i);
+              break;
+            }
+          }
+        }
+
         // NOTE: rotation
         {
           if (acceleration != vec3{0.0f, 0.0f, 0.0f})
@@ -393,11 +415,9 @@ void game_update_tick(GameData& game, f32 dt)
           bulb.light_bulb.hovered = false;
           f32 dist2_from_mouse = length2(bulb.pos - mouse_world_pos);
           // TODO: this could probably be better
-          f32 max_mouse_dist2 = (ENTITY_BOUNDING_BOX[bulb.type].x / 2.0f) +
-                                (ENTITY_BOUNDING_BOX[bulb.type].y / 2.0f) / 2.0f;
-          f32 dist2_from_player = length2(bulb.pos - entity.pos);
-          if (dist2_from_player < square(EntityPlayer::INTERACTION_RADIUS) &&
-              dist2_from_mouse < max_mouse_dist2)
+          f32 max_mouse_dist2 = (ENTITY_BOUNDING_BOX[ENTITY_LIGHT_BULB].x / 2.0f) +
+                                (ENTITY_BOUNDING_BOX[ENTITY_LIGHT_BULB].y / 2.0f) / 2.0f;
+          if (in_player_interaction_radius(entity, bulb.pos) && dist2_from_mouse < max_mouse_dist2)
           {
             bulb.light_bulb.hovered = true;
           }
@@ -805,12 +825,15 @@ void game_render(GameData& game, f32 t)
       }
     }
 
-    pass.cmds_3d.push_back(render_cube_wires(
-      game.mouse_tile_pos,
-      {1, 1, 1},
-      EntityLightBulb::OFF_HOVER_COLOR,
-      game.assets
-    ));
+    if (game.mouse_in_player_interaction_radius)
+    {
+      pass.cmds_3d.push_back(render_cube_wires(
+        game.mouse_tile_pos,
+        {1, 1, 1},
+        EntityLightBulb::OFF_HOVER_COLOR,
+        game.assets
+      ));
+    }
 
     pass.cmds_2d.insert(
       pass.cmds_2d.end(),

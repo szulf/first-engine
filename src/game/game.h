@@ -66,6 +66,10 @@ struct GameData
   TextureHandle font_texture{};
 
   vec3 mouse_tile_pos{};
+  bool mouse_in_player_interaction_radius{};
+
+  std::vector<Entity> entity_place_queue{};
+  std::vector<usize> entity_idx_remove_queue{};
 
   struct DebugOptions
   {
