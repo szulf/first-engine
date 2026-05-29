@@ -8,6 +8,9 @@
 #include "base/base.h"
 #include "assets.h"
 
+// TODO: im feeling another refactor of the entity system
+// something that would combine the "flags/traits" and types
+
 enum EntityType
 {
   ENTITY_PLAYER,
@@ -34,12 +37,25 @@ static constexpr std::array<std::string_view, ENTITY_TYPE_COUNT> ENTITY_MESH_PAT
 
 extern std::array<vec2, ENTITY_TYPE_COUNT> ENTITY_BOUNDING_BOX;
 
+static constexpr std::array<bool, ENTITY_TYPE_COUNT> ENTITY_ROTATABLE = []()
+{
+  std::array<bool, ENTITY_TYPE_COUNT> out{};
+  out[ENTITY_PLAYER] = true;
+  out[ENTITY_CONVEYOR] = true;
+  out[ENTITY_STORAGE] = true;
+  return out;
+}();
+
 struct EntityPlayer
 {
   static constexpr f32 MOVEMENT_SPEED = 8;
   static constexpr f32 ROTATION_SPEED = 3 * std::numbers::pi_v<f32>;
   static constexpr f32 MASS = 80;
   static constexpr f32 INTERACTION_RADIUS = 2;
+  f32 rotation{};
+  f32 prev_rotation{};
+  f32 target_rotation{};
+  vec3 velocity{};
 };
 
 struct EntityBlock
@@ -60,10 +76,12 @@ struct EntityLightBulb
 
 struct EntityConveyor
 {
+  f32 rotation{};
 };
 
 struct EntityStorage
 {
+  f32 rotation{};
 };
 
 struct Entity
@@ -71,10 +89,6 @@ struct Entity
   EntityType type{};
   vec3 pos{};
   vec3 prev_pos{};
-  f32 rotation{};
-  f32 prev_rotation{};
-  f32 target_rotation{};
-  vec3 velocity{};
   vec3 tint = {1.0f, 1.0f, 1.0f};
   MeshHandle mesh{};
   std::string name{};

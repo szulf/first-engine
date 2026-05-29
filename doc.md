@@ -2,7 +2,6 @@
 
 ## SMALL TODOS: (ordered)
 
-5. placing rotated entities
 6. serialization of the world
 
 ---

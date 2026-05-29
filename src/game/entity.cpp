@@ -97,12 +97,25 @@ vec3 entity_render_pos(const Entity& entity, f32 t)
 
 f32 entity_render_rotation(const Entity& entity, f32 t)
 {
-  // NOTE: checking if they have opposite signs
-  if (entity.rotation * entity.prev_rotation < 0)
+  switch (entity.type)
   {
-    return entity.prev_rotation;
+    case ENTITY_PLAYER:
+      // NOTE: checking if they have opposite signs
+      if (entity.player.rotation * entity.player.prev_rotation < 0)
+      {
+        return entity.player.prev_rotation;
+      }
+      return entity.player.rotation * t + entity.player.prev_rotation * (1.0f - t);
+    case ENTITY_CONVEYOR:
+      return entity.conveyor.rotation;
+    case ENTITY_STORAGE:
+      return entity.storage.rotation;
+    case ENTITY_BLOCK:
+    case ENTITY_LIGHT_BULB:
+    case ENTITY_TYPE_COUNT:
+    default:
+      return 0;
   }
-  return entity.rotation * t + entity.prev_rotation * (1.0f - t);
 }
 
 static vec3 gscn_parse_vec3(Parser_Pos& pos)

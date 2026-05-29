@@ -140,5 +140,14 @@ render_cube_wires(const vec3& pos, const vec3& size, const vec3& color, AssetSto
 Render_Cmd3D render_ring(const vec3& pos, f32 radius, const vec3& color, AssetStore& assets);
 Render_Cmd3D
 render_line(const vec3& pos, f32 length, f32 rotation, const vec3& color, AssetStore& assets);
+void render_line_arrow(
+  std::vector<Render_Cmd3D>& cmds,
+  const vec3& pos,
+  f32 main_arm_length,
+  f32 side_arms_length,
+  f32 rotation,
+  const vec3& color,
+  AssetStore& assets
+);
 
 #endif

@@ -282,6 +282,14 @@ void game_update_tick(GameData& game, f32 dt)
       game.mouse_tile_pos.z = std::round(mouse_world_pos.z);
     }
 
+    // TODO: make this an action
+    // TODO: do i want this only if game.mouse_in_player_interaction_radius?
+    if (os_key_just_pressed(game.window->input.keys[OS_KEY_R]) &&
+        ENTITY_ROTATABLE[game.selected_entity_to_place])
+    {
+      game.place_rotation = (game.place_rotation + 1) % 4;
+    }
+
     // NOTE: actually place entities
     for (usize place_idx = 0; place_idx < game.entity_place_queue.size(); ++place_idx)
     {
@@ -303,10 +311,10 @@ void game_update_tick(GameData& game, f32 dt)
     {
       auto& entity = game.scene.entities[entity_idx];
       entity.prev_pos = entity.pos;
-      entity.prev_rotation = entity.rotation;
 
       if (entity.type == ENTITY_PLAYER)
       {
+        entity.player.prev_rotation = entity.player.rotation;
         game.mouse_in_player_interaction_radius =
           in_player_interaction_radius(entity, game.mouse_tile_pos);
 
@@ -330,6 +338,26 @@ void game_update_tick(GameData& game, f32 dt)
           {
             auto placed_entity = entity_new(game.selected_entity_to_place, game.assets);
             placed_entity.pos = game.mouse_tile_pos;
+            if (ENTITY_ROTATABLE[game.selected_entity_to_place])
+            {
+              switch (game.selected_entity_to_place)
+              {
+                case ENTITY_CONVEYOR:
+                  placed_entity.conveyor.rotation =
+                    (f32) game.place_rotation * (0.5f * std::numbers::pi_v<f32>);
+                  break;
+                case ENTITY_STORAGE:
+                  placed_entity.storage.rotation =
+                    (f32) game.place_rotation * (0.5f * std::numbers::pi_v<f32>);
+                  break;
+                case ENTITY_PLAYER:
+                case ENTITY_BLOCK:
+                case ENTITY_LIGHT_BULB:
+                case ENTITY_TYPE_COUNT:
+                default:
+                  break;
+              }
+            }
             game.entity_place_queue.push_back(placed_entity);
           }
         }
@@ -353,11 +381,12 @@ void game_update_tick(GameData& game, f32 dt)
           if (acceleration != vec3{0.0f, 0.0f, 0.0f})
           {
             auto rot = std::atan2(-acceleration.x, acceleration.z);
-            entity.target_rotation = rot;
+            entity.player.target_rotation = rot;
           }
-          f32 direction = wrap_to_neg_pi_to_pi(entity.target_rotation - entity.rotation);
-          entity.rotation += direction * EntityPlayer::ROTATION_SPEED * dt;
-          entity.rotation = wrap_to_neg_pi_to_pi(entity.rotation);
+          f32 direction =
+            wrap_to_neg_pi_to_pi(entity.player.target_rotation - entity.player.rotation);
+          entity.player.rotation += direction * EntityPlayer::ROTATION_SPEED * dt;
+          entity.player.rotation = wrap_to_neg_pi_to_pi(entity.player.rotation);
         }
 
         // NOTE: movement and collisions
@@ -370,15 +399,15 @@ void game_update_tick(GameData& game, f32 dt)
 
           acceleration *= EntityPlayer::MOVEMENT_SPEED;
 
-          vec3 friction_dir = -normalize(entity.velocity);
+          vec3 friction_dir = -normalize(entity.player.velocity);
           vec3 friction_force = friction_dir * FRICTION_MAGNITUDE;
 
-          vec3 drag = -3.0f * entity.velocity;
+          vec3 drag = -3.0f * entity.player.velocity;
           vec3 friction = (friction_force / EntityPlayer::MASS) + drag;
 
           acceleration += friction;
-          auto new_pos = 0.5f * acceleration * (dt * dt) + entity.velocity * dt + entity.pos;
-          entity.velocity = acceleration * dt + entity.velocity;
+          auto new_pos = 0.5f * acceleration * (dt * dt) + entity.player.velocity * dt + entity.pos;
+          entity.player.velocity = acceleration * dt + entity.player.velocity;
 
           vec3 collision_normal = {};
           bool collided = false;
@@ -451,7 +480,8 @@ void game_update_tick(GameData& game, f32 dt)
           entity.pos = (abs_collision_normal * entity.pos) + (new_pos * collision_normal_inverted);
           if (collided)
           {
-            entity.velocity -= dot(entity.velocity, collision_normal) * collision_normal;
+            entity.player.velocity -=
+              dot(entity.player.velocity, collision_normal) * collision_normal;
             sound_play_once(game.sound_system, SOUND_HANDLE_SINE, 0.1f);
           }
         }
@@ -945,6 +975,20 @@ void game_render(GameData& game, f32 t)
 
     if (game.mouse_in_player_interaction_radius)
     {
+      // TODO: dont use EntityLightBulb::OFF_HOVER_COLOR, it should be more generic
+      if (ENTITY_ROTATABLE[game.selected_entity_to_place])
+      {
+        f32 arrow_rotation = (f32) game.place_rotation * (0.5f * std::numbers::pi_v<f32>);
+        render_line_arrow(
+          pass.cmds_3d,
+          game.mouse_tile_pos,
+          0.6f,
+          0.3f,
+          arrow_rotation,
+          EntityLightBulb::OFF_HOVER_COLOR,
+          game.assets
+        );
+      }
       pass.cmds_3d.push_back(render_cube_wires(
         game.mouse_tile_pos,
         {1, 1, 1},

@@ -1,6 +1,7 @@
 #include "renderer.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include "base/math.h"
 #include "base/errors.h"
@@ -682,4 +683,28 @@ render_line(const vec3& pos, f32 length, f32 rotation, const vec3& color, AssetS
         .tint = {color.x, color.y, color.z, 1.0f},
       },
   };
+}
+
+void render_line_arrow(
+  std::vector<Render_Cmd3D>& cmds,
+  const vec3& pos,
+  f32 main_arm_length,
+  f32 side_arm_length,
+  f32 rotation,
+  const vec3& color,
+  AssetStore& assets
+)
+{
+  vec3 arrow_start_pos = pos;
+  vec3 arrow_end_pos = arrow_start_pos;
+  arrow_start_pos.x += main_arm_length * 0.5f * std::sin(rotation);
+  arrow_end_pos.x -= main_arm_length * 0.5f * std::sin(rotation);
+  arrow_start_pos.z -= main_arm_length * 0.5f * std::cos(rotation);
+  arrow_end_pos.z += main_arm_length * 0.5f * std::cos(rotation);
+  f32 main_arm_rotation = rotation;
+  f32 left_arm_rotation = rotation - 0.75f * std::numbers::pi_v<f32>;
+  f32 right_arm_rotation = rotation + 0.75f * std::numbers::pi_v<f32>;
+  cmds.push_back(render_line(arrow_start_pos, main_arm_length, main_arm_rotation, color, assets));
+  cmds.push_back(render_line(arrow_end_pos, side_arm_length, left_arm_rotation, color, assets));
+  cmds.push_back(render_line(arrow_end_pos, side_arm_length, right_arm_rotation, color, assets));
 }
