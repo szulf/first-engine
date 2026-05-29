@@ -137,7 +137,6 @@ enum SceneLoadingMode
   SCENE_LOADING_ENTITY,
 };
 
-// TODO: invalid keys are silently ignored, is that good?
 std::expected<Scene, std::string_view>
 load_scene(const std::filesystem::path& path, AssetStore& assets)
 {
@@ -207,14 +206,17 @@ load_scene(const std::filesystem::path& path, AssetStore& assets)
                 if (key == "rotation")
                 {
                   entity.player.rotation = parser_number_f32(pos);
+                  continue;
                 }
                 else if (key == "target_rotation")
                 {
                   entity.player.target_rotation = parser_number_f32(pos);
+                  continue;
                 }
                 else if (key == "velocity")
                 {
                   entity.player.velocity = gscn_parse_vec3(pos);
+                  continue;
                 }
                 break;
               case ENTITY_BLOCK:
@@ -223,28 +225,33 @@ load_scene(const std::filesystem::path& path, AssetStore& assets)
                 if (key == "on")
                 {
                   entity.light_bulb.on = parser_boolean(pos);
+                  continue;
                 }
                 else if (key == "hovered")
                 {
                   entity.light_bulb.hovered = parser_boolean(pos);
+                  continue;
                 }
                 break;
               case ENTITY_CONVEYOR:
                 if (key == "rotation")
                 {
                   entity.conveyor.rotation = parser_number_f32(pos);
+                  continue;
                 }
                 break;
               case ENTITY_STORAGE:
                 if (key == "rotation")
                 {
                   entity.storage.rotation = parser_number_f32(pos);
+                  continue;
                 }
                 break;
               case ENTITY_TYPE_COUNT:
               default:
                 break;
             }
+            return std::unexpected{"Invalid key in scene file"};
           }
         }
       }

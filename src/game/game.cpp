@@ -37,6 +37,30 @@ std::expected<Action, std::string_view> string_to_action(std::string_view str)
   {
     return {ACTION_INTERACT};
   }
+  else if (str == "slot1")
+  {
+    return {ACTION_SLOT_1};
+  }
+  else if (str == "slot2")
+  {
+    return {ACTION_SLOT_2};
+  }
+  else if (str == "slot3")
+  {
+    return {ACTION_SLOT_3};
+  }
+  else if (str == "save_scene")
+  {
+    return {ACTION_SAVE_SCENE};
+  }
+  else if (str == "load_scene")
+  {
+    return {ACTION_LOAD_SCENE};
+  }
+  else if (str == "rotate_entity_to_place")
+  {
+    return {ACTION_ROTATE_ENTITY_TO_PLACE};
+  }
   else if (str == "camera_move_up")
   {
     return {ACTION_CAMERA_MOVE_UP};
@@ -152,7 +176,6 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
   render_init(game.assets);
   {
     auto scene = load_scene("data/test.gscn", game.assets);
-    // auto scene = scene_from_file("data/main.gscn", game.assets);
     ASSERT(scene, "Failed to load scene {}", scene.error());
     game.scene = *scene;
   }
@@ -252,22 +275,20 @@ void game_update_tick(GameData& game, f32 dt)
     game.used_camera = &game.gameplay_camera;
     os_show_mouse_pointer();
 
-    // TODO: make this keybinds actions
-    if (os_key_just_pressed(game.window->input.keys[OS_KEY_1]))
+    if (os_key_just_pressed(key_state_from_action(ACTION_SLOT_1, game)))
     {
       game.selected_entity_to_place = ENTITY_BLOCK;
     }
-    if (os_key_just_pressed(game.window->input.keys[OS_KEY_2]))
+    if (os_key_just_pressed(key_state_from_action(ACTION_SLOT_2, game)))
     {
       game.selected_entity_to_place = ENTITY_CONVEYOR;
     }
-    if (os_key_just_pressed(game.window->input.keys[OS_KEY_3]))
+    if (os_key_just_pressed(key_state_from_action(ACTION_SLOT_3, game)))
     {
       game.selected_entity_to_place = ENTITY_STORAGE;
     }
 
-    // TODO: make these into actions
-    if (os_key_just_pressed(game.window->input.keys[OS_KEY_K]))
+    if (os_key_just_pressed(key_state_from_action(ACTION_SAVE_SCENE, game)))
     {
       auto res = save_scene(game.scene, "data/test.gscn");
       if (!res)
@@ -275,7 +296,7 @@ void game_update_tick(GameData& game, f32 dt)
         REPORT_ERROR("Failed to save scene");
       }
     }
-    if (os_key_just_pressed(game.window->input.keys[OS_KEY_L]))
+    if (os_key_just_pressed(key_state_from_action(ACTION_LOAD_SCENE, game)))
     {
       auto scene = load_scene("data/test.gscn", game.assets);
       if (!scene)
@@ -285,9 +306,8 @@ void game_update_tick(GameData& game, f32 dt)
       game.scene = *scene;
     }
 
-    // TODO: make this an action
     // TODO: do i want this only if game.mouse_in_player_interaction_radius?
-    if (os_key_just_pressed(game.window->input.keys[OS_KEY_R]) &&
+    if (os_key_just_pressed(key_state_from_action(ACTION_ROTATE_ENTITY_TO_PLACE, game)) &&
         ENTITY_ROTATABLE[game.selected_entity_to_place])
     {
       game.place_rotation = (game.place_rotation + 1) % 4;
