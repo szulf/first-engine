@@ -275,19 +275,6 @@ void game_update_tick(GameData& game, f32 dt)
     game.used_camera = &game.gameplay_camera;
     os_show_mouse_pointer();
 
-    if (os_key_just_pressed(key_state_from_action(ACTION_SLOT_1, game)))
-    {
-      game.selected_entity_to_place = ENTITY_BLOCK;
-    }
-    if (os_key_just_pressed(key_state_from_action(ACTION_SLOT_2, game)))
-    {
-      game.selected_entity_to_place = ENTITY_CONVEYOR;
-    }
-    if (os_key_just_pressed(key_state_from_action(ACTION_SLOT_3, game)))
-    {
-      game.selected_entity_to_place = ENTITY_STORAGE;
-    }
-
     if (os_key_just_pressed(key_state_from_action(ACTION_SAVE_SCENE, game)))
     {
       auto res = save_scene(game.scene, "data/test.gscn");
@@ -296,6 +283,7 @@ void game_update_tick(GameData& game, f32 dt)
         REPORT_ERROR("Failed to save scene");
       }
     }
+    // NOTE: this has to be before any of the updates to the scene
     if (os_key_just_pressed(key_state_from_action(ACTION_LOAD_SCENE, game)))
     {
       auto scene = load_scene("data/test.gscn", game.assets);
@@ -306,11 +294,24 @@ void game_update_tick(GameData& game, f32 dt)
       game.scene = *scene;
     }
 
+    if (os_key_just_pressed(key_state_from_action(ACTION_SLOT_1, game)))
+    {
+      game.scene.selected_entity_to_place = ENTITY_BLOCK;
+    }
+    if (os_key_just_pressed(key_state_from_action(ACTION_SLOT_2, game)))
+    {
+      game.scene.selected_entity_to_place = ENTITY_CONVEYOR;
+    }
+    if (os_key_just_pressed(key_state_from_action(ACTION_SLOT_3, game)))
+    {
+      game.scene.selected_entity_to_place = ENTITY_STORAGE;
+    }
+
     // TODO: do i want this only if game.mouse_in_player_interaction_radius?
     if (os_key_just_pressed(key_state_from_action(ACTION_ROTATE_ENTITY_TO_PLACE, game)) &&
-        ENTITY_ROTATABLE[game.selected_entity_to_place])
+        ENTITY_ROTATABLE[game.scene.selected_entity_to_place])
     {
-      game.place_rotation = (game.place_rotation + 1) % 4;
+      game.scene.place_rotation = (game.scene.place_rotation + 1) % 4;
     }
 
     // NOTE: calculate mouse position in world space
@@ -331,20 +332,20 @@ void game_update_tick(GameData& game, f32 dt)
     }
 
     // NOTE: actually place entities
-    for (usize place_idx = 0; place_idx < game.entity_place_queue.size(); ++place_idx)
+    for (usize place_idx = 0; place_idx < game.scene.entity_place_queue.size(); ++place_idx)
     {
-      game.scene.entities.push_back(game.entity_place_queue[place_idx]);
+      game.scene.entities.push_back(game.scene.entity_place_queue[place_idx]);
     }
-    game.entity_place_queue.clear();
+    game.scene.entity_place_queue.clear();
 
     // NOTE: actually remove entities
-    for (usize remove_idx = 0; remove_idx < game.entity_idx_remove_queue.size(); ++remove_idx)
+    for (usize remove_idx = 0; remove_idx < game.scene.entity_idx_remove_queue.size(); ++remove_idx)
     {
       game.scene.entities.erase(
-        game.scene.entities.begin() + (isize) game.entity_idx_remove_queue[remove_idx]
+        game.scene.entities.begin() + (isize) game.scene.entity_idx_remove_queue[remove_idx]
       );
     }
-    game.entity_idx_remove_queue.clear();
+    game.scene.entity_idx_remove_queue.clear();
 
     // NOTE: entity update
     for (usize entity_idx = 0; entity_idx < game.scene.entities.size(); ++entity_idx)
@@ -367,7 +368,7 @@ void game_update_tick(GameData& game, f32 dt)
             if (f32_equal(game.scene.entities[i].pos.y, 0) &&
                 entities_collide(
                   game.scene.entities[i],
-                  {.type = game.selected_entity_to_place, .pos = game.mouse_tile_pos}
+                  {.type = game.scene.selected_entity_to_place, .pos = game.mouse_tile_pos}
                 ))
             {
               block_exists_at_mouse = true;
@@ -376,19 +377,19 @@ void game_update_tick(GameData& game, f32 dt)
 
           if (!block_exists_at_mouse)
           {
-            auto placed_entity = entity_new(game.selected_entity_to_place, game.assets);
+            auto placed_entity = entity_new(game.scene.selected_entity_to_place, game.assets);
             placed_entity.pos = game.mouse_tile_pos;
-            if (ENTITY_ROTATABLE[game.selected_entity_to_place])
+            if (ENTITY_ROTATABLE[game.scene.selected_entity_to_place])
             {
-              switch (game.selected_entity_to_place)
+              switch (game.scene.selected_entity_to_place)
               {
                 case ENTITY_CONVEYOR:
                   placed_entity.conveyor.rotation =
-                    (f32) game.place_rotation * (0.5f * std::numbers::pi_v<f32>);
+                    (f32) game.scene.place_rotation * (0.5f * std::numbers::pi_v<f32>);
                   break;
                 case ENTITY_STORAGE:
                   placed_entity.storage.rotation =
-                    (f32) game.place_rotation * (0.5f * std::numbers::pi_v<f32>);
+                    (f32) game.scene.place_rotation * (0.5f * std::numbers::pi_v<f32>);
                   break;
                 case ENTITY_PLAYER:
                 case ENTITY_BLOCK:
@@ -398,7 +399,7 @@ void game_update_tick(GameData& game, f32 dt)
                   break;
               }
             }
-            game.entity_place_queue.push_back(placed_entity);
+            game.scene.entity_place_queue.push_back(placed_entity);
           }
         }
 
@@ -410,7 +411,7 @@ void game_update_tick(GameData& game, f32 dt)
             if (game.scene.entities[i].type != ENTITY_PLAYER &&
                 game.scene.entities[i].pos == game.mouse_tile_pos)
             {
-              game.entity_idx_remove_queue.push_back(i);
+              game.scene.entity_idx_remove_queue.push_back(i);
               break;
             }
           }
@@ -601,26 +602,26 @@ void game_update_tick(GameData& game, f32 dt)
       if (block_panel(
             block_selection_menu,
             game.entity_block_icon,
-            game.selected_entity_to_place == ENTITY_BLOCK
+            game.scene.selected_entity_to_place == ENTITY_BLOCK
           ))
       {
-        game.selected_entity_to_place = ENTITY_BLOCK;
+        game.scene.selected_entity_to_place = ENTITY_BLOCK;
       }
       if (block_panel(
             block_selection_menu,
             game.entity_conveyor_icon,
-            game.selected_entity_to_place == ENTITY_CONVEYOR
+            game.scene.selected_entity_to_place == ENTITY_CONVEYOR
           ))
       {
-        game.selected_entity_to_place = ENTITY_CONVEYOR;
+        game.scene.selected_entity_to_place = ENTITY_CONVEYOR;
       }
       if (block_panel(
             block_selection_menu,
             game.entity_storage_icon,
-            game.selected_entity_to_place == ENTITY_STORAGE
+            game.scene.selected_entity_to_place == ENTITY_STORAGE
           ))
       {
-        game.selected_entity_to_place = ENTITY_STORAGE;
+        game.scene.selected_entity_to_place = ENTITY_STORAGE;
       }
     }
     ui_layout_end(block_selection_menu);
@@ -1016,9 +1017,9 @@ void game_render(GameData& game, f32 t)
     if (game.mouse_in_player_interaction_radius)
     {
       // TODO: dont use EntityLightBulb::OFF_HOVER_COLOR, it should be more generic
-      if (ENTITY_ROTATABLE[game.selected_entity_to_place])
+      if (ENTITY_ROTATABLE[game.scene.selected_entity_to_place])
       {
-        f32 arrow_rotation = (f32) game.place_rotation * (0.5f * std::numbers::pi_v<f32>);
+        f32 arrow_rotation = (f32) game.scene.place_rotation * (0.5f * std::numbers::pi_v<f32>);
         render_line_arrow(
           pass.cmds_3d,
           game.mouse_tile_pos,

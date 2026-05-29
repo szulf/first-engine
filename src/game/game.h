@@ -80,20 +80,12 @@ struct GameData
   ShaderHandle shadow_depth_shader{};
   TextureHandle font_texture{};
 
-  vec3 mouse_tile_pos{};
-  bool mouse_in_player_interaction_radius{};
-
-  EntityType selected_entity_to_place = ENTITY_BLOCK;
-  // TODO: make this an enum?
-  // NOTE: represents rotation as k * pi/2,
-  // where k is this variable and holds values in range [0; 3]
-  u8 place_rotation{};
-  std::vector<Entity> entity_place_queue{};
-  std::vector<usize> entity_idx_remove_queue{};
-
   TextureHandle entity_block_icon{};
   TextureHandle entity_conveyor_icon{};
   TextureHandle entity_storage_icon{};
+
+  vec3 mouse_tile_pos{};
+  bool mouse_in_player_interaction_radius{};
 
   struct DebugOptions
   {
