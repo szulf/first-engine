@@ -91,8 +91,6 @@ struct Entity
   vec3 prev_pos{};
   vec3 tint = {1.0f, 1.0f, 1.0f};
   MeshHandle mesh{};
-  std::string name{};
-  std::string mesh_path{};
   union
   {
     EntityPlayer player;
@@ -115,6 +113,8 @@ struct Scene
 };
 
 std::expected<Scene, std::string_view>
-scene_from_file(const std::filesystem::path& path, AssetStore& assets);
+load_scene(const std::filesystem::path& path, AssetStore& assets);
+std::expected<void, std::string_view>
+save_scene(const Scene& scene, const std::filesystem::path& path);
 
 #endif

@@ -99,3 +99,4 @@
 3. check collisions with already existing entities
 4. ui to select which block to place
 5. placing rotated entities
+6. serialization of the world

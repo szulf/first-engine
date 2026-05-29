@@ -2,8 +2,6 @@
 
 ## SMALL TODOS: (ordered)
 
-6. serialization of the world
-
 ---
 
 ## NEXT BIG TODOS: (unordered)

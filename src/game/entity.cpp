@@ -131,19 +131,24 @@ static vec3 gscn_parse_vec3(Parser_Pos& pos)
   return out;
 }
 
-std::expected<Scene, std::string_view>
-scene_from_file(const std::filesystem::path& path, AssetStore& assets)
+enum SceneLoadingMode
 {
-  if (path.extension() != ".gscn")
-  {
-    return std::unexpected{"Invalid filepath provided, expected a file with a '.gscn' extension"};
-  }
+  SCENE_LOADING_GLOBAL,
+  SCENE_LOADING_ENTITY,
+};
+
+// TODO: invalid keys are silently ignored, is that good?
+std::expected<Scene, std::string_view>
+load_scene(const std::filesystem::path& path, AssetStore& assets)
+{
   std::ifstream file{path};
   if (file.fail())
   {
-    return std::unexpected{"Failed to read scene file"};
+    return std::unexpected{"Failed to open scene file for reading"};
   }
   Scene scene{};
+  SceneLoadingMode mode = SCENE_LOADING_GLOBAL;
+  Entity entity{};
   std::string line{};
   while (std::getline(file, line))
   {
@@ -153,23 +158,160 @@ scene_from_file(const std::filesystem::path& path, AssetStore& assets)
     }
     Parser_Pos pos{.line = line};
 
-    auto key = std::string{parser_word(pos)};
-    parser_expect_and_skip(pos, ':');
-    if (key == "ambient_color")
+    switch (mode)
     {
-      scene.ambient_color = gscn_parse_vec3(pos);
-      continue;
+      case SCENE_LOADING_GLOBAL:
+      {
+        auto key = parser_word(pos);
+        parser_expect_and_skip(pos, ':');
+        if (key == "ambient_color")
+        {
+          scene.ambient_color = gscn_parse_vec3(pos);
+          continue;
+        }
+        auto entity_type = entity_type_from_string(key);
+        if (!entity_type)
+        {
+          return std::unexpected{entity_type.error()};
+        }
+        entity = entity_new(*entity_type, assets);
+        mode = SCENE_LOADING_ENTITY;
+        parser_expect_and_skip(pos, '{');
+      }
+      break;
+      case SCENE_LOADING_ENTITY:
+      {
+        auto key = parser_word(pos);
+        if (key == "}")
+        {
+          scene.entities.push_back(entity);
+          mode = SCENE_LOADING_GLOBAL;
+          entity = {};
+        }
+        else
+        {
+          parser_expect_and_skip(pos, ':');
+          if (key == "pos")
+          {
+            entity.pos = gscn_parse_vec3(pos);
+          }
+          else if (key == "tint")
+          {
+            entity.tint = gscn_parse_vec3(pos);
+          }
+          else
+          {
+            switch (entity.type)
+            {
+              case ENTITY_PLAYER:
+                if (key == "rotation")
+                {
+                  entity.player.rotation = parser_number_f32(pos);
+                }
+                else if (key == "target_rotation")
+                {
+                  entity.player.target_rotation = parser_number_f32(pos);
+                }
+                else if (key == "velocity")
+                {
+                  entity.player.velocity = gscn_parse_vec3(pos);
+                }
+                break;
+              case ENTITY_BLOCK:
+                break;
+              case ENTITY_LIGHT_BULB:
+                if (key == "on")
+                {
+                  entity.light_bulb.on = parser_boolean(pos);
+                }
+                else if (key == "hovered")
+                {
+                  entity.light_bulb.hovered = parser_boolean(pos);
+                }
+                break;
+              case ENTITY_CONVEYOR:
+                if (key == "rotation")
+                {
+                  entity.conveyor.rotation = parser_number_f32(pos);
+                }
+                break;
+              case ENTITY_STORAGE:
+                if (key == "rotation")
+                {
+                  entity.storage.rotation = parser_number_f32(pos);
+                }
+                break;
+              case ENTITY_TYPE_COUNT:
+              default:
+                break;
+            }
+          }
+        }
+      }
+      break;
     }
-
-    auto entity_type = entity_type_from_string(key);
-    if (!entity_type)
-    {
-      return std::unexpected{entity_type.error()};
-    }
-    auto entity = entity_new(*entity_type, assets);
-    entity.prev_pos = entity.pos = gscn_parse_vec3(pos);
-    scene.entities.push_back(entity);
   }
 
   return scene;
+}
+
+std::expected<void, std::string_view>
+save_scene(const Scene& scene, const std::filesystem::path& path)
+{
+  std::ofstream file{path};
+  if (file.fail())
+  {
+    return std::unexpected{"Failed to open scene file for writing"};
+  }
+
+  std::println(
+    file,
+    "ambient_color : ({}, {}, {})\n",
+    scene.ambient_color.x,
+    scene.ambient_color.y,
+    scene.ambient_color.z
+  );
+
+  // TODO: should this maybe be something like Entities : { ... }
+  for (usize entity_idx = 0; entity_idx < scene.entities.size(); ++entity_idx)
+  {
+    auto& entity = scene.entities[entity_idx];
+    std::println(file, "{} : {{", entity_type_to_string(entity.type));
+    defer(std::println(file, "}}\n"));
+
+    std::println(file, "  pos : ({}, {}, {})", entity.pos.x, entity.pos.y, entity.pos.z);
+    std::println(file, "  tint : ({}, {}, {})", entity.tint.x, entity.tint.y, entity.tint.z);
+
+    switch (entity.type)
+    {
+      case ENTITY_PLAYER:
+        std::println(file, "  rotation : {}", entity.player.rotation);
+        std::println(file, "  target_rotation : {}", entity.player.target_rotation);
+        std::println(
+          file,
+          "  velocity : ({}, {}, {})",
+          entity.player.velocity.x,
+          entity.player.velocity.y,
+          entity.player.velocity.z
+        );
+        break;
+      case ENTITY_BLOCK:
+        break;
+      case ENTITY_LIGHT_BULB:
+        std::println(file, "  on : {}", entity.light_bulb.on);
+        std::println(file, "  hovered : {}", entity.light_bulb.hovered);
+        break;
+      case ENTITY_CONVEYOR:
+        std::println(file, "  rotation : {}", entity.conveyor.rotation);
+        break;
+      case ENTITY_STORAGE:
+        std::println(file, "  rotation : {}", entity.storage.rotation);
+        break;
+      case ENTITY_TYPE_COUNT:
+      default:
+        break;
+    }
+  }
+
+  return {};
 }

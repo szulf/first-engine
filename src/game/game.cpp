@@ -151,7 +151,8 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
   game.used_camera = &game.gameplay_camera;
   render_init(game.assets);
   {
-    auto scene = scene_from_file("data/main.gscn", game.assets);
+    auto scene = load_scene("data/test.gscn", game.assets);
+    // auto scene = scene_from_file("data/main.gscn", game.assets);
     ASSERT(scene, "Failed to load scene {}", scene.error());
     game.scene = *scene;
   }
@@ -265,6 +266,33 @@ void game_update_tick(GameData& game, f32 dt)
       game.selected_entity_to_place = ENTITY_STORAGE;
     }
 
+    // TODO: make these into actions
+    if (os_key_just_pressed(game.window->input.keys[OS_KEY_K]))
+    {
+      auto res = save_scene(game.scene, "data/test.gscn");
+      if (!res)
+      {
+        REPORT_ERROR("Failed to save scene");
+      }
+    }
+    if (os_key_just_pressed(game.window->input.keys[OS_KEY_L]))
+    {
+      auto scene = load_scene("data/test.gscn", game.assets);
+      if (!scene)
+      {
+        REPORT_ERROR("Failed to load new scene");
+      }
+      game.scene = *scene;
+    }
+
+    // TODO: make this an action
+    // TODO: do i want this only if game.mouse_in_player_interaction_radius?
+    if (os_key_just_pressed(game.window->input.keys[OS_KEY_R]) &&
+        ENTITY_ROTATABLE[game.selected_entity_to_place])
+    {
+      game.place_rotation = (game.place_rotation + 1) % 4;
+    }
+
     // NOTE: calculate mouse position in world space
     vec3 mouse_world_pos{};
     {
@@ -280,14 +308,6 @@ void game_update_tick(GameData& game, f32 dt)
       mouse_world_pos = game.gameplay_camera.pos + t * ray;
       game.mouse_tile_pos.x = std::round(mouse_world_pos.x);
       game.mouse_tile_pos.z = std::round(mouse_world_pos.z);
-    }
-
-    // TODO: make this an action
-    // TODO: do i want this only if game.mouse_in_player_interaction_radius?
-    if (os_key_just_pressed(game.window->input.keys[OS_KEY_R]) &&
-        ENTITY_ROTATABLE[game.selected_entity_to_place])
-    {
-      game.place_rotation = (game.place_rotation + 1) % 4;
     }
 
     // NOTE: actually place entities
