@@ -40,6 +40,12 @@ UI_Layout ui_layout_begin(
   return layout;
 }
 
+bool ui_intersects(const vec2& point, const vec2& start, const vec2& dimensions)
+{
+  return (point.x > start.x && point.x < start.x + dimensions.x) &&
+         (point.y > start.y && point.y < start.y + dimensions.y);
+}
+
 enum UI_Axis
 {
   UI_AXIS_X,
@@ -398,12 +404,6 @@ static void ui_calculate_positions(UI_Layout& layout, UI_ElementIdx idx = 0)
   {
     ui_calculate_positions(layout, child_idx);
   }
-}
-
-static bool ui_intersects(const vec2& point, const vec2& start, const vec2& dimensions)
-{
-  return (point.x > start.x && point.x < start.x + dimensions.x) &&
-         (point.y > start.y && point.y < start.y + dimensions.y);
 }
 
 static bool ui_intersects(const Rectangle& a, const Rectangle& b)

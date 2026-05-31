@@ -171,6 +171,8 @@ struct UI_Layout
   f32 _z{};
 };
 
+bool ui_intersects(const vec2& point, const vec2& start, const vec2& dimensions);
+
 // TODO: sometimes i dont want to pass max_dimensions
 UI_Layout ui_layout_begin(
   UI_Id id,

@@ -66,6 +66,8 @@ enum OS_Key
   OS_KEY_F12,
   OS_KEY_SPACE,
   OS_KEY_LSHIFT,
+  OS_KEY_TAB,
+  OS_KEY_ESCAPE,
   OS_KEY_COUNT,
 };
 

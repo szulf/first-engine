@@ -72,6 +72,7 @@ struct EntityPlayer
   // NOTE: slots [0; HOTBAR_SLOT_COUNT) are the hotbar
   std::array<ItemSlot, 16> inventory{};
   u8 selected_hotbar_slot{};
+  bool is_inventory_open{};
 };
 
 struct EntityBlock

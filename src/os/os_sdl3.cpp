@@ -188,6 +188,14 @@ std::expected<OS_Key, std::string_view> os_string_to_key(std::string_view str)
   {
     return {OS_KEY_LSHIFT};
   }
+  else if (str == "TAB")
+  {
+    return {OS_KEY_TAB};
+  }
+  else if (str == "ESCAPE")
+  {
+    return {OS_KEY_ESCAPE};
+  }
 
   return std::unexpected{"Invalid key string"};
 }
@@ -367,6 +375,10 @@ static std::expected<SDL_Keycode, std::string_view> sdlk_from_key(OS_Key key)
       return {SDLK_SPACE};
     case OS_KEY_LSHIFT:
       return {SDLK_LSHIFT};
+    case OS_KEY_TAB:
+      return {SDLK_TAB};
+    case OS_KEY_ESCAPE:
+      return {SDLK_ESCAPE};
     case OS_KEY_COUNT:
     default:
       return std::unexpected{"Invalid key provided"};
@@ -477,6 +489,10 @@ static std::expected<OS_Key, std::string_view> key_from_sdlk(SDL_Keycode sdlk)
       return {OS_KEY_SPACE};
     case SDLK_LSHIFT:
       return {OS_KEY_LSHIFT};
+    case SDLK_TAB:
+      return {OS_KEY_TAB};
+    case SDLK_ESCAPE:
+      return {OS_KEY_ESCAPE};
   }
   return std::unexpected{"Invalid key provided"};
 }

@@ -18,6 +18,7 @@ enum Action
   ACTION_MOVE_RIGHT,
   ACTION_INTERACT,
 
+  ACTION_OPEN_INVENTORY,
   ACTION_SLOT_1,
   ACTION_SLOT_2,
   ACTION_SLOT_3,
@@ -49,6 +50,7 @@ static constexpr Keymap DEFAULT_KEYMAP = []() -> Keymap
   k.map[ACTION_MOVE_LEFT] = OS_KEY_A;
   k.map[ACTION_MOVE_RIGHT] = OS_KEY_D;
   k.map[ACTION_INTERACT] = OS_KEY_E;
+  k.map[ACTION_OPEN_INVENTORY] = OS_KEY_TAB;
   k.map[ACTION_SLOT_1] = OS_KEY_1;
   k.map[ACTION_SLOT_2] = OS_KEY_2;
   k.map[ACTION_SLOT_3] = OS_KEY_3;
@@ -88,6 +90,7 @@ struct GameData
 
   vec3 mouse_tile_pos{};
   bool mouse_in_player_interaction_radius{};
+  bool mouse_over_player_inventory{};
 
   struct DebugOptions
   {

@@ -214,6 +214,14 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
       entity.player.inventory[1] = {.type = ITEM_BLOCK, .count = 25};
       entity.player.inventory[2] = {.type = ITEM_CONVEYOR, .count = 40};
       entity.player.inventory[3] = {.type = ITEM_STORAGE, .count = 6};
+
+      entity.player.inventory[4] = {.type = ITEM_STORAGE, .count = 4};
+      entity.player.inventory[6] = {.type = ITEM_BLOCK, .count = 15};
+
+      entity.player.inventory[10] = {.type = ITEM_CONVEYOR, .count = 3};
+
+      entity.player.inventory[12] = {.type = ITEM_CONVEYOR, .count = 20};
+      entity.player.inventory[15] = {.type = ITEM_STORAGE, .count = 2};
       break;
     }
   }
@@ -368,6 +376,7 @@ void game_update_tick(GameData& game, f32 dt)
         game.mouse_in_player_interaction_radius =
           in_player_interaction_radius(entity, game.mouse_tile_pos);
 
+        // NOTE: select hotbar slot
         for (usize slot_action = ACTION_SLOT_1; slot_action <= ACTION_SLOT_4; ++slot_action)
         {
           if (os_key_just_pressed(key_state_from_action((Action) slot_action, game)))
@@ -376,16 +385,30 @@ void game_update_tick(GameData& game, f32 dt)
           }
         }
 
+        // NOTE: open inventory
+        if (os_key_just_pressed(key_state_from_action(ACTION_OPEN_INVENTORY, game)))
+        {
+          entity.player.is_inventory_open = !entity.player.is_inventory_open;
+        }
+        if (entity.player.is_inventory_open &&
+            os_key_just_pressed(game.window->input.keys[OS_KEY_ESCAPE]))
+        {
+          entity.player.is_inventory_open = false;
+        }
+
         // TODO: do i want this only if game.mouse_in_player_interaction_radius?
+        // NOTE: rotate entity to place
         if (os_key_just_pressed(key_state_from_action(ACTION_ROTATE_ENTITY_TO_PLACE, game)) &&
             ENTITY_ROTATABLE[player_selected_hotbar_slot_entity_type(entity)])
         {
           game.scene.place_rotation = (game.scene.place_rotation + 1) % 4;
         }
 
+        // TODO: game.mouse_over_player_inventory here is from the last frame,
+        // but the change i have in mind (moving ui to update_frame) would fix this
         // NOTE: queue entities to place
         if (game.window->input.rmb.down && game.mouse_in_player_interaction_radius &&
-            player_selected_hotbar_slot(entity).count > 0)
+            player_selected_hotbar_slot(entity).count > 0 && !game.mouse_over_player_inventory)
         {
           bool block_exists_at_mouse = false;
           for (usize i = 0; i < game.scene.entities.size(); ++i)
@@ -430,8 +453,11 @@ void game_update_tick(GameData& game, f32 dt)
           }
         }
 
+        // TODO: game.mouse_over_player_inventory here is from the last frame,
+        // but the change i have in mind (moving ui to update_frame) would fix this
         // NOTE: queue entities to remove
-        if (os_key_just_pressed(game.window->input.lmb) && game.mouse_in_player_interaction_radius)
+        if (os_key_just_pressed(game.window->input.lmb) &&
+            game.mouse_in_player_interaction_radius && !game.mouse_over_player_inventory)
         {
           for (usize i = 0; i < game.scene.entities.size(); ++i)
           {
@@ -567,7 +593,8 @@ void game_update_tick(GameData& game, f32 dt)
           // TODO: this could probably be better
           f32 max_mouse_dist2 = (ENTITY_BOUNDING_BOX[ENTITY_LIGHT_BULB].x / 2.0f) +
                                 (ENTITY_BOUNDING_BOX[ENTITY_LIGHT_BULB].y / 2.0f) / 2.0f;
-          if (in_player_interaction_radius(entity, bulb.pos) && dist2_from_mouse < max_mouse_dist2)
+          if (in_player_interaction_radius(entity, bulb.pos) &&
+              dist2_from_mouse < max_mouse_dist2 && !game.mouse_over_player_inventory)
           {
             bulb.light_bulb.hovered = true;
           }
@@ -585,9 +612,50 @@ void game_update_tick(GameData& game, f32 dt)
     }
   }
 
+  // TODO: pull this out to a normal function?
+  auto inventory_slot = [&game](UI_Layout& layout, const ItemSlot& slot, bool selected)
+  {
+    bool clicked_parent = false;
+    bool clicked_child = false;
+    ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_parent});
+    defer(ui_element_end(
+      layout,
+      {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+       .sizing = {ui_sizing_fixed(64), ui_sizing_fit()},
+       .padding = {4, 4, 0, 0},
+       .child_gap = 4,
+       .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
+       .bg_color = selected ? vec4{0.5f, 0.5f, 0.5f, 1} : vec4{0.3f, 0.3f, 0.3f, 1}}
+    ));
+    {
+      if (slot.count != 0)
+      {
+        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_child});
+        ui_element_end(
+          layout,
+          {.sizing = {ui_sizing_fixed(56), ui_sizing_fixed(56)},
+           .texture = game.item_icons[slot.type]}
+        );
+      }
+      // NOTE: hack to get the proper height
+      else
+      {
+        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_child});
+        ui_element_end(
+          layout,
+          {.sizing = {ui_sizing_fixed(56), ui_sizing_fixed(56)}, .bg_color = {0, 0, 0, 0}}
+        );
+      }
+      ui_text(layout, std::format("{}", slot.count), 1);
+    }
+    return clicked_parent || clicked_child;
+  };
+
   // NOTE: ui
   ui_system_update(game.ui_system);
+  bool mouse_over_hotbar = false;
   {
+    // TODO: figure out a better way to get the position of this layout
     auto hotbar = ui_layout_begin(
       "block selection menu",
       game.ui_system,
@@ -605,48 +673,10 @@ void game_update_tick(GameData& game, f32 dt)
         {.padding = ui_padding_all(4), .child_gap = 4, .bg_color = {0.7f, 0.7f, 0.7f, 1}}
       ));
 
-      auto hotbar_slot = [&game](UI_Layout& layout, const ItemSlot& slot, bool selected)
-      {
-        bool clicked_parent = false;
-        bool clicked_child = false;
-        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_parent});
-        defer(ui_element_end(
-          layout,
-          {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
-           .sizing = {ui_sizing_fixed(64), ui_sizing_fit()},
-           .padding = {4, 4, 0, 0},
-           .child_gap = 4,
-           .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
-           .bg_color = selected ? vec4{0.5f, 0.5f, 0.5f, 1} : vec4{0.3f, 0.3f, 0.3f, 1}}
-        ));
-        {
-          if (slot.count != 0)
-          {
-            ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_child});
-            ui_element_end(
-              layout,
-              {.sizing = {ui_sizing_fixed(56), ui_sizing_fixed(56)},
-               .texture = game.item_icons[slot.type]}
-            );
-          }
-          // NOTE: hack to get the proper height
-          else
-          {
-            ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_child});
-            ui_element_end(
-              layout,
-              {.sizing = {ui_sizing_fixed(56), ui_sizing_fixed(56)}, .bg_color = {0, 0, 0, 0}}
-            );
-          }
-          ui_text(layout, std::format("{}", slot.count), 1);
-        }
-        return clicked_parent || clicked_child;
-      };
-
       for (u8 hotbar_slot_idx = 0; hotbar_slot_idx < EntityPlayer::HOTBAR_SLOT_COUNT;
            ++hotbar_slot_idx)
       {
-        if (hotbar_slot(
+        if (inventory_slot(
               hotbar,
               player->player.inventory[hotbar_slot_idx],
               hotbar_slot_idx == player->player.selected_hotbar_slot
@@ -657,7 +687,60 @@ void game_update_tick(GameData& game, f32 dt)
       }
     }
     ui_layout_end(hotbar);
+    // TODO: change the access of the first element to a helper function instead?
+    mouse_over_hotbar = ui_intersects(
+      game.window->input.mouse_pos,
+      {hotbar.pos.x, hotbar.pos.y},
+      hotbar.elements[1].dimensions
+    );
   }
+  bool mouse_over_inventory = false;
+  if (player->player.is_inventory_open)
+  {
+    // TODO: figure out a better way to get the position of this layout
+    auto inventory = ui_layout_begin(
+      "player inventory",
+      game.ui_system,
+      game.window->input,
+      game.assets,
+      {100 - 64, game.window->dimensions.y - 400},
+      {1280, 720},
+      CHAR_SIZE,
+      game.font_texture
+    );
+    {
+      ui_element_begin(inventory, UI_AUTO_ID);
+      defer(ui_element_end(inventory, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL}));
+
+      // TODO: get rid of the double padding in between rows
+      for (usize row = 1; row < (player->player.inventory.size() / EntityPlayer::HOTBAR_SLOT_COUNT);
+           ++row)
+      {
+        ui_element_begin(inventory, UI_AUTO_ID);
+        defer(ui_element_end(
+          inventory,
+          {.padding = ui_padding_all(4), .child_gap = 4, .bg_color = {0.7f, 0.7f, 0.7f, 1}}
+        ));
+
+        for (usize slot_idx = 0; slot_idx < EntityPlayer::HOTBAR_SLOT_COUNT; ++slot_idx)
+        {
+          inventory_slot(
+            inventory,
+            player->player.inventory[(row * EntityPlayer::HOTBAR_SLOT_COUNT) + slot_idx],
+            false
+          );
+        }
+      }
+    }
+    ui_layout_end(inventory);
+    // TODO: change the access of the first element to a helper function instead?
+    mouse_over_inventory = ui_intersects(
+      game.window->input.mouse_pos,
+      {inventory.pos.x, inventory.pos.y},
+      inventory.elements[1].dimensions
+    );
+  }
+  game.mouse_over_player_inventory = mouse_over_hotbar || mouse_over_inventory;
   if (game.debug.menu.shown)
   {
     {
@@ -1055,7 +1138,9 @@ void game_render(GameData& game, f32 t)
     // TODO: should be if
     // - the selected hotbar slot count != 0 OR currently hovering over some removable entity
     // - AND not hovering over any interactable
-    if (game.mouse_in_player_interaction_radius && player_selected_hotbar_slot(*player).count != 0)
+    // - AND the mouse is not over the players inventory
+    if (game.mouse_in_player_interaction_radius &&
+        player_selected_hotbar_slot(*player).count != 0 && !game.mouse_over_player_inventory)
     {
       // TODO: dont use EntityLightBulb::OFF_HOVER_COLOR, it should be more generic
       if (ENTITY_ROTATABLE[player_selected_hotbar_slot_entity_type(*player)])

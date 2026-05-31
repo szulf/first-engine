@@ -104,3 +104,4 @@
 ## 9. BIG TODO: inventory system
 
 1. basic hotbar
+2. inventory on the player
