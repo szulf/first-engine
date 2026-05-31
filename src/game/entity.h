@@ -7,6 +7,7 @@
 
 #include "base/base.h"
 #include "assets.h"
+#include "items.h"
 
 // TODO: im feeling another refactor of the entity system
 // something that would combine the "flags/traits" and types
@@ -21,8 +22,19 @@ enum EntityType
   ENTITY_TYPE_COUNT,
 };
 
+// TODO: should these maybe just be arrays?
 std::string_view entity_type_to_string(EntityType type);
 std::expected<EntityType, std::string_view> entity_type_from_string(std::string_view str);
+
+static constexpr std::array<EntityType, ITEM_TYPE_COUNT> ENTITY_TYPE_FROM_ITEM_TYPE = []()
+{
+  std::array<EntityType, ITEM_TYPE_COUNT> out{};
+  out[ITEM_BLOCK] = ENTITY_BLOCK;
+  out[ITEM_LIGHT_BULB] = ENTITY_LIGHT_BULB;
+  out[ITEM_CONVEYOR] = ENTITY_CONVEYOR;
+  out[ITEM_STORAGE] = ENTITY_STORAGE;
+  return out;
+}();
 
 static constexpr std::array<std::string_view, ENTITY_TYPE_COUNT> ENTITY_MESH_PATH = []()
 {
@@ -56,6 +68,10 @@ struct EntityPlayer
   f32 prev_rotation{};
   f32 target_rotation{};
   vec3 velocity{};
+  static constexpr u8 HOTBAR_SLOT_COUNT = 4;
+  // NOTE: slots [0; HOTBAR_SLOT_COUNT) are the hotbar
+  std::array<ItemSlot, 16> inventory{};
+  u8 selected_hotbar_slot{};
 };
 
 struct EntityBlock
@@ -106,14 +122,28 @@ bool entities_collide(const Entity& ea, const Entity& eb);
 vec3 entity_render_pos(const Entity& entity, f32 t);
 f32 entity_render_rotation(const Entity& entity, f32 t);
 
+inline ItemSlot& player_selected_hotbar_slot(Entity& player)
+{
+  ASSERT(player.type == ENTITY_PLAYER, "entity needs to be of type ENTITY_PLAYER");
+  return player.player.inventory[player.player.selected_hotbar_slot];
+}
+inline ItemSlot player_selected_hotbar_slot(const Entity& player)
+{
+  ASSERT(player.type == ENTITY_PLAYER, "entity needs to be of type ENTITY_PLAYER");
+  return player.player.inventory[player.player.selected_hotbar_slot];
+}
+inline EntityType player_selected_hotbar_slot_entity_type(const Entity& player)
+{
+  return ENTITY_TYPE_FROM_ITEM_TYPE[player_selected_hotbar_slot(player).type];
+}
+
 struct Scene
 {
   vec3 ambient_color{};
   std::vector<Entity> entities{};
 
-  // TODO: do i serialize these?
-  EntityType selected_entity_to_place = ENTITY_BLOCK;
   // TODO: make this an enum?
+  // TODO: should this really be on the scene?
   // NOTE: represents rotation as k * pi/2,
   // where k is this variable and holds values in range [0; 3]
   u8 place_rotation{};

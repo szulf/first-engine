@@ -1,6 +1,8 @@
 #ifndef GAME_GAME_H
 #define GAME_GAME_H
 
+#include <array>
+
 #include "base/base.h"
 #include "os/os.h"
 #include "sound.h"
@@ -19,6 +21,7 @@ enum Action
   ACTION_SLOT_1,
   ACTION_SLOT_2,
   ACTION_SLOT_3,
+  ACTION_SLOT_4,
 
   ACTION_SAVE_SCENE,
   ACTION_LOAD_SCENE,
@@ -49,6 +52,7 @@ static constexpr Keymap DEFAULT_KEYMAP = []() -> Keymap
   k.map[ACTION_SLOT_1] = OS_KEY_1;
   k.map[ACTION_SLOT_2] = OS_KEY_2;
   k.map[ACTION_SLOT_3] = OS_KEY_3;
+  k.map[ACTION_SLOT_4] = OS_KEY_4;
   k.map[ACTION_SAVE_SCENE] = OS_KEY_K;
   k.map[ACTION_LOAD_SCENE] = OS_KEY_L;
   k.map[ACTION_ROTATE_ENTITY_TO_PLACE] = OS_KEY_R;
@@ -80,9 +84,7 @@ struct GameData
   ShaderHandle shadow_depth_shader{};
   TextureHandle font_texture{};
 
-  TextureHandle entity_block_icon{};
-  TextureHandle entity_conveyor_icon{};
-  TextureHandle entity_storage_icon{};
+  std::array<TextureHandle, ITEM_TYPE_COUNT> item_icons{};
 
   vec3 mouse_tile_pos{};
   bool mouse_in_player_interaction_radius{};

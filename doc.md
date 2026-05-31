@@ -1,6 +1,14 @@
-## BIG TODO: placing/destroying something on the ground
+## BIG TODO: inventory system
 
 ## SMALL TODOS: (ordered)
+
+2. inventory on the player
+3. inventory on the storage entity
+4. ability to move items around
+5. add inventories to serialization
+6. decide what to do when removing entities 
+   - either entity_item that you can pick up, or
+   - straight to inventory
 
 ---
 
@@ -21,7 +29,7 @@
 
 ### Game Mechanics:
 
-- inventory system
+- working conveyors
 - better collision detection
 
 ### Rendering:

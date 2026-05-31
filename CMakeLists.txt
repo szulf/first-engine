@@ -21,6 +21,7 @@ endif()
 
 # TODO: can this also be used for gcc?
 set(clang_flags_common
+  -fno-exceptions
   -Weverything -Werror -pedantic
   -Wno-c++20-compat
   -Wno-c++98-compat -Wno-c++98-compat-pedantic
@@ -114,6 +115,7 @@ add_executable(game
   src/game/parser.h src/game/parser.cpp
   src/game/sound.h src/game/sound.cpp
   src/game/ui.h src/game/ui.cpp
+  src/game/items.h
 )
 target_include_directories(game PRIVATE ${include_dirs})
 target_compile_options(game PRIVATE ${flags})

@@ -118,7 +118,7 @@ Keymap load_gkey(const std::filesystem::path& path)
   return keymap;
 }
 
-static TextureHandle create_entity_icon(EntityType entity_type, AssetStore& assets)
+static TextureHandle create_item_icon(ItemType item_type, AssetStore& assets)
 {
   Camera icon_camera = {
     .type = CAMERA_TYPE_PERSPECTIVE,
@@ -141,7 +141,7 @@ static TextureHandle create_entity_icon(EntityType entity_type, AssetStore& asse
   render_pass_override_shader(pass, g_render_data.default_shader);
   render_mesh(
     pass.cmds_3d,
-    load_obj(assets, ENTITY_MESH_PATH[entity_type]),
+    load_obj(assets, ENTITY_MESH_PATH[ENTITY_TYPE_FROM_ITEM_TYPE[item_type]]),
     {0, 0, 0},
     -0.25f * std::numbers::pi_v<f32>,
     {1, 1, 1},
@@ -200,9 +200,23 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
   game.font_texture = load_texture(game.assets, "assets/font.png");
   // m_sound_system.play_looped(SoundHandle::TEST_MUSIC, 0.1f);
 
-  game.entity_block_icon = create_entity_icon(ENTITY_BLOCK, game.assets);
-  game.entity_conveyor_icon = create_entity_icon(ENTITY_CONVEYOR, game.assets);
-  game.entity_storage_icon = create_entity_icon(ENTITY_STORAGE, game.assets);
+  for (usize item_type = 0; item_type < ITEM_TYPE_COUNT; ++item_type)
+  {
+    game.item_icons[item_type] = create_item_icon((ItemType) item_type, game.assets);
+  }
+
+  // TODO: remove later
+  for (usize entity_idx = 0; entity_idx < game.scene.entities.size(); ++entity_idx)
+  {
+    auto& entity = game.scene.entities[entity_idx];
+    if (entity.type == ENTITY_PLAYER)
+    {
+      entity.player.inventory[1] = {.type = ITEM_BLOCK, .count = 25};
+      entity.player.inventory[2] = {.type = ITEM_CONVEYOR, .count = 40};
+      entity.player.inventory[3] = {.type = ITEM_STORAGE, .count = 6};
+      break;
+    }
+  }
 
   return game;
 }
@@ -252,6 +266,21 @@ void game_update_tick(GameData& game, f32 dt)
   }
   acceleration = normalize(acceleration);
 
+  // TODO: i really dont like this, maybe just store the player separately from the entities vector?
+  // or just put the hotbar ui in players update loop?
+  // NOTE: saving the player entity for easy access later in ui code
+  // (need to use it to render hotbar/inventory)
+  Entity* player{};
+  // NOTE: using a special loop just for this, because this still needs to work even if noclip is on
+  for (usize entity_idx = 0; entity_idx < game.scene.entities.size(); ++entity_idx)
+  {
+    if (game.scene.entities[entity_idx].type == ENTITY_PLAYER)
+    {
+      player = &game.scene.entities[entity_idx];
+      break;
+    }
+  }
+
   if (game.debug.noclip)
   {
     game.used_camera = &game.debug_camera;
@@ -292,26 +321,6 @@ void game_update_tick(GameData& game, f32 dt)
         REPORT_ERROR("Failed to load new scene");
       }
       game.scene = *scene;
-    }
-
-    if (os_key_just_pressed(key_state_from_action(ACTION_SLOT_1, game)))
-    {
-      game.scene.selected_entity_to_place = ENTITY_BLOCK;
-    }
-    if (os_key_just_pressed(key_state_from_action(ACTION_SLOT_2, game)))
-    {
-      game.scene.selected_entity_to_place = ENTITY_CONVEYOR;
-    }
-    if (os_key_just_pressed(key_state_from_action(ACTION_SLOT_3, game)))
-    {
-      game.scene.selected_entity_to_place = ENTITY_STORAGE;
-    }
-
-    // TODO: do i want this only if game.mouse_in_player_interaction_radius?
-    if (os_key_just_pressed(key_state_from_action(ACTION_ROTATE_ENTITY_TO_PLACE, game)) &&
-        ENTITY_ROTATABLE[game.scene.selected_entity_to_place])
-    {
-      game.scene.place_rotation = (game.scene.place_rotation + 1) % 4;
     }
 
     // NOTE: calculate mouse position in world space
@@ -359,8 +368,24 @@ void game_update_tick(GameData& game, f32 dt)
         game.mouse_in_player_interaction_radius =
           in_player_interaction_radius(entity, game.mouse_tile_pos);
 
-        // NOTE: queue entites to place
-        if (game.window->input.rmb.down && game.mouse_in_player_interaction_radius)
+        for (usize slot_action = ACTION_SLOT_1; slot_action <= ACTION_SLOT_4; ++slot_action)
+        {
+          if (os_key_just_pressed(key_state_from_action((Action) slot_action, game)))
+          {
+            entity.player.selected_hotbar_slot = (u8) (slot_action - ACTION_SLOT_1);
+          }
+        }
+
+        // TODO: do i want this only if game.mouse_in_player_interaction_radius?
+        if (os_key_just_pressed(key_state_from_action(ACTION_ROTATE_ENTITY_TO_PLACE, game)) &&
+            ENTITY_ROTATABLE[player_selected_hotbar_slot_entity_type(entity)])
+        {
+          game.scene.place_rotation = (game.scene.place_rotation + 1) % 4;
+        }
+
+        // NOTE: queue entities to place
+        if (game.window->input.rmb.down && game.mouse_in_player_interaction_radius &&
+            player_selected_hotbar_slot(entity).count > 0)
         {
           bool block_exists_at_mouse = false;
           for (usize i = 0; i < game.scene.entities.size(); ++i)
@@ -368,7 +393,8 @@ void game_update_tick(GameData& game, f32 dt)
             if (f32_equal(game.scene.entities[i].pos.y, 0) &&
                 entities_collide(
                   game.scene.entities[i],
-                  {.type = game.scene.selected_entity_to_place, .pos = game.mouse_tile_pos}
+                  {.type = player_selected_hotbar_slot_entity_type(entity),
+                   .pos = game.mouse_tile_pos}
                 ))
             {
               block_exists_at_mouse = true;
@@ -377,34 +403,35 @@ void game_update_tick(GameData& game, f32 dt)
 
           if (!block_exists_at_mouse)
           {
-            auto placed_entity = entity_new(game.scene.selected_entity_to_place, game.assets);
+            auto placed_entity =
+              entity_new(player_selected_hotbar_slot_entity_type(entity), game.assets);
             placed_entity.pos = game.mouse_tile_pos;
-            if (ENTITY_ROTATABLE[game.scene.selected_entity_to_place])
+            if (ENTITY_ROTATABLE[player_selected_hotbar_slot_entity_type(entity)])
             {
-              switch (game.scene.selected_entity_to_place)
+              switch (player_selected_hotbar_slot(entity).type)
               {
-                case ENTITY_CONVEYOR:
+                case ITEM_CONVEYOR:
                   placed_entity.conveyor.rotation =
                     (f32) game.scene.place_rotation * (0.5f * std::numbers::pi_v<f32>);
                   break;
-                case ENTITY_STORAGE:
+                case ITEM_STORAGE:
                   placed_entity.storage.rotation =
                     (f32) game.scene.place_rotation * (0.5f * std::numbers::pi_v<f32>);
                   break;
-                case ENTITY_PLAYER:
-                case ENTITY_BLOCK:
-                case ENTITY_LIGHT_BULB:
-                case ENTITY_TYPE_COUNT:
+                case ITEM_BLOCK:
+                case ITEM_LIGHT_BULB:
+                case ITEM_TYPE_COUNT:
                 default:
                   break;
               }
             }
             game.scene.entity_place_queue.push_back(placed_entity);
+            --player_selected_hotbar_slot(entity).count;
           }
         }
 
         // NOTE: queue entities to remove
-        if (game.window->input.lmb.down && game.mouse_in_player_interaction_radius)
+        if (os_key_just_pressed(game.window->input.lmb) && game.mouse_in_player_interaction_radius)
         {
           for (usize i = 0; i < game.scene.entities.size(); ++i)
           {
@@ -561,7 +588,7 @@ void game_update_tick(GameData& game, f32 dt)
   // NOTE: ui
   ui_system_update(game.ui_system);
   {
-    auto block_selection_menu = ui_layout_begin(
+    auto hotbar = ui_layout_begin(
       "block selection menu",
       game.ui_system,
       game.window->input,
@@ -572,59 +599,64 @@ void game_update_tick(GameData& game, f32 dt)
       game.font_texture
     );
     {
-      ui_element_begin(block_selection_menu, UI_AUTO_ID);
+      ui_element_begin(hotbar, UI_AUTO_ID);
       defer(ui_element_end(
-        block_selection_menu,
+        hotbar,
         {.padding = ui_padding_all(4), .child_gap = 4, .bg_color = {0.7f, 0.7f, 0.7f, 1}}
       ));
 
-      auto block_panel = [](UI_Layout& layout, TextureHandle texture, bool is_selected)
+      auto hotbar_slot = [&game](UI_Layout& layout, const ItemSlot& slot, bool selected)
       {
         bool clicked_parent = false;
         bool clicked_child = false;
         ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_parent});
         defer(ui_element_end(
           layout,
-          {.sizing = {ui_sizing_fixed(64), ui_sizing_fixed(64)},
+          {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+           .sizing = {ui_sizing_fixed(64), ui_sizing_fit()},
+           .padding = {4, 4, 0, 0},
+           .child_gap = 4,
            .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
-           .bg_color = is_selected ? vec4{0.5f, 0.5f, 0.5f, 1} : vec4{0.3f, 0.3f, 0.3f, 1}}
+           .bg_color = selected ? vec4{0.5f, 0.5f, 0.5f, 1} : vec4{0.3f, 0.3f, 0.3f, 1}}
         ));
         {
-          ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_child});
-          ui_element_end(
-            layout,
-            {.sizing = {ui_sizing_fixed(56), ui_sizing_fixed(56)}, .texture = texture}
-          );
+          if (slot.count != 0)
+          {
+            ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_child});
+            ui_element_end(
+              layout,
+              {.sizing = {ui_sizing_fixed(56), ui_sizing_fixed(56)},
+               .texture = game.item_icons[slot.type]}
+            );
+          }
+          // NOTE: hack to get the proper height
+          else
+          {
+            ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_child});
+            ui_element_end(
+              layout,
+              {.sizing = {ui_sizing_fixed(56), ui_sizing_fixed(56)}, .bg_color = {0, 0, 0, 0}}
+            );
+          }
+          ui_text(layout, std::format("{}", slot.count), 1);
         }
         return clicked_parent || clicked_child;
       };
 
-      if (block_panel(
-            block_selection_menu,
-            game.entity_block_icon,
-            game.scene.selected_entity_to_place == ENTITY_BLOCK
-          ))
+      for (u8 hotbar_slot_idx = 0; hotbar_slot_idx < EntityPlayer::HOTBAR_SLOT_COUNT;
+           ++hotbar_slot_idx)
       {
-        game.scene.selected_entity_to_place = ENTITY_BLOCK;
-      }
-      if (block_panel(
-            block_selection_menu,
-            game.entity_conveyor_icon,
-            game.scene.selected_entity_to_place == ENTITY_CONVEYOR
-          ))
-      {
-        game.scene.selected_entity_to_place = ENTITY_CONVEYOR;
-      }
-      if (block_panel(
-            block_selection_menu,
-            game.entity_storage_icon,
-            game.scene.selected_entity_to_place == ENTITY_STORAGE
-          ))
-      {
-        game.scene.selected_entity_to_place = ENTITY_STORAGE;
+        if (hotbar_slot(
+              hotbar,
+              player->player.inventory[hotbar_slot_idx],
+              hotbar_slot_idx == player->player.selected_hotbar_slot
+            ))
+        {
+          player->player.selected_hotbar_slot = hotbar_slot_idx;
+        }
       }
     }
-    ui_layout_end(block_selection_menu);
+    ui_layout_end(hotbar);
   }
   if (game.debug.menu.shown)
   {
@@ -953,9 +985,15 @@ void game_render(GameData& game, f32 t)
       }
     );
 
+    // TODO: again i dont like this, another reason to store the player entity separately
+    const Entity* player{};
     for (usize i = 0; i < game.scene.entities.size(); ++i)
     {
       const auto& entity = game.scene.entities[i];
+      if (entity.type == ENTITY_PLAYER)
+      {
+        player = &entity;
+      }
       render_mesh(
         pass.cmds_3d,
         entity.mesh,
@@ -1014,10 +1052,13 @@ void game_render(GameData& game, f32 t)
       }
     }
 
-    if (game.mouse_in_player_interaction_radius)
+    // TODO: should be if
+    // - the selected hotbar slot count != 0 OR currently hovering over some removable entity
+    // - AND not hovering over any interactable
+    if (game.mouse_in_player_interaction_radius && player_selected_hotbar_slot(*player).count != 0)
     {
       // TODO: dont use EntityLightBulb::OFF_HOVER_COLOR, it should be more generic
-      if (ENTITY_ROTATABLE[game.scene.selected_entity_to_place])
+      if (ENTITY_ROTATABLE[player_selected_hotbar_slot_entity_type(*player)])
       {
         f32 arrow_rotation = (f32) game.scene.place_rotation * (0.5f * std::numbers::pi_v<f32>);
         render_line_arrow(

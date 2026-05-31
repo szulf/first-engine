@@ -4,3 +4,4 @@ build_release/
 .zed/
 source_todos.md
 vendor/sdl3/
+CLAUDE.md
