@@ -58,6 +58,7 @@ std::expected<EntityType, std::string_view> entity_type_from_string(std::string_
 Entity entity_new(EntityType type, AssetStore& assets)
 {
   Entity entity{};
+  std::memset(&entity, 0, sizeof(Entity));
   entity.type = type;
   if (entity.type == ENTITY_LIGHT_BULB)
   {

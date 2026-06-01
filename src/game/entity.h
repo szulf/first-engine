@@ -11,6 +11,7 @@
 
 // TODO: im feeling another refactor of the entity system
 // something that would combine the "flags/traits" and types
+// and maybe a map from entity types (or maybe traits?) to entities
 
 enum EntityType
 {
@@ -69,8 +70,9 @@ struct EntityPlayer
   f32 target_rotation{};
   vec3 velocity{};
   static constexpr u8 HOTBAR_SLOT_COUNT = 4;
+  static constexpr u8 INVENTORY_SIZE = 16;
   // NOTE: slots [0; HOTBAR_SLOT_COUNT) are the hotbar
-  std::array<ItemSlot, 16> inventory{};
+  ItemSlot inventory[INVENTORY_SIZE]{};
   u8 selected_hotbar_slot{};
   bool is_inventory_open{};
 };
@@ -99,6 +101,12 @@ struct EntityConveyor
 struct EntityStorage
 {
   f32 rotation{};
+  bool hovered{};
+  static constexpr u8 INVENTORY_SIZE = 32;
+  ItemSlot inventory[INVENTORY_SIZE]{};
+  bool is_inventory_open{};
+  // NOTE: used for ui scrolling
+  i32 scroll_value{};
 };
 
 struct Entity

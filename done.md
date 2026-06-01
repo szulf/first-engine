@@ -105,3 +105,4 @@
 
 1. basic hotbar
 2. inventory on the player
+3. inventory on the storage entity

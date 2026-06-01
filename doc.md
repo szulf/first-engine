@@ -2,7 +2,6 @@
 
 ## SMALL TODOS: (ordered)
 
-3. inventory on the storage entity
 4. ability to move items around
 5. add inventories to serialization
 6. decide what to do when removing entities 

@@ -240,8 +240,48 @@ static bool in_player_interaction_radius(const Entity& player, const vec3& pos)
   return dist2_from_player < square(EntityPlayer::INTERACTION_RADIUS);
 }
 
+static bool
+inventory_slot_ui(UI_Layout& layout, const ItemSlot& slot, bool selected, GameData& game)
+{
+  bool clicked_parent = false;
+  bool clicked_child = false;
+  ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_parent});
+  defer(ui_element_end(
+    layout,
+    {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+     .sizing = {ui_sizing_fixed(64), ui_sizing_fit()},
+     .padding = {4, 4, 0, 0},
+     .child_gap = 4,
+     .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
+     .bg_color = selected ? vec4{0.5f, 0.5f, 0.5f, 1} : vec4{0.3f, 0.3f, 0.3f, 1}}
+  ));
+  {
+    if (slot.count != 0)
+    {
+      ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_child});
+      ui_element_end(
+        layout,
+        {.sizing = {ui_sizing_fixed(56), ui_sizing_fixed(56)}, .texture = game.item_icons[slot.type]
+        }
+      );
+    }
+    // NOTE: hack to get the proper height
+    else
+    {
+      ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_child});
+      ui_element_end(
+        layout,
+        {.sizing = {ui_sizing_fixed(56), ui_sizing_fixed(56)}, .bg_color = {0, 0, 0, 0}}
+      );
+    }
+    ui_text(layout, std::format("{}", slot.count), 1);
+  }
+  return clicked_parent || clicked_child;
+}
+
 void game_update_tick(GameData& game, f32 dt)
 {
+  ui_system_update(game.ui_system);
   game.gameplay_camera.viewport = game.debug_camera.viewport = game.window->dimensions;
 
   if (os_key_just_pressed(key_state_from_action(ACTION_TOGGLE_DEBUG_MENU, game)))
@@ -580,79 +620,149 @@ void game_update_tick(GameData& game, f32 dt)
           }
         }
 
+        // TODO: can this be part of updates and not a loop in players update?
         // NOTE: interactions
         for (usize idx = 0; idx < game.scene.entities.size(); ++idx)
         {
-          auto& bulb = game.scene.entities[idx];
-          if (bulb.type != ENTITY_LIGHT_BULB)
+          auto& interactee = game.scene.entities[idx];
+          vec2 max_mouse_dist = {
+            ENTITY_BOUNDING_BOX[interactee.type].x / 2.0f,
+            ENTITY_BOUNDING_BOX[interactee.type].y / 2.0f
+          };
+          bool mouse_in_entity_range_x =
+            std::abs(game.mouse_tile_pos.x - interactee.pos.x) < max_mouse_dist.x;
+          bool mouse_in_entity_range_z =
+            std::abs(game.mouse_tile_pos.z - interactee.pos.z) < max_mouse_dist.y;
+          bool mouse_in_entity_range = mouse_in_entity_range_x && mouse_in_entity_range_z;
+          switch (interactee.type)
           {
-            continue;
-          }
-          bulb.light_bulb.hovered = false;
-          f32 dist2_from_mouse = length2(bulb.pos - mouse_world_pos);
-          // TODO: this could probably be better
-          f32 max_mouse_dist2 = (ENTITY_BOUNDING_BOX[ENTITY_LIGHT_BULB].x / 2.0f) +
-                                (ENTITY_BOUNDING_BOX[ENTITY_LIGHT_BULB].y / 2.0f) / 2.0f;
-          if (in_player_interaction_radius(entity, bulb.pos) &&
-              dist2_from_mouse < max_mouse_dist2 && !game.mouse_over_player_inventory)
-          {
-            bulb.light_bulb.hovered = true;
-          }
+            case ENTITY_LIGHT_BULB:
+            {
+              interactee.light_bulb.hovered = false;
+              if (in_player_interaction_radius(entity, interactee.pos) && mouse_in_entity_range &&
+                  !game.mouse_over_player_inventory)
+              {
+                interactee.light_bulb.hovered = true;
+              }
 
-          if (bulb.light_bulb.hovered &&
-              os_key_just_pressed(key_state_from_action(ACTION_INTERACT, game)))
-          {
-            bulb.light_bulb.on = !bulb.light_bulb.on;
-            bulb.tint = bulb.light_bulb.on ? EntityLightBulb::ON_TINT : EntityLightBulb::OFF_TINT;
-            sound_play_once(game.sound_system, SOUND_HANDLE_SHOTGUN, 0.1f);
-            sound_stop_looped(game.sound_system, SOUND_HANDLE_TEST_MUSIC);
+              if (interactee.light_bulb.hovered &&
+                  os_key_just_pressed(key_state_from_action(ACTION_INTERACT, game)))
+              {
+                interactee.light_bulb.on = !interactee.light_bulb.on;
+                interactee.tint =
+                  interactee.light_bulb.on ? EntityLightBulb::ON_TINT : EntityLightBulb::OFF_TINT;
+                sound_play_once(game.sound_system, SOUND_HANDLE_SHOTGUN, 0.1f);
+                sound_stop_looped(game.sound_system, SOUND_HANDLE_TEST_MUSIC);
+              }
+            }
+            break;
+
+            case ENTITY_STORAGE:
+            {
+              // TODO: can i get this logic better?
+              if (interactee.storage.is_inventory_open &&
+                  !in_player_interaction_radius(entity, interactee.pos))
+              {
+                interactee.storage.is_inventory_open = false;
+              }
+              interactee.storage.hovered = in_player_interaction_radius(entity, interactee.pos) &&
+                                           mouse_in_entity_range &&
+                                           !game.mouse_over_player_inventory;
+              if (!interactee.storage.is_inventory_open &&
+                  in_player_interaction_radius(entity, interactee.pos) && mouse_in_entity_range &&
+                  !game.mouse_over_player_inventory)
+              {
+                if (os_key_just_pressed(key_state_from_action(ACTION_INTERACT, game)))
+                {
+                  // TODO: this is horrible, but should be fine after the entity refactor
+                  for (usize storage_idx = 0; storage_idx < game.scene.entities.size();
+                       ++storage_idx)
+                  {
+                    if (game.scene.entities[storage_idx].type == ENTITY_STORAGE &&
+                        game.scene.entities[storage_idx].storage.is_inventory_open)
+                    {
+                      game.scene.entities[storage_idx].storage.is_inventory_open = false;
+                    }
+                  }
+                  interactee.storage.is_inventory_open = true;
+                }
+              }
+              else
+              {
+                if ((os_key_just_pressed(key_state_from_action(ACTION_INTERACT, game)) ||
+                     os_key_just_pressed(game.window->input.keys[OS_KEY_ESCAPE])))
+                {
+                  interactee.storage.is_inventory_open = false;
+                }
+              }
+            }
+            break;
+            case ENTITY_PLAYER:
+            case ENTITY_BLOCK:
+            case ENTITY_CONVEYOR:
+            case ENTITY_TYPE_COUNT:
+            default:
+              break;
           }
+        }
+      }
+      else if (entity.type == ENTITY_STORAGE)
+      {
+        if (entity.storage.is_inventory_open)
+        {
+          // TODO: pull this out into some inventory_ui() function?
+          // TODO: figure out a better way to get the position of this layout
+          auto inventory = ui_layout_begin(
+            "storage inventory",
+            game.ui_system,
+            game.window->input,
+            game.assets,
+            {100 - 64, 200},
+            {1280, 720},
+            CHAR_SIZE,
+            game.font_texture
+          );
+          {
+            ui_element_begin(inventory, UI_AUTO_ID);
+            // TODO: the fixed height here is icky
+            // TODO: add new scrolling behaviour in ui that would match this use case
+            defer(ui_element_end(
+              inventory,
+              {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
+               .sizing = {ui_sizing_fit(), ui_sizing_fixed(400)},
+               .bg_color = {0.7f, 0.7f, 0.7f, 1},
+               .scroll_value = &entity.storage.scroll_value}
+            ));
+
+            // TODO: get rid of the double padding in between rows
+            for (usize row = 1;
+                 row < (EntityStorage::INVENTORY_SIZE / EntityPlayer::HOTBAR_SLOT_COUNT);
+                 ++row)
+            {
+              ui_element_begin(inventory, UI_AUTO_ID);
+              defer(ui_element_end(
+                inventory,
+                {.padding = ui_padding_all(4), .child_gap = 4, .bg_color = {0.7f, 0.7f, 0.7f, 1}}
+              ));
+
+              for (usize slot_idx = 0; slot_idx < EntityPlayer::HOTBAR_SLOT_COUNT; ++slot_idx)
+              {
+                inventory_slot_ui(
+                  inventory,
+                  entity.storage.inventory[(row * EntityPlayer::HOTBAR_SLOT_COUNT) + slot_idx],
+                  false,
+                  game
+                );
+              }
+            }
+          }
+          ui_layout_end(inventory);
         }
       }
     }
   }
 
-  // TODO: pull this out to a normal function?
-  auto inventory_slot = [&game](UI_Layout& layout, const ItemSlot& slot, bool selected)
-  {
-    bool clicked_parent = false;
-    bool clicked_child = false;
-    ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_parent});
-    defer(ui_element_end(
-      layout,
-      {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL,
-       .sizing = {ui_sizing_fixed(64), ui_sizing_fit()},
-       .padding = {4, 4, 0, 0},
-       .child_gap = 4,
-       .child_alignment = {UI_CHILD_ALIGNMENT_CENTER, UI_CHILD_ALIGNMENT_CENTER},
-       .bg_color = selected ? vec4{0.5f, 0.5f, 0.5f, 1} : vec4{0.3f, 0.3f, 0.3f, 1}}
-    ));
-    {
-      if (slot.count != 0)
-      {
-        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_child});
-        ui_element_end(
-          layout,
-          {.sizing = {ui_sizing_fixed(56), ui_sizing_fixed(56)},
-           .texture = game.item_icons[slot.type]}
-        );
-      }
-      // NOTE: hack to get the proper height
-      else
-      {
-        ui_element_begin(layout, UI_AUTO_ID, {.clicked = &clicked_child});
-        ui_element_end(
-          layout,
-          {.sizing = {ui_sizing_fixed(56), ui_sizing_fixed(56)}, .bg_color = {0, 0, 0, 0}}
-        );
-      }
-      ui_text(layout, std::format("{}", slot.count), 1);
-    }
-    return clicked_parent || clicked_child;
-  };
-
   // NOTE: ui
-  ui_system_update(game.ui_system);
   bool mouse_over_hotbar = false;
   {
     // TODO: figure out a better way to get the position of this layout
@@ -676,10 +786,11 @@ void game_update_tick(GameData& game, f32 dt)
       for (u8 hotbar_slot_idx = 0; hotbar_slot_idx < EntityPlayer::HOTBAR_SLOT_COUNT;
            ++hotbar_slot_idx)
       {
-        if (inventory_slot(
+        if (inventory_slot_ui(
               hotbar,
               player->player.inventory[hotbar_slot_idx],
-              hotbar_slot_idx == player->player.selected_hotbar_slot
+              hotbar_slot_idx == player->player.selected_hotbar_slot,
+              game
             ))
         {
           player->player.selected_hotbar_slot = hotbar_slot_idx;
@@ -697,6 +808,7 @@ void game_update_tick(GameData& game, f32 dt)
   bool mouse_over_inventory = false;
   if (player->player.is_inventory_open)
   {
+    // TODO: pull this out into some inventory_ui() function?
     // TODO: figure out a better way to get the position of this layout
     auto inventory = ui_layout_begin(
       "player inventory",
@@ -713,7 +825,7 @@ void game_update_tick(GameData& game, f32 dt)
       defer(ui_element_end(inventory, {.layout_direction = UI_LAYOUT_DIRECTION_VERTICAL}));
 
       // TODO: get rid of the double padding in between rows
-      for (usize row = 1; row < (player->player.inventory.size() / EntityPlayer::HOTBAR_SLOT_COUNT);
+      for (usize row = 1; row < (EntityPlayer::INVENTORY_SIZE / EntityPlayer::HOTBAR_SLOT_COUNT);
            ++row)
       {
         ui_element_begin(inventory, UI_AUTO_ID);
@@ -724,10 +836,11 @@ void game_update_tick(GameData& game, f32 dt)
 
         for (usize slot_idx = 0; slot_idx < EntityPlayer::HOTBAR_SLOT_COUNT; ++slot_idx)
         {
-          inventory_slot(
+          inventory_slot_ui(
             inventory,
             player->player.inventory[(row * EntityPlayer::HOTBAR_SLOT_COUNT) + slot_idx],
-            false
+            false,
+            game
           );
         }
       }
@@ -1068,15 +1181,110 @@ void game_render(GameData& game, f32 t)
       }
     );
 
-    // TODO: again i dont like this, another reason to store the player entity separately
-    const Entity* player{};
     for (usize i = 0; i < game.scene.entities.size(); ++i)
     {
       const auto& entity = game.scene.entities[i];
-      if (entity.type == ENTITY_PLAYER)
+      switch (entity.type)
       {
-        player = &entity;
+        case ENTITY_PLAYER:
+        {
+          // TODO: should be if
+          // - the selected hotbar slot count != 0 OR currently hovering over some removable entity
+          // - AND not hovering over any interactable
+          // - AND the mouse is not over the players inventory
+          if (game.mouse_in_player_interaction_radius &&
+              player_selected_hotbar_slot(entity).count != 0 && !game.mouse_over_player_inventory)
+          {
+            // TODO: dont use EntityLightBulb::OFF_HOVER_COLOR, it should be more generic
+            if (ENTITY_ROTATABLE[player_selected_hotbar_slot_entity_type(entity)])
+            {
+              render_line_arrow(
+                pass.cmds_3d,
+                game.mouse_tile_pos,
+                0.6f,
+                0.3f,
+                (f32) game.scene.place_rotation * (0.5f * std::numbers::pi_v<f32>),
+                EntityLightBulb::OFF_HOVER_COLOR,
+                game.assets
+              );
+            }
+            pass.cmds_3d.push_back(render_cube_wires(
+              game.mouse_tile_pos,
+              {1, 1, 1},
+              EntityLightBulb::OFF_HOVER_COLOR,
+              game.assets
+            ));
+          }
+          if (game.debug.display_bounding_boxes)
+          {
+            pass.cmds_3d.push_back(render_line(
+              entity_render_pos(entity, t),
+              0.6f,
+              entity_render_rotation(entity, t),
+              {1, 0, 0},
+              game.assets
+            ));
+            pass.cmds_3d.push_back(render_ring(
+              entity_render_pos(entity, t),
+              EntityPlayer::INTERACTION_RADIUS,
+              {1, 1, 0},
+              game.assets
+            ));
+          }
+        }
+        break;
+
+        case ENTITY_LIGHT_BULB:
+        {
+          if (entity.light_bulb.hovered)
+          {
+            pass.cmds_3d.push_back(render_cube_wires(
+              entity_render_pos(entity, t),
+              {ENTITY_BOUNDING_BOX[entity.type].x, 1, ENTITY_BOUNDING_BOX[entity.type].y},
+              entity.light_bulb.on ? EntityLightBulb::ON_HOVER_COLOR
+                                   : EntityLightBulb::OFF_HOVER_COLOR,
+              game.assets
+            ));
+          }
+          if (entity.light_bulb.on)
+          {
+            vec3 pos = entity_render_pos(entity, t);
+            pos.y += EntityLightBulb::LIGHT_HEIGHT_OFFSET;
+            render_pass_set_light(pass, pos, EntityLightBulb::LIGHT_COLOR);
+          }
+        }
+        break;
+
+        case ENTITY_STORAGE:
+        {
+          if (entity.storage.hovered && !entity.storage.is_inventory_open)
+          {
+            pass.cmds_3d.push_back(render_cube_wires(
+              entity_render_pos(entity, t),
+              {ENTITY_BOUNDING_BOX[entity.type].x, 1, ENTITY_BOUNDING_BOX[entity.type].y},
+              EntityLightBulb::OFF_HOVER_COLOR,
+              game.assets
+            ));
+          }
+          else if (entity.storage.is_inventory_open)
+          {
+            pass.cmds_3d.push_back(render_cube_wires(
+              entity_render_pos(entity, t),
+              {ENTITY_BOUNDING_BOX[entity.type].x, 1, ENTITY_BOUNDING_BOX[entity.type].y},
+              EntityLightBulb::ON_HOVER_COLOR,
+              game.assets
+            ));
+          }
+        }
+        break;
+
+        case ENTITY_BLOCK:
+        case ENTITY_CONVEYOR:
+        case ENTITY_TYPE_COUNT:
+        default:
+          break;
       }
+
       render_mesh(
         pass.cmds_3d,
         entity.mesh,
@@ -1085,83 +1293,16 @@ void game_render(GameData& game, f32 t)
         entity.tint,
         game.assets
       );
-      if (entity.type == ENTITY_LIGHT_BULB)
-      {
-        if (entity.light_bulb.hovered)
-        {
-          pass.cmds_3d.push_back(render_cube_wires(
-            entity_render_pos(entity, t),
-            {ENTITY_BOUNDING_BOX[entity.type].x, 1, ENTITY_BOUNDING_BOX[entity.type].y},
-            entity.light_bulb.on ? EntityLightBulb::ON_HOVER_COLOR
-                                 : EntityLightBulb::OFF_HOVER_COLOR,
-            game.assets
-          ));
-        }
-        if (entity.light_bulb.on)
-        {
-          vec3 pos = entity_render_pos(entity, t);
-          pos.y += EntityLightBulb::LIGHT_HEIGHT_OFFSET;
-          render_pass_set_light(pass, pos, EntityLightBulb::LIGHT_COLOR);
-        }
-      }
 
-      if (game.debug.display_bounding_boxes)
+      if (game.debug.display_bounding_boxes && f32_equal(entity.pos.y, 0))
       {
-        if (entity.type == ENTITY_PLAYER)
-        {
-          pass.cmds_3d.push_back(render_line(
-            entity_render_pos(entity, t),
-            0.6f,
-            entity_render_rotation(entity, t),
-            {1, 0, 0},
-            game.assets
-          ));
-          pass.cmds_3d.push_back(render_ring(
-            entity_render_pos(entity, t),
-            EntityPlayer::INTERACTION_RADIUS,
-            {1, 1, 0},
-            game.assets
-          ));
-        }
-        if (f32_equal(entity.pos.y, 0))
-        {
-          pass.cmds_3d.push_back(render_cube_wires(
-            entity_render_pos(entity, t),
-            {ENTITY_BOUNDING_BOX[entity.type].x, 1, ENTITY_BOUNDING_BOX[entity.type].y},
-            {0, 1, 0},
-            game.assets
-          ));
-        }
-      }
-    }
-
-    // TODO: should be if
-    // - the selected hotbar slot count != 0 OR currently hovering over some removable entity
-    // - AND not hovering over any interactable
-    // - AND the mouse is not over the players inventory
-    if (game.mouse_in_player_interaction_radius &&
-        player_selected_hotbar_slot(*player).count != 0 && !game.mouse_over_player_inventory)
-    {
-      // TODO: dont use EntityLightBulb::OFF_HOVER_COLOR, it should be more generic
-      if (ENTITY_ROTATABLE[player_selected_hotbar_slot_entity_type(*player)])
-      {
-        f32 arrow_rotation = (f32) game.scene.place_rotation * (0.5f * std::numbers::pi_v<f32>);
-        render_line_arrow(
-          pass.cmds_3d,
-          game.mouse_tile_pos,
-          0.6f,
-          0.3f,
-          arrow_rotation,
-          EntityLightBulb::OFF_HOVER_COLOR,
+        pass.cmds_3d.push_back(render_cube_wires(
+          entity_render_pos(entity, t),
+          {ENTITY_BOUNDING_BOX[entity.type].x, 1, ENTITY_BOUNDING_BOX[entity.type].y},
+          {0, 1, 0},
           game.assets
-        );
+        ));
       }
-      pass.cmds_3d.push_back(render_cube_wires(
-        game.mouse_tile_pos,
-        {1, 1, 1},
-        EntityLightBulb::OFF_HOVER_COLOR,
-        game.assets
-      ));
     }
 
     pass.cmds_2d.insert(
