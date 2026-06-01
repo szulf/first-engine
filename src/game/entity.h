@@ -75,6 +75,7 @@ struct EntityPlayer
   ItemSlot inventory[INVENTORY_SIZE]{};
   u8 selected_hotbar_slot{};
   bool is_inventory_open{};
+  ItemSlot hand{};
 };
 
 struct EntityBlock
@@ -114,7 +115,7 @@ struct Entity
   EntityType type{};
   vec3 pos{};
   vec3 prev_pos{};
-  vec3 tint = {1.0f, 1.0f, 1.0f};
+  vec3 tint{};
   MeshHandle mesh{};
   union
   {

@@ -211,8 +211,8 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
     auto& entity = game.scene.entities[entity_idx];
     if (entity.type == ENTITY_PLAYER)
     {
-      entity.player.inventory[1] = {.type = ITEM_BLOCK, .count = 25};
-      entity.player.inventory[2] = {.type = ITEM_CONVEYOR, .count = 40};
+      entity.player.inventory[1] = {.type = ITEM_BLOCK, .count = 99};
+      entity.player.inventory[2] = {.type = ITEM_CONVEYOR, .count = 80};
       entity.player.inventory[3] = {.type = ITEM_STORAGE, .count = 6};
 
       entity.player.inventory[4] = {.type = ITEM_STORAGE, .count = 4};
@@ -277,6 +277,28 @@ inventory_slot_ui(UI_Layout& layout, const ItemSlot& slot, bool selected, GameDa
     ui_text(layout, std::format("{}", slot.count), 1);
   }
   return clicked_parent || clicked_child;
+}
+
+static void handle_hand_slot_interaction(ItemSlot& hand, ItemSlot& slot)
+{
+  if (hand.count > 0 && hand.count < ITEMS_MAX_STACK_SIZE && slot.count < ITEMS_MAX_STACK_SIZE &&
+      hand.type == slot.type)
+  {
+    if (slot.count + hand.count > ITEMS_MAX_STACK_SIZE)
+    {
+      hand.count = (slot.count + hand.count) - ITEMS_MAX_STACK_SIZE;
+      slot.count = ITEMS_MAX_STACK_SIZE;
+    }
+    else
+    {
+      slot.count += hand.count;
+      hand = {};
+    }
+  }
+  else
+  {
+    std::swap(hand, slot);
+  }
 }
 
 void game_update_tick(GameData& game, f32 dt)
@@ -448,7 +470,8 @@ void game_update_tick(GameData& game, f32 dt)
         // but the change i have in mind (moving ui to update_frame) would fix this
         // NOTE: queue entities to place
         if (game.window->input.rmb.down && game.mouse_in_player_interaction_radius &&
-            player_selected_hotbar_slot(entity).count > 0 && !game.mouse_over_player_inventory)
+            player_selected_hotbar_slot(entity).count > 0 && !game.mouse_over_player_inventory &&
+            entity.player.hand.count == 0)
         {
           bool block_exists_at_mouse = false;
           for (usize i = 0; i < game.scene.entities.size(); ++i)
@@ -497,7 +520,8 @@ void game_update_tick(GameData& game, f32 dt)
         // but the change i have in mind (moving ui to update_frame) would fix this
         // NOTE: queue entities to remove
         if (os_key_just_pressed(game.window->input.lmb) &&
-            game.mouse_in_player_interaction_radius && !game.mouse_over_player_inventory)
+            game.mouse_in_player_interaction_radius && !game.mouse_over_player_inventory &&
+            entity.player.hand.count == 0)
         {
           for (usize i = 0; i < game.scene.entities.size(); ++i)
           {
@@ -747,12 +771,14 @@ void game_update_tick(GameData& game, f32 dt)
 
               for (usize slot_idx = 0; slot_idx < EntityPlayer::HOTBAR_SLOT_COUNT; ++slot_idx)
               {
-                inventory_slot_ui(
-                  inventory,
-                  entity.storage.inventory[(row * EntityPlayer::HOTBAR_SLOT_COUNT) + slot_idx],
-                  false,
-                  game
-                );
+                auto& slot =
+                  entity.storage.inventory[(row * EntityPlayer::HOTBAR_SLOT_COUNT) + slot_idx];
+                if (inventory_slot_ui(inventory, slot, false, game))
+                {
+                  // TODO: fuckin hate this, should be fixed after entity refactor tho
+                  ASSERT(player, "player has to be set");
+                  handle_hand_slot_interaction(player->player.hand, slot);
+                }
               }
             }
           }
@@ -786,14 +812,15 @@ void game_update_tick(GameData& game, f32 dt)
       for (u8 hotbar_slot_idx = 0; hotbar_slot_idx < EntityPlayer::HOTBAR_SLOT_COUNT;
            ++hotbar_slot_idx)
       {
+        auto& slot = player->player.inventory[hotbar_slot_idx];
         if (inventory_slot_ui(
               hotbar,
-              player->player.inventory[hotbar_slot_idx],
+              slot,
               hotbar_slot_idx == player->player.selected_hotbar_slot,
               game
             ))
         {
-          player->player.selected_hotbar_slot = hotbar_slot_idx;
+          handle_hand_slot_interaction(player->player.hand, slot);
         }
       }
     }
@@ -836,12 +863,11 @@ void game_update_tick(GameData& game, f32 dt)
 
         for (usize slot_idx = 0; slot_idx < EntityPlayer::HOTBAR_SLOT_COUNT; ++slot_idx)
         {
-          inventory_slot_ui(
-            inventory,
-            player->player.inventory[(row * EntityPlayer::HOTBAR_SLOT_COUNT) + slot_idx],
-            false,
-            game
-          );
+          auto& slot = player->player.inventory[(row * EntityPlayer::HOTBAR_SLOT_COUNT) + slot_idx];
+          if (inventory_slot_ui(inventory, slot, false, game))
+          {
+            handle_hand_slot_interaction(player->player.hand, slot);
+          }
         }
       }
     }
@@ -1188,12 +1214,22 @@ void game_render(GameData& game, f32 t)
       {
         case ENTITY_PLAYER:
         {
+          if (entity.player.hand.count > 0)
+          {
+            pass.cmds_2d.push_back(render_texture(
+              game.item_icons[entity.player.hand.type],
+              {game.window->input.mouse_pos.x - 24, game.window->input.mouse_pos.y - 24, 0.9f},
+              {48, 48}
+            ));
+          }
+
           // TODO: should be if
           // - the selected hotbar slot count != 0 OR currently hovering over some removable entity
           // - AND not hovering over any interactable
           // - AND the mouse is not over the players inventory
           if (game.mouse_in_player_interaction_radius &&
-              player_selected_hotbar_slot(entity).count != 0 && !game.mouse_over_player_inventory)
+              player_selected_hotbar_slot(entity).count != 0 && !game.mouse_over_player_inventory &&
+              entity.player.hand.count == 0)
           {
             // TODO: dont use EntityLightBulb::OFF_HOVER_COLOR, it should be more generic
             if (ENTITY_ROTATABLE[player_selected_hotbar_slot_entity_type(entity)])

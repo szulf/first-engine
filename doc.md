@@ -2,11 +2,8 @@
 
 ## SMALL TODOS: (ordered)
 
-4. ability to move items around
 5. add inventories to serialization
-6. decide what to do when removing entities 
-   - either entity_item that you can pick up, or
-   - straight to inventory
+6. drop entities out of inventory and on removing entities
 
 ---
 

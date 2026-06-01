@@ -64,6 +64,10 @@ Entity entity_new(EntityType type, AssetStore& assets)
   {
     entity.tint = EntityLightBulb::OFF_TINT;
   }
+  else
+  {
+    entity.tint = {1, 1, 1};
+  }
   entity.mesh = load_obj(assets, ENTITY_MESH_PATH[type]);
   if (ENTITY_BOUNDING_BOX[type] == vec2{})
   {
