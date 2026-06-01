@@ -2,7 +2,6 @@
 
 ## SMALL TODOS: (ordered)
 
-5. add inventories to serialization
 6. drop entities out of inventory and on removing entities
 
 ---

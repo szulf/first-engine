@@ -1,161 +1,854 @@
 ambient_color : (0.1, 0.1, 0.1)
 
-player : (0.000000, 0.000000, 0.000000)
-light_bulb : (-1.000000, 0.000000, 0.000000)
+player : {
+  pos : (-0.24068461, 0, 0.81716675)
+  tint : (1, 1, 1)
+  rotation : 3.1415918
+  target_rotation : -3.1415927
+  velocity : (-8.303816e-17, 0, 0.028143447)
+  inventory : [
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : storage ; count : 6 }
+    ItemSlot{ type : conveyor ; count : 80 }
+    ItemSlot{ type : storage ; count : 4 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 100 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : conveyor ; count : 20 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : storage ; count : 2 }
+  ]
+  selected_hotbar_slot : 0
+  is_inventory_open : false
+  hand : ItemSlot{ type : block ; count : 0 }
+}
 
-conveyor : (2.000000, 0.000000, -3.000000)
-conveyor : (2.000000, 0.000000, -2.000000)
-conveyor : (2.000000, 0.000000, -1.000000)
-conveyor : (2.000000, 0.000000, 0.000000)
+light_bulb : {
+  pos : (-1, 0, 0)
+  tint : (1, 1, 1)
+  on : true
+}
 
-storage : (-2.000000, 0.000000, -1.000000)
+block : {
+  pos : (-3, -1, -9)
+  tint : (1, 1, 1)
+}
 
-# floor
-block : (-3.000000, -1.000000, -9.000000)
-block : (-2.000000, -1.000000, -9.000000)
-block : (-1.000000, -1.000000, -9.000000)
-block : (0.000000, -1.000000, -9.000000)
-block : (3.000000, -1.000000, -9.000000)
-block : (2.000000, -1.000000, -9.000000)
-block : (1.000000, -1.000000, -9.000000)
+block : {
+  pos : (-2, -1, -9)
+  tint : (1, 1, 1)
+}
 
-block : (-3.000000, -1.000000, -8.000000)
-block : (-2.000000, -1.000000, -8.000000)
-block : (-1.000000, -1.000000, -8.000000)
-block : (0.000000, -1.000000, -8.000000)
-block : (3.000000, -1.000000, -8.000000)
-block : (2.000000, -1.000000, -8.000000)
-block : (1.000000, -1.000000, -8.000000)
+block : {
+  pos : (-1, -1, -9)
+  tint : (1, 1, 1)
+}
 
-block : (-3.000000, -1.000000, -7.000000)
-block : (-2.000000, -1.000000, -7.000000)
-block : (-1.000000, -1.000000, -7.000000)
-block : (0.000000, -1.000000, -7.000000)
-block : (3.000000, -1.000000, -7.000000)
-block : (2.000000, -1.000000, -7.000000)
-block : (1.000000, -1.000000, -7.000000)
+block : {
+  pos : (0, -1, -9)
+  tint : (1, 1, 1)
+}
 
-block : (-3.000000, -1.000000, -6.000000)
-block : (-2.000000, -1.000000, -6.000000)
-block : (-1.000000, -1.000000, -6.000000)
-block : (0.000000, -1.000000, -6.000000)
-block : (3.000000, -1.000000, -6.000000)
-block : (2.000000, -1.000000, -6.000000)
-block : (1.000000, -1.000000, -6.000000)
+block : {
+  pos : (3, -1, -9)
+  tint : (1, 1, 1)
+}
 
-block : (-3.000000, -1.000000, -5.000000)
-block : (-2.000000, -1.000000, -5.000000)
-block : (-1.000000, -1.000000, -5.000000)
-block : (0.000000, -1.000000, -5.000000)
-block : (3.000000, -1.000000, -5.000000)
-block : (2.000000, -1.000000, -5.000000)
-block : (1.000000, -1.000000, -5.000000)
+block : {
+  pos : (2, -1, -9)
+  tint : (1, 1, 1)
+}
 
-block : (-3.000000, -1.000000, -4.000000)
-block : (-2.000000, -1.000000, -4.000000)
-block : (-1.000000, -1.000000, -4.000000)
-block : (0.000000, -1.000000, -4.000000)
-block : (3.000000, -1.000000, -4.000000)
-block : (2.000000, -1.000000, -4.000000)
-block : (1.000000, -1.000000, -4.000000)
+block : {
+  pos : (1, -1, -9)
+  tint : (1, 1, 1)
+}
 
-block : (-3.000000, -1.000000, -3.000000)
-block : (-2.000000, -1.000000, -3.000000)
-block : (-1.000000, -1.000000, -3.000000)
-block : (0.000000, -1.000000, -3.000000)
-block : (3.000000, -1.000000, -3.000000)
-block : (2.000000, -1.000000, -3.000000)
-block : (1.000000, -1.000000, -3.000000)
+block : {
+  pos : (-3, -1, -8)
+  tint : (1, 1, 1)
+}
 
-block : (-3.000000, -1.000000, -2.000000)
-block : (-2.000000, -1.000000, -2.000000)
-block : (-1.000000, -1.000000, -2.000000)
-block : (0.000000, -1.000000, -2.000000)
-block : (3.000000, -1.000000, -2.000000)
-block : (2.000000, -1.000000, -2.000000)
-block : (1.000000, -1.000000, -2.000000)
+block : {
+  pos : (-2, -1, -8)
+  tint : (1, 1, 1)
+}
 
-block : (-3.000000, -1.000000, -1.000000)
-block : (-2.000000, -1.000000, -1.000000)
-block : (-1.000000, -1.000000, -1.000000)
-block : (0.000000, -1.000000, -1.000000)
-block : (3.000000, -1.000000, -1.000000)
-block : (2.000000, -1.000000, -1.000000)
-block : (1.000000, -1.000000, -1.000000)
+block : {
+  pos : (-1, -1, -8)
+  tint : (1, 1, 1)
+}
 
-block : (-3.000000, -1.000000, 0.000000)
-block : (-2.000000, -1.000000, 0.000000)
-block : (-1.000000, -1.000000, 0.000000)
-block : (0.000000, -1.000000, 0.000000)
-block : (3.000000, -1.000000, 0.000000)
-block : (2.000000, -1.000000, 0.000000)
-block : (1.000000, -1.000000, 0.000000)
+block : {
+  pos : (0, -1, -8)
+  tint : (1, 1, 1)
+}
 
-block : (-3.000000, -1.000000, 1.000000)
-block : (-2.000000, -1.000000, 1.000000)
-block : (-1.000000, -1.000000, 1.000000)
-block : (0.000000, -1.000000, 1.000000)
-block : (3.000000, -1.000000, 1.000000)
-block : (2.000000, -1.000000, 1.000000)
-block : (1.000000, -1.000000, 1.000000)
+block : {
+  pos : (3, -1, -8)
+  tint : (1, 1, 1)
+}
 
-block : (-3.000000, -1.000000, 2.000000)
-block : (-2.000000, -1.000000, 2.000000)
-block : (-1.000000, -1.000000, 2.000000)
-block : (0.000000, -1.000000, 2.000000)
-block : (3.000000, -1.000000, 2.000000)
-block : (2.000000, -1.000000, 2.000000)
-block : (1.000000, -1.000000, 2.000000)
+block : {
+  pos : (2, -1, -8)
+  tint : (1, 1, 1)
+}
 
-block : (-3.000000, -1.000000, 3.000000)
-block : (-2.000000, -1.000000, 3.000000)
-block : (-1.000000, -1.000000, 3.000000)
-block : (0.000000, -1.000000, 3.000000)
-block : (3.000000, -1.000000, 3.000000)
-block : (2.000000, -1.000000, 3.000000)
-block : (1.000000, -1.000000, 3.000000)
+block : {
+  pos : (1, -1, -8)
+  tint : (1, 1, 1)
+}
 
-# walls
-block : (-4.000000, 0.000000, -9.000000)
-block : (-4.000000, 0.000000, -8.000000)
-block : (-4.000000, 0.000000, -7.000000)
-block : (-4.000000, 0.000000, -6.000000)
-block : (-4.000000, 0.000000, -5.000000)
-block : (-4.000000, 0.000000, -4.000000)
-block : (-4.000000, 0.000000, -3.000000)
-block : (-4.000000, 0.000000, -2.000000)
-block : (-4.000000, 0.000000, -1.000000)
-block : (-4.000000, 0.000000, 0.000000)
-block : (-4.000000, 0.000000, 1.000000)
-block : (-4.000000, 0.000000, 2.000000)
-block : (-4.000000, 0.000000, 3.000000)
+block : {
+  pos : (-3, -1, -7)
+  tint : (1, 1, 1)
+}
 
-block : (4.000000, 0.000000, -9.000000)
-block : (4.000000, 0.000000, -8.000000)
-block : (4.000000, 0.000000, -7.000000)
-block : (4.000000, 0.000000, -6.000000)
-block : (4.000000, 0.000000, -5.000000)
-block : (4.000000, 0.000000, -4.000000)
-block : (4.000000, 0.000000, -3.000000)
-block : (4.000000, 0.000000, -2.000000)
-block : (4.000000, 0.000000, -1.000000)
-block : (4.000000, 0.000000, 0.000000)
-block : (4.000000, 0.000000, 1.000000)
-block : (4.000000, 0.000000, 2.000000)
-block : (4.000000, 0.000000, 3.000000)
+block : {
+  pos : (-2, -1, -7)
+  tint : (1, 1, 1)
+}
 
-block : (-3.000000, 0.000000, -10.000000)
-block : (-2.000000, 0.000000, -10.000000)
-block : (-1.000000, 0.000000, -10.000000)
-block : (-0.000000, 0.000000, -10.000000)
-block : (1.000000, 0.000000, -10.000000)
-block : (2.000000, 0.000000, -10.000000)
-block : (3.000000, 0.000000, -10.000000)
+block : {
+  pos : (-1, -1, -7)
+  tint : (1, 1, 1)
+}
 
-block : (-3.000000, 0.000000, 4.000000)
-block : (-2.000000, 0.000000, 4.000000)
-block : (-1.000000, 0.000000, 4.000000)
-block : (-0.000000, 0.000000, 4.000000)
-block : (1.000000, 0.000000, 4.000000)
-block : (2.000000, 0.000000, 4.000000)
-block : (3.000000, 0.000000, 4.000000)
+block : {
+  pos : (0, -1, -7)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (3, -1, -7)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (2, -1, -7)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (1, -1, -7)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-3, -1, -6)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-2, -1, -6)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-1, -1, -6)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (0, -1, -6)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (3, -1, -6)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (2, -1, -6)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (1, -1, -6)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-3, -1, -5)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-2, -1, -5)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-1, -1, -5)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (0, -1, -5)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (3, -1, -5)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (2, -1, -5)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (1, -1, -5)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-3, -1, -4)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-2, -1, -4)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-1, -1, -4)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (0, -1, -4)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (3, -1, -4)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (2, -1, -4)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (1, -1, -4)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-3, -1, -3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-2, -1, -3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-1, -1, -3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (0, -1, -3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (3, -1, -3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (2, -1, -3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (1, -1, -3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-3, -1, -2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-2, -1, -2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-1, -1, -2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (0, -1, -2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (3, -1, -2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (2, -1, -2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (1, -1, -2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-3, -1, -1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-2, -1, -1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-1, -1, -1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (0, -1, -1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (3, -1, -1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (2, -1, -1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (1, -1, -1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-3, -1, 0)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-2, -1, 0)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-1, -1, 0)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (0, -1, 0)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (3, -1, 0)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (2, -1, 0)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (1, -1, 0)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-3, -1, 1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-2, -1, 1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-1, -1, 1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (0, -1, 1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (3, -1, 1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (2, -1, 1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (1, -1, 1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-3, -1, 2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-2, -1, 2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-1, -1, 2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (0, -1, 2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (3, -1, 2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (2, -1, 2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (1, -1, 2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-3, -1, 3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-2, -1, 3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-1, -1, 3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (0, -1, 3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (3, -1, 3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (2, -1, 3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (1, -1, 3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-4, 0, -9)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-4, 0, -8)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-4, 0, -7)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-4, 0, -6)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-4, 0, -5)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-4, 0, -4)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-4, 0, -3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-4, 0, -2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-4, 0, -1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-4, 0, 0)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-4, 0, 1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-4, 0, 2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-4, 0, 3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (4, 0, -9)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (4, 0, -8)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (4, 0, -7)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (4, 0, -6)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (4, 0, -5)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (4, 0, -4)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (4, 0, -3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (4, 0, -2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (4, 0, -1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (4, 0, 0)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (4, 0, 1)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (4, 0, 2)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (4, 0, 3)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-3, 0, -10)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-2, 0, -10)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-1, 0, -10)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-0, 0, -10)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (1, 0, -10)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (2, 0, -10)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (3, 0, -10)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-3, 0, 4)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-2, 0, 4)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-1, 0, 4)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (-0, 0, 4)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (1, 0, 4)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (2, 0, 4)
+  tint : (1, 1, 1)
+}
+
+block : {
+  pos : (3, 0, 4)
+  tint : (1, 1, 1)
+}
+
+storage : {
+  pos : (-2, 0, -4)
+  tint : (1, 1, 1)
+  rotation : 0
+  inventory : [
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+  ]
+  is_inventory_open : false
+  scroll_value : 0
+}
+
+conveyor : {
+  pos : (-1, 0, -4)
+  tint : (1, 1, 1)
+  rotation : 4.712389
+}
+
+conveyor : {
+  pos : (0, 0, -4)
+  tint : (1, 1, 1)
+  rotation : 4.712389
+}
+
+conveyor : {
+  pos : (1, 0, -4)
+  tint : (1, 1, 1)
+  rotation : 4.712389
+}
+
+conveyor : {
+  pos : (2, 0, -4)
+  tint : (1, 1, 1)
+  rotation : 4.712389
+}
+
+conveyor : {
+  pos : (3, 0, -4)
+  tint : (1, 1, 1)
+  rotation : 0
+}
+
+conveyor : {
+  pos : (3, 0, -3)
+  tint : (1, 1, 1)
+  rotation : 0
+}
+
+conveyor : {
+  pos : (3, 0, -2)
+  tint : (1, 1, 1)
+  rotation : 0
+}
+
+conveyor : {
+  pos : (3, 0, -1)
+  tint : (1, 1, 1)
+  rotation : 0
+}
+
+conveyor : {
+  pos : (3, 0, 0)
+  tint : (1, 1, 1)
+  rotation : 0
+}
+
+conveyor : {
+  pos : (3, 0, 1)
+  tint : (1, 1, 1)
+  rotation : 0
+}
+
+conveyor : {
+  pos : (3, 0, 2)
+  tint : (1, 1, 1)
+  rotation : 1.5707964
+}
+
+conveyor : {
+  pos : (2, 0, 2)
+  tint : (1, 1, 1)
+  rotation : 1.5707964
+}
+
+conveyor : {
+  pos : (1, 0, 2)
+  tint : (1, 1, 1)
+  rotation : 1.5707964
+}
+
+storage : {
+  pos : (-0, 0, 2)
+  tint : (1, 1, 1)
+  rotation : 3.1415927
+  inventory : [
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 14 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : conveyor ; count : 3 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 0 }
+  ]
+  is_inventory_open : false
+  scroll_value : 0
+}
+

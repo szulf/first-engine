@@ -115,7 +115,7 @@ add_executable(game
   src/game/parser.h src/game/parser.cpp
   src/game/sound.h src/game/sound.cpp
   src/game/ui.h src/game/ui.cpp
-  src/game/items.h
+  src/game/items.h src/game/items.cpp
 )
 target_include_directories(game PRIVATE ${include_dirs})
 target_compile_options(game PRIVATE ${flags})

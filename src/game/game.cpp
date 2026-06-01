@@ -175,7 +175,7 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
   game.used_camera = &game.gameplay_camera;
   render_init(game.assets);
   {
-    auto scene = load_scene("data/test.gscn", game.assets);
+    auto scene = load_scene("data/main.gscn", game.assets);
     ASSERT(scene, "Failed to load scene {}", scene.error());
     game.scene = *scene;
   }
@@ -203,27 +203,6 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
   for (usize item_type = 0; item_type < ITEM_TYPE_COUNT; ++item_type)
   {
     game.item_icons[item_type] = create_item_icon((ItemType) item_type, game.assets);
-  }
-
-  // TODO: remove later
-  for (usize entity_idx = 0; entity_idx < game.scene.entities.size(); ++entity_idx)
-  {
-    auto& entity = game.scene.entities[entity_idx];
-    if (entity.type == ENTITY_PLAYER)
-    {
-      entity.player.inventory[1] = {.type = ITEM_BLOCK, .count = 99};
-      entity.player.inventory[2] = {.type = ITEM_CONVEYOR, .count = 80};
-      entity.player.inventory[3] = {.type = ITEM_STORAGE, .count = 6};
-
-      entity.player.inventory[4] = {.type = ITEM_STORAGE, .count = 4};
-      entity.player.inventory[6] = {.type = ITEM_BLOCK, .count = 15};
-
-      entity.player.inventory[10] = {.type = ITEM_CONVEYOR, .count = 3};
-
-      entity.player.inventory[12] = {.type = ITEM_CONVEYOR, .count = 20};
-      entity.player.inventory[15] = {.type = ITEM_STORAGE, .count = 2};
-      break;
-    }
   }
 
   return game;
@@ -376,7 +355,7 @@ void game_update_tick(GameData& game, f32 dt)
 
     if (os_key_just_pressed(key_state_from_action(ACTION_SAVE_SCENE, game)))
     {
-      auto res = save_scene(game.scene, "data/test.gscn");
+      auto res = save_scene(game.scene, "data/main.gscn");
       if (!res)
       {
         REPORT_ERROR("Failed to save scene");
@@ -385,7 +364,7 @@ void game_update_tick(GameData& game, f32 dt)
     // NOTE: this has to be before any of the updates to the scene
     if (os_key_just_pressed(key_state_from_action(ACTION_LOAD_SCENE, game)))
     {
-      auto scene = load_scene("data/test.gscn", game.assets);
+      auto scene = load_scene("data/main.gscn", game.assets);
       if (!scene)
       {
         REPORT_ERROR("Failed to load new scene");

@@ -136,6 +136,45 @@ static vec3 gscn_parse_vec3(Parser_Pos& pos)
   return out;
 }
 
+static ItemSlot gscn_parse_item_slot(Parser_Pos& pos)
+{
+  ItemSlot slot{};
+  parser_skip_whitespace(pos);
+  parser_expect_and_skip(pos, "ItemSlot{");
+  {
+    parser_expect_and_skip(pos, "type");
+    parser_expect_and_skip(pos, ':');
+    auto type = item_type_from_string(parser_word(pos));
+    ASSERT(type, "{}", type.error());
+    slot.type = *type;
+  }
+  parser_expect_and_skip(pos, ';');
+  {
+    parser_expect_and_skip(pos, "count");
+    parser_expect_and_skip(pos, ':');
+    slot.count = parser_number_u32(pos);
+  }
+  parser_expect_and_skip(pos, '}');
+  return slot;
+}
+
+static void
+gscn_parse_inventory(Parser_Pos& pos, std::istream& is, ItemSlot* inventory, usize inventory_size)
+{
+  std::string line{};
+  parser_expect_and_skip(pos, '[');
+  for (usize slot_idx = 0; slot_idx < inventory_size; ++slot_idx)
+  {
+    std::getline(is, line);
+    pos = {.line = line};
+    inventory[slot_idx] = gscn_parse_item_slot(pos);
+  }
+  std::getline(is, line);
+  pos = {.line = line};
+  parser_skip_whitespace(pos);
+  parser_expect_and_skip(pos, ']');
+}
+
 enum SceneLoadingMode
 {
   SCENE_LOADING_GLOBAL,
@@ -223,6 +262,31 @@ load_scene(const std::filesystem::path& path, AssetStore& assets)
                   entity.player.velocity = gscn_parse_vec3(pos);
                   continue;
                 }
+                else if (key == "selected_hotbar_slot")
+                {
+                  entity.player.selected_hotbar_slot = (u8) parser_number_u32(pos);
+                  continue;
+                }
+                else if (key == "is_inventory_open")
+                {
+                  entity.player.is_inventory_open = parser_boolean(pos);
+                  continue;
+                }
+                else if (key == "hand")
+                {
+                  entity.player.hand = gscn_parse_item_slot(pos);
+                  continue;
+                }
+                else if (key == "inventory")
+                {
+                  gscn_parse_inventory(
+                    pos,
+                    file,
+                    entity.player.inventory,
+                    EntityPlayer::INVENTORY_SIZE
+                  );
+                  continue;
+                }
                 break;
               case ENTITY_BLOCK:
                 break;
@@ -230,11 +294,6 @@ load_scene(const std::filesystem::path& path, AssetStore& assets)
                 if (key == "on")
                 {
                   entity.light_bulb.on = parser_boolean(pos);
-                  continue;
-                }
-                else if (key == "hovered")
-                {
-                  entity.light_bulb.hovered = parser_boolean(pos);
                   continue;
                 }
                 break;
@@ -251,6 +310,26 @@ load_scene(const std::filesystem::path& path, AssetStore& assets)
                   entity.storage.rotation = parser_number_f32(pos);
                   continue;
                 }
+                else if (key == "inventory")
+                {
+                  gscn_parse_inventory(
+                    pos,
+                    file,
+                    entity.storage.inventory,
+                    EntityStorage::INVENTORY_SIZE
+                  );
+                  continue;
+                }
+                else if (key == "is_inventory_open")
+                {
+                  entity.storage.is_inventory_open = parser_boolean(pos);
+                  continue;
+                }
+                else if (key == "scroll_value")
+                {
+                  entity.storage.scroll_value = parser_number_i32(pos);
+                  continue;
+                }
                 break;
               case ENTITY_TYPE_COUNT:
               default:
@@ -264,7 +343,24 @@ load_scene(const std::filesystem::path& path, AssetStore& assets)
     }
   }
 
-  return scene;
+  return {scene};
+}
+
+static void gscn_write_item_slot(std::ostream& os, const ItemSlot& slot)
+{
+  std::println(os, "ItemSlot{{ type : {} ; count : {} }}", ITEM_TYPE_STRING[slot.type], slot.count);
+}
+
+// TODO: think about the indentation here
+static void gscn_write_inventory(std::ostream& os, const ItemSlot* inventory, usize inventory_size)
+{
+  std::println(os, "  inventory : [");
+  for (usize slot_idx = 0; slot_idx < inventory_size; ++slot_idx)
+  {
+    std::print(os, "    ");
+    gscn_write_item_slot(os, inventory[slot_idx]);
+  }
+  std::println(os, "  ]");
 }
 
 std::expected<void, std::string_view>
@@ -306,18 +402,25 @@ save_scene(const Scene& scene, const std::filesystem::path& path)
           entity.player.velocity.y,
           entity.player.velocity.z
         );
+        gscn_write_inventory(file, entity.player.inventory, EntityPlayer::INVENTORY_SIZE);
+        std::println(file, "  selected_hotbar_slot : {}", entity.player.selected_hotbar_slot);
+        std::println(file, "  is_inventory_open : {}", entity.player.is_inventory_open);
+        std::print(file, "  hand : ");
+        gscn_write_item_slot(file, entity.player.hand);
         break;
       case ENTITY_BLOCK:
         break;
       case ENTITY_LIGHT_BULB:
         std::println(file, "  on : {}", entity.light_bulb.on);
-        std::println(file, "  hovered : {}", entity.light_bulb.hovered);
         break;
       case ENTITY_CONVEYOR:
         std::println(file, "  rotation : {}", entity.conveyor.rotation);
         break;
       case ENTITY_STORAGE:
         std::println(file, "  rotation : {}", entity.storage.rotation);
+        gscn_write_inventory(file, entity.storage.inventory, EntityStorage::INVENTORY_SIZE);
+        std::println(file, "  is_inventory_open : {}", entity.storage.is_inventory_open);
+        std::println(file, "  scroll_value : {}", entity.storage.scroll_value);
         break;
       case ENTITY_TYPE_COUNT:
       default:
