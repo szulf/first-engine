@@ -621,6 +621,7 @@ void render_mesh(
   const vec3& pos,
   f32 rotation,
   const vec3& tint,
+  const vec3& scale,
   AssetStore& assets
 )
 {
@@ -633,7 +634,7 @@ void render_mesh(
       .submesh_idx = i,
       .instance_data =
         {
-          .transform = get_transform(pos, {1.0f, 1.0f, 1.0f}, rotation),
+          .transform = get_transform(pos, scale, rotation),
           .tint = {tint.x, tint.y, tint.z, 1.0f},
         },
     });

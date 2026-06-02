@@ -20,6 +20,7 @@ enum EntityType
   ENTITY_LIGHT_BULB,
   ENTITY_CONVEYOR,
   ENTITY_STORAGE,
+  ENTITY_ITEM,
   ENTITY_TYPE_COUNT,
 };
 
@@ -37,6 +38,8 @@ static constexpr std::array<EntityType, ITEM_TYPE_COUNT> ENTITY_TYPE_FROM_ITEM_T
   return out;
 }();
 
+ItemType item_type_from_entity_type(EntityType entity_type);
+
 static constexpr std::array<std::string_view, ENTITY_TYPE_COUNT> ENTITY_MESH_PATH = []()
 {
   std::array<std::string_view, ENTITY_TYPE_COUNT> out{};
@@ -45,16 +48,34 @@ static constexpr std::array<std::string_view, ENTITY_TYPE_COUNT> ENTITY_MESH_PAT
   out[ENTITY_LIGHT_BULB] = "assets/light_bulb.obj";
   out[ENTITY_CONVEYOR] = "assets/conveyor.obj";
   out[ENTITY_STORAGE] = "assets/storage.obj";
+  // NOTE: ENTITY_ITEM uses meshes from other entities
   return out;
 }();
 
 extern std::array<vec2, ENTITY_TYPE_COUNT> ENTITY_BOUNDING_BOX;
+
+static constexpr std::array<bool, ENTITY_TYPE_COUNT> ENTITY_UNBREAKABLE = []()
+{
+  std::array<bool, ENTITY_TYPE_COUNT> out{};
+  out[ENTITY_PLAYER] = true;
+  out[ENTITY_ITEM] = true;
+  return out;
+}();
 
 static constexpr std::array<bool, ENTITY_TYPE_COUNT> ENTITY_ROTATABLE = []()
 {
   std::array<bool, ENTITY_TYPE_COUNT> out{};
   out[ENTITY_PLAYER] = true;
   out[ENTITY_CONVEYOR] = true;
+  out[ENTITY_STORAGE] = true;
+  out[ENTITY_ITEM] = true;
+  return out;
+}();
+
+static constexpr std::array<bool, ENTITY_TYPE_COUNT> ENTITY_HAS_INVENTORY = []()
+{
+  std::array<bool, ENTITY_TYPE_COUNT> out{};
+  out[ENTITY_PLAYER] = true;
   out[ENTITY_STORAGE] = true;
   return out;
 }();
@@ -110,12 +131,21 @@ struct EntityStorage
   i32 scroll_value{};
 };
 
+struct EntityItem
+{
+  static constexpr f32 ROTATION_SPEED = 0.5f * std::numbers::pi_v<f32>;
+  static constexpr f32 SCALE = 0.35f;
+  f32 rotation{};
+  ItemSlot slot{};
+};
+
 struct Entity
 {
   EntityType type{};
   vec3 pos{};
   vec3 prev_pos{};
   vec3 tint{};
+  vec3 scale{};
   MeshHandle mesh{};
   union
   {
@@ -124,10 +154,13 @@ struct Entity
     EntityLightBulb light_bulb;
     EntityConveyor conveyor;
     EntityStorage storage;
+    EntityItem item;
   };
 };
 
 Entity entity_new(EntityType type, AssetStore& assets);
+// NOTE: special case for ENTITY_ITEM, because i need the item type to get the proper mesh
+Entity entity_new_item(const ItemSlot& slot, AssetStore& assets);
 bool entities_collide(const Entity& ea, const Entity& eb);
 vec3 entity_render_pos(const Entity& entity, f32 t);
 f32 entity_render_rotation(const Entity& entity, f32 t);

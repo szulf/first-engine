@@ -145,6 +145,7 @@ static TextureHandle create_item_icon(ItemType item_type, AssetStore& assets)
     {0, 0, 0},
     -0.25f * std::numbers::pi_v<f32>,
     {1, 1, 1},
+    {1, 1, 1},
     assets
   );
   render_pass_finish(pass, assets);
@@ -278,6 +279,20 @@ static void handle_hand_slot_interaction(ItemSlot& hand, ItemSlot& slot)
   {
     std::swap(hand, slot);
   }
+}
+
+static bool
+entity_exists_at_mouse(const vec3& mouse_pos, EntityType mouse_entity_type, const Scene& scene)
+{
+  for (usize i = 0; i < scene.entities.size(); ++i)
+  {
+    if (f32_equal(scene.entities[i].pos.y, 0) &&
+        entities_collide(scene.entities[i], {.type = mouse_entity_type, .pos = mouse_pos}))
+    {
+      return true;
+    }
+  }
+  return false;
 }
 
 void game_update_tick(GameData& game, f32 dt)
@@ -452,21 +467,11 @@ void game_update_tick(GameData& game, f32 dt)
             player_selected_hotbar_slot(entity).count > 0 && !game.mouse_over_player_inventory &&
             entity.player.hand.count == 0)
         {
-          bool block_exists_at_mouse = false;
-          for (usize i = 0; i < game.scene.entities.size(); ++i)
-          {
-            if (f32_equal(game.scene.entities[i].pos.y, 0) &&
-                entities_collide(
-                  game.scene.entities[i],
-                  {.type = player_selected_hotbar_slot_entity_type(entity),
-                   .pos = game.mouse_tile_pos}
-                ))
-            {
-              block_exists_at_mouse = true;
-            }
-          }
-
-          if (!block_exists_at_mouse)
+          if (!entity_exists_at_mouse(
+                game.mouse_tile_pos,
+                player_selected_hotbar_slot_entity_type(entity),
+                game.scene
+              ))
           {
             auto placed_entity =
               entity_new(player_selected_hotbar_slot_entity_type(entity), game.assets);
@@ -504,16 +509,69 @@ void game_update_tick(GameData& game, f32 dt)
         {
           for (usize i = 0; i < game.scene.entities.size(); ++i)
           {
-            if (game.scene.entities[i].type != ENTITY_PLAYER &&
-                game.scene.entities[i].pos == game.mouse_tile_pos)
+            auto& remove_entity = game.scene.entities[i];
+            if (!ENTITY_UNBREAKABLE[remove_entity.type] && remove_entity.pos == game.mouse_tile_pos)
             {
+              // TODO: pull out into a normal function?
+              auto drop_item =
+                [](const ItemSlot& slot, const vec3& pos, Scene& scene, AssetStore& assets)
+              {
+                auto dropped_entity = entity_new_item(slot, assets);
+                dropped_entity.pos = pos;
+                scene.entity_place_queue.push_back(dropped_entity);
+              };
+              if (ENTITY_HAS_INVENTORY[remove_entity.type])
+              {
+                // TODO: drop the inventory as well
+                switch (remove_entity.type)
+                {
+                  case ENTITY_STORAGE:
+                  {
+                    for (usize slot_idx = 0; slot_idx < EntityStorage::INVENTORY_SIZE; ++slot_idx)
+                    {
+                      auto& slot = remove_entity.storage.inventory[slot_idx];
+                      if (slot.count > 0)
+                      {
+                        drop_item(slot, remove_entity.pos, game.scene, game.assets);
+                      }
+                    }
+                  }
+                  break;
+
+                  case ENTITY_PLAYER:
+                  case ENTITY_BLOCK:
+                  case ENTITY_LIGHT_BULB:
+                  case ENTITY_CONVEYOR:
+                  case ENTITY_ITEM:
+                  case ENTITY_TYPE_COUNT:
+                    break;
+                }
+              }
+              drop_item(
+                {.type = item_type_from_entity_type(remove_entity.type), .count = 1},
+                remove_entity.pos,
+                game.scene,
+                game.assets
+              );
               game.scene.entity_idx_remove_queue.push_back(i);
               break;
             }
           }
         }
 
-        // NOTE: rotation
+        // NOTE: drop items out of hand
+        if (os_key_just_pressed(game.window->input.lmb) &&
+            game.mouse_in_player_interaction_radius && !game.mouse_over_player_inventory &&
+            entity.player.hand.count > 0 &&
+            !entity_exists_at_mouse(mouse_world_pos, ENTITY_ITEM, game.scene))
+        {
+          auto item_entity = entity_new_item(entity.player.hand, game.assets);
+          item_entity.pos = mouse_world_pos;
+          game.scene.entity_place_queue.push_back(item_entity);
+          entity.player.hand = {};
+        }
+
+        // NOTE: player rotation
         {
           if (acceleration != vec3{0.0f, 0.0f, 0.0f})
           {
@@ -570,6 +628,37 @@ void game_update_tick(GameData& game, f32 dt)
 
             if (!entities_collide(p, c))
             {
+              continue;
+            }
+
+            if (c.type == ENTITY_ITEM)
+            {
+              for (usize slot_idx = 0; slot_idx < EntityPlayer::INVENTORY_SIZE; ++slot_idx)
+              {
+                auto& slot = entity.player.inventory[slot_idx];
+                // TODO: combine this somehow with the handle_hand_slot_interaction() logic?
+                if (slot.count == 0)
+                {
+                  slot.type = c.item.slot.type;
+                  slot.count = c.item.slot.count;
+                  game.scene.entity_idx_remove_queue.push_back(collidable_idx);
+                  break;
+                }
+                else if (slot.type == c.item.slot.type && slot.count != ITEMS_MAX_STACK_SIZE)
+                {
+                  if (slot.count + c.item.slot.count <= ITEMS_MAX_STACK_SIZE)
+                  {
+                    slot.count += c.item.slot.count;
+                    game.scene.entity_idx_remove_queue.push_back(collidable_idx);
+                    break;
+                  }
+                  else
+                  {
+                    c.item.slot.count = (slot.count + c.item.slot.count) - 100;
+                    slot.count = ITEMS_MAX_STACK_SIZE;
+                  }
+                }
+              }
               continue;
             }
 
@@ -700,11 +789,11 @@ void game_update_tick(GameData& game, f32 dt)
               }
             }
             break;
+            case ENTITY_ITEM:
             case ENTITY_PLAYER:
             case ENTITY_BLOCK:
             case ENTITY_CONVEYOR:
             case ENTITY_TYPE_COUNT:
-            default:
               break;
           }
         }
@@ -762,6 +851,15 @@ void game_update_tick(GameData& game, f32 dt)
             }
           }
           ui_layout_end(inventory);
+        }
+      }
+      else if (entity.type == ENTITY_ITEM)
+      {
+        ASSERT(entity.item.slot.count > 0, "Item entities cannot have an empty slot");
+        // NOTE: item rotation
+        {
+          entity.item.rotation += EntityItem::ROTATION_SPEED * dt;
+          entity.item.rotation = wrap_to_neg_pi_to_pi(entity.item.rotation);
         }
       }
     }
@@ -1162,6 +1260,7 @@ void game_render(GameData& game, f32 t)
           entity_render_pos(entity, t),
           entity_render_rotation(entity, t),
           {1, 1, 1},
+          entity.scale,
           game.assets
         );
       }
@@ -1293,10 +1392,11 @@ void game_render(GameData& game, f32 t)
         }
         break;
 
+        // TODO: items should be rendered with the default shader not the lighting one
+        case ENTITY_ITEM:
         case ENTITY_BLOCK:
         case ENTITY_CONVEYOR:
         case ENTITY_TYPE_COUNT:
-        default:
           break;
       }
 
@@ -1306,6 +1406,7 @@ void game_render(GameData& game, f32 t)
         entity_render_pos(entity, t),
         entity_render_rotation(entity, t),
         entity.tint,
+        entity.scale,
         game.assets
       );
 

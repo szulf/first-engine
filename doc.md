@@ -2,8 +2,6 @@
 
 ## SMALL TODOS: (ordered)
 
-6. drop entities out of inventory and on removing entities
-
 ---
 
 ## NEXT BIG TODOS: (unordered)

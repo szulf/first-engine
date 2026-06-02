@@ -5,9 +5,9 @@ player : {
   tint : (1, 1, 1)
   rotation : 3.1415918
   target_rotation : -3.1415927
-  velocity : (-8.303816e-17, 0, 0.028143447)
+  velocity : (8.303815e-17, 0, -0.028143443)
   inventory : [
-    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : block ; count : 100 }
     ItemSlot{ type : block ; count : 0 }
     ItemSlot{ type : storage ; count : 6 }
     ItemSlot{ type : conveyor ; count : 80 }
@@ -17,7 +17,7 @@ player : {
     ItemSlot{ type : block ; count : 0 }
     ItemSlot{ type : block ; count : 0 }
     ItemSlot{ type : block ; count : 0 }
-    ItemSlot{ type : block ; count : 100 }
+    ItemSlot{ type : block ; count : 0 }
     ItemSlot{ type : block ; count : 0 }
     ItemSlot{ type : conveyor ; count : 20 }
     ItemSlot{ type : block ; count : 0 }

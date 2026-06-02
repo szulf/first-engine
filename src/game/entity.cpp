@@ -24,6 +24,8 @@ std::string_view entity_type_to_string(EntityType type)
       return "conveyor";
     case ENTITY_STORAGE:
       return "storage";
+    case ENTITY_ITEM:
+      return "item";
     case ENTITY_TYPE_COUNT:
     default:
       ASSERT(false, "Invalid entity type");
@@ -52,7 +54,24 @@ std::expected<EntityType, std::string_view> entity_type_from_string(std::string_
   {
     return {ENTITY_STORAGE};
   }
+  else if (str == "item")
+  {
+    return {ENTITY_STORAGE};
+  }
   return std::unexpected{"Invalid entity type string"};
+}
+
+ItemType item_type_from_entity_type(EntityType entity_type)
+{
+  for (usize item_type_idx = 0; item_type_idx < ITEM_TYPE_COUNT; ++item_type_idx)
+  {
+    if (entity_type == ENTITY_TYPE_FROM_ITEM_TYPE[(ItemType) item_type_idx])
+    {
+      return (ItemType) item_type_idx;
+    }
+  }
+  // TODO: this probably shouldnt be an assert
+  ASSERT(false, "Item doesnt exist for this entity type");
 }
 
 Entity entity_new(EntityType type, AssetStore& assets)
@@ -60,6 +79,7 @@ Entity entity_new(EntityType type, AssetStore& assets)
   Entity entity{};
   std::memset(&entity, 0, sizeof(Entity));
   entity.type = type;
+  entity.scale = {1, 1, 1};
   if (entity.type == ENTITY_LIGHT_BULB)
   {
     entity.tint = EntityLightBulb::OFF_TINT;
@@ -68,11 +88,25 @@ Entity entity_new(EntityType type, AssetStore& assets)
   {
     entity.tint = {1, 1, 1};
   }
-  entity.mesh = load_obj(assets, ENTITY_MESH_PATH[type]);
-  if (ENTITY_BOUNDING_BOX[type] == vec2{})
+  // NOTE: ENTITY_ITEM mesh set in entity_new_item
+  if (entity.type != ENTITY_ITEM)
   {
-    ENTITY_BOUNDING_BOX[type] = bounding_box_from_mesh(entity.mesh, assets);
+    entity.mesh = load_obj(assets, ENTITY_MESH_PATH[type]);
+    if (ENTITY_BOUNDING_BOX[type] == vec2{})
+    {
+      ENTITY_BOUNDING_BOX[type] = bounding_box_from_mesh(entity.mesh, assets);
+    }
   }
+  return entity;
+}
+
+Entity entity_new_item(const ItemSlot& slot, AssetStore& assets)
+{
+  auto entity = entity_new(ENTITY_ITEM, assets);
+  entity.scale = {EntityItem::SCALE, EntityItem::SCALE, EntityItem::SCALE};
+  entity.item.slot = slot;
+  entity.mesh = load_obj(assets, ENTITY_MESH_PATH[ENTITY_TYPE_FROM_ITEM_TYPE[slot.type]]);
+  ENTITY_BOUNDING_BOX[ENTITY_ITEM] = {EntityItem::SCALE, EntityItem::SCALE};
   return entity;
 }
 
@@ -115,6 +149,8 @@ f32 entity_render_rotation(const Entity& entity, f32 t)
       return entity.conveyor.rotation;
     case ENTITY_STORAGE:
       return entity.storage.rotation;
+    case ENTITY_ITEM:
+      return entity.item.rotation;
     case ENTITY_BLOCK:
     case ENTITY_LIGHT_BULB:
     case ENTITY_TYPE_COUNT:
@@ -331,8 +367,18 @@ load_scene(const std::filesystem::path& path, AssetStore& assets)
                   continue;
                 }
                 break;
+              case ENTITY_ITEM:
+                if (key == "rotation")
+                {
+                  entity.item.rotation = parser_number_f32(pos);
+                  continue;
+                }
+                else if (key == "slot")
+                {
+                  entity.item.slot = gscn_parse_item_slot(pos);
+                }
+                break;
               case ENTITY_TYPE_COUNT:
-              default:
                 break;
             }
             return std::unexpected{"Invalid key in scene file"};
@@ -422,8 +468,12 @@ save_scene(const Scene& scene, const std::filesystem::path& path)
         std::println(file, "  is_inventory_open : {}", entity.storage.is_inventory_open);
         std::println(file, "  scroll_value : {}", entity.storage.scroll_value);
         break;
+      case ENTITY_ITEM:
+        std::println(file, "  rotation : {}", entity.item.rotation);
+        std::print(file, "  slot : ");
+        gscn_write_item_slot(file, entity.item.slot);
+        break;
       case ENTITY_TYPE_COUNT:
-      default:
         break;
     }
   }

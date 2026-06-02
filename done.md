@@ -108,3 +108,4 @@
 3. inventory on the storage entity
 4. ability to move items around
 5. add inventories to serialization
+6. drop entities out of inventory and on removing entities

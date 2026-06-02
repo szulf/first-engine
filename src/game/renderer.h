@@ -133,6 +133,7 @@ void render_mesh(
   const vec3& pos,
   f32 rotation,
   const vec3& tint,
+  const vec3& scale,
   AssetStore& assets
 );
 Render_Cmd3D
