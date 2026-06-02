@@ -295,6 +295,13 @@ entity_exists_at_mouse(const vec3& mouse_pos, EntityType mouse_entity_type, cons
   return false;
 }
 
+static void drop_item(const ItemSlot& slot, const vec3& pos, Scene& scene, AssetStore& assets)
+{
+  auto dropped_entity = entity_new_item(slot, assets);
+  dropped_entity.pos = pos;
+  scene.entity_place_queue.push_back(dropped_entity);
+}
+
 void game_update_tick(GameData& game, f32 dt)
 {
   ui_system_update(game.ui_system);
@@ -512,17 +519,8 @@ void game_update_tick(GameData& game, f32 dt)
             auto& remove_entity = game.scene.entities[i];
             if (!ENTITY_UNBREAKABLE[remove_entity.type] && remove_entity.pos == game.mouse_tile_pos)
             {
-              // TODO: pull out into a normal function?
-              auto drop_item =
-                [](const ItemSlot& slot, const vec3& pos, Scene& scene, AssetStore& assets)
-              {
-                auto dropped_entity = entity_new_item(slot, assets);
-                dropped_entity.pos = pos;
-                scene.entity_place_queue.push_back(dropped_entity);
-              };
               if (ENTITY_HAS_INVENTORY[remove_entity.type])
               {
-                // TODO: drop the inventory as well
                 switch (remove_entity.type)
                 {
                   case ENTITY_STORAGE:
@@ -565,9 +563,7 @@ void game_update_tick(GameData& game, f32 dt)
             entity.player.hand.count > 0 &&
             !entity_exists_at_mouse(mouse_world_pos, ENTITY_ITEM, game.scene))
         {
-          auto item_entity = entity_new_item(entity.player.hand, game.assets);
-          item_entity.pos = mouse_world_pos;
-          game.scene.entity_place_queue.push_back(item_entity);
+          drop_item(entity.player.hand, mouse_world_pos, game.scene, game.assets);
           entity.player.hand = {};
         }
 
@@ -636,7 +632,6 @@ void game_update_tick(GameData& game, f32 dt)
               for (usize slot_idx = 0; slot_idx < EntityPlayer::INVENTORY_SIZE; ++slot_idx)
               {
                 auto& slot = entity.player.inventory[slot_idx];
-                // TODO: combine this somehow with the handle_hand_slot_interaction() logic?
                 if (slot.count == 0)
                 {
                   slot.type = c.item.slot.type;
@@ -654,7 +649,7 @@ void game_update_tick(GameData& game, f32 dt)
                   }
                   else
                   {
-                    c.item.slot.count = (slot.count + c.item.slot.count) - 100;
+                    c.item.slot.count = (slot.count + c.item.slot.count) - ITEMS_MAX_STACK_SIZE;
                     slot.count = ITEMS_MAX_STACK_SIZE;
                   }
                 }
