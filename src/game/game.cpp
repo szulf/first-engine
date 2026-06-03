@@ -387,11 +387,14 @@ void game_update_tick(GameData& game, f32 dt)
     if (os_key_just_pressed(key_state_from_action(ACTION_LOAD_SCENE, game)))
     {
       auto scene = load_scene("data/main.gscn", game.assets);
-      if (!scene)
+      if (scene)
+      {
+        game.scene = *scene;
+      }
+      else
       {
         REPORT_ERROR("Failed to load new scene");
       }
-      game.scene = *scene;
     }
 
     // NOTE: calculate mouse position in world space
