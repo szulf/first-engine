@@ -196,18 +196,22 @@ inline ShaderHandle asset_set(AssetStore& assets, const Shader& shader)
 
 inline Texture& asset_get(AssetStore& assets, TextureHandle handle)
 {
+  ASSERT(handle.id != 0, "Invalid asset handle");
   return assets.textures[handle.id - 1];
 }
 inline Material& asset_get(AssetStore& assets, MaterialHandle handle)
 {
+  ASSERT(handle.id != 0, "Invalid asset handle");
   return assets.materials[handle.id - 1];
 }
 inline Mesh& asset_get(AssetStore& assets, MeshHandle handle)
 {
+  ASSERT(handle.id != 0, "Invalid asset handle");
   return assets.meshes[handle.id - 1];
 }
 inline Shader& asset_get(AssetStore& assets, ShaderHandle handle)
 {
+  ASSERT(handle.id != 0, "Invalid asset handle");
   return assets.shaders[handle.id - 1];
 }
 

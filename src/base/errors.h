@@ -6,6 +6,7 @@
 
 #include "base.h"
 
+// TODO: make this a sort of linked list that where the next node is a comment to this node?
 struct Error
 {
   std::string_view function{};
