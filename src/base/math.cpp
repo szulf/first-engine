@@ -79,8 +79,8 @@ vec2& operator-=(vec2& a, const vec2& b)
 
 vec2& operator*=(vec2& v, f32 scalar)
 {
-  v.x += scalar;
-  v.y += scalar;
+  v.x *= scalar;
+  v.y *= scalar;
   return v;
 }
 

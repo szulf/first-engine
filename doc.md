@@ -1,4 +1,4 @@
-## BIG TODO: inventory system
+## BIG TODO: fixes and improvements
 
 ## SMALL TODOS: (ordered)
 
