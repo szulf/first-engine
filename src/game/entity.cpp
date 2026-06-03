@@ -139,12 +139,10 @@ f32 entity_render_rotation(const Entity& entity, f32 t)
   switch (entity.type)
   {
     case ENTITY_PLAYER:
-      // NOTE: checking if they have opposite signs
-      if (entity.player.rotation * entity.player.prev_rotation < 0)
-      {
-        return entity.player.prev_rotation;
-      }
-      return entity.player.rotation * t + entity.player.prev_rotation * (1.0f - t);
+    {
+      f32 delta = wrap_to_neg_pi_to_pi(entity.player.rotation - entity.player.prev_rotation);
+      return entity.player.prev_rotation + delta * t;
+    }
     case ENTITY_CONVEYOR:
       return entity.conveyor.rotation;
     case ENTITY_STORAGE:
