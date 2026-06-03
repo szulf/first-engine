@@ -56,7 +56,7 @@ std::expected<EntityType, std::string_view> entity_type_from_string(std::string_
   }
   else if (str == "item")
   {
-    return {ENTITY_STORAGE};
+    return {ENTITY_ITEM};
   }
   return std::unexpected{"Invalid entity type string"};
 }
@@ -373,7 +373,15 @@ load_scene(const std::filesystem::path& path, AssetStore& assets)
                 }
                 else if (key == "slot")
                 {
-                  entity.item.slot = gscn_parse_item_slot(pos);
+                  // TODO: is there a better way to do this?
+                  vec3 item_pos = entity.pos;
+                  vec3 item_tint = entity.tint;
+                  f32 item_rotation = entity.item.rotation;
+                  entity = entity_new_item(gscn_parse_item_slot(pos), assets);
+                  entity.pos = item_pos;
+                  entity.tint = item_tint;
+                  entity.item.rotation = item_rotation;
+                  continue;
                 }
                 break;
               case ENTITY_TYPE_COUNT:

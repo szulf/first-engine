@@ -1,14 +1,14 @@
 ambient_color : (0.1, 0.1, 0.1)
 
 player : {
-  pos : (-0.24068461, 0, 0.81716675)
+  pos : (1.3206524, 0, -0.14739597)
   tint : (1, 1, 1)
-  rotation : 3.1415918
+  rotation : 2.714848
   target_rotation : -3.1415927
-  velocity : (8.303815e-17, 0, -0.028143443)
+  velocity : (-0.6445064, 0, -0.74485815)
   inventory : [
     ItemSlot{ type : block ; count : 100 }
-    ItemSlot{ type : block ; count : 0 }
+    ItemSlot{ type : conveyor ; count : 0 }
     ItemSlot{ type : storage ; count : 6 }
     ItemSlot{ type : conveyor ; count : 80 }
     ItemSlot{ type : storage ; count : 4 }
@@ -24,7 +24,7 @@ player : {
     ItemSlot{ type : block ; count : 0 }
     ItemSlot{ type : storage ; count : 2 }
   ]
-  selected_hotbar_slot : 0
+  selected_hotbar_slot : 1
   is_inventory_open : false
   hand : ItemSlot{ type : block ; count : 0 }
 }
@@ -775,18 +775,6 @@ conveyor : {
 }
 
 conveyor : {
-  pos : (3, 0, -1)
-  tint : (1, 1, 1)
-  rotation : 0
-}
-
-conveyor : {
-  pos : (3, 0, 0)
-  tint : (1, 1, 1)
-  rotation : 0
-}
-
-conveyor : {
   pos : (3, 0, 1)
   tint : (1, 1, 1)
   rotation : 0
@@ -850,5 +838,19 @@ storage : {
   ]
   is_inventory_open : false
   scroll_value : 0
+}
+
+item : {
+  pos : (3, 0, 0)
+  tint : (1, 1, 1)
+  rotation : 2.312212
+  slot : ItemSlot{ type : conveyor ; count : 1 }
+}
+
+item : {
+  pos : (3, 0, -1)
+  tint : (1, 1, 1)
+  rotation : 2.01062
+  slot : ItemSlot{ type : conveyor ; count : 1 }
 }
 

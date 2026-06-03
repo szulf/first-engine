@@ -156,6 +156,7 @@ struct Entity
   };
 };
 
+// TODO: maybe these two should take in a Entity& and init it instead?
 Entity entity_new(EntityType type, AssetStore& assets);
 // NOTE: special case for ENTITY_ITEM, because i need the item type to get the proper mesh
 Entity entity_new_item(const ItemSlot& slot, AssetStore& assets);
