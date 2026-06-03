@@ -710,11 +710,16 @@ void game_update_tick(GameData& game, f32 dt)
           }
         }
 
+        game.scene.hovered_entity_idx = std::nullopt;
         // TODO: can this be part of updates and not a loop in players update?
         // NOTE: interactions
         for (usize idx = 0; idx < game.scene.entities.size(); ++idx)
         {
           auto& interactee = game.scene.entities[idx];
+          if (!f32_equal(interactee.pos.y, 0))
+          {
+            continue;
+          }
           vec2 max_mouse_dist = {
             ENTITY_BOUNDING_BOX[interactee.type].x / 2.0f,
             ENTITY_BOUNDING_BOX[interactee.type].y / 2.0f
@@ -724,18 +729,17 @@ void game_update_tick(GameData& game, f32 dt)
           bool mouse_in_entity_range_z =
             std::abs(game.mouse_tile_pos.z - interactee.pos.z) < max_mouse_dist.y;
           bool mouse_in_entity_range = mouse_in_entity_range_x && mouse_in_entity_range_z;
+          if (in_player_interaction_radius(entity, interactee.pos) && mouse_in_entity_range &&
+              !game.mouse_over_player_inventory)
+          {
+            game.scene.hovered_entity_idx = {idx};
+          }
           switch (interactee.type)
           {
             case ENTITY_LIGHT_BULB:
             {
-              interactee.light_bulb.hovered = false;
-              if (in_player_interaction_radius(entity, interactee.pos) && mouse_in_entity_range &&
-                  !game.mouse_over_player_inventory)
-              {
-                interactee.light_bulb.hovered = true;
-              }
 
-              if (interactee.light_bulb.hovered &&
+              if (*game.scene.hovered_entity_idx == idx &&
                   os_key_just_pressed(key_state_from_action(ACTION_INTERACT, game)))
               {
                 interactee.light_bulb.on = !interactee.light_bulb.on;
@@ -755,9 +759,6 @@ void game_update_tick(GameData& game, f32 dt)
               {
                 interactee.storage.is_inventory_open = false;
               }
-              interactee.storage.hovered = in_player_interaction_radius(entity, interactee.pos) &&
-                                           mouse_in_entity_range &&
-                                           !game.mouse_over_player_inventory;
               if (!interactee.storage.is_inventory_open &&
                   in_player_interaction_radius(entity, interactee.pos) && mouse_in_entity_range &&
                   !game.mouse_over_player_inventory)
@@ -1348,7 +1349,7 @@ void game_render(GameData& game, f32 t)
 
         case ENTITY_LIGHT_BULB:
         {
-          if (entity.light_bulb.hovered)
+          if (game.scene.hovered_entity_idx.has_value() && i == *game.scene.hovered_entity_idx)
           {
             pass.cmds_3d.push_back(render_cube_wires(
               entity_render_pos(entity, t),
@@ -1369,7 +1370,8 @@ void game_render(GameData& game, f32 t)
 
         case ENTITY_STORAGE:
         {
-          if (entity.storage.hovered && !entity.storage.is_inventory_open)
+          if ((game.scene.hovered_entity_idx.has_value() && i == *game.scene.hovered_entity_idx) &&
+              !entity.storage.is_inventory_open)
           {
             pass.cmds_3d.push_back(render_cube_wires(
               entity_render_pos(entity, t),

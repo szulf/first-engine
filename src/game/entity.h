@@ -112,7 +112,6 @@ struct EntityLightBulb
   static constexpr f32 LIGHT_HEIGHT_OFFSET = -0.25f;
   static constexpr vec3 LIGHT_COLOR = {1, 1, 0.7f};
   bool on{};
-  bool hovered{};
 };
 
 struct EntityConveyor
@@ -123,7 +122,6 @@ struct EntityConveyor
 struct EntityStorage
 {
   f32 rotation{};
-  bool hovered{};
   static constexpr u8 INVENTORY_SIZE = 32;
   ItemSlot inventory[INVENTORY_SIZE]{};
   bool is_inventory_open{};
@@ -190,6 +188,8 @@ struct Scene
   // NOTE: represents rotation as k * pi/2,
   // where k is this variable and holds values in range [0; 3]
   u8 place_rotation{};
+  std::optional<usize> hovered_entity_idx{};
+
   std::vector<Entity> entity_place_queue{};
   std::vector<usize> entity_idx_remove_queue{};
 };
