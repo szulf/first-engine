@@ -106,10 +106,12 @@ bool parser_boolean(Parser_Pos& pos)
   parser_skip_whitespace(pos);
   if (pos.line.size() - pos.pos >= 4 && pos.line.substr(pos.pos, 4) == "true")
   {
+    pos.pos += 4;
     return true;
   }
   else if (pos.line.size() - pos.pos >= 5 && pos.line.substr(pos.pos, 5) == "false")
   {
+    pos.pos += 5;
     return false;
   }
   ASSERT(false, "Invalid boolean.");
