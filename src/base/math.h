@@ -94,9 +94,9 @@ struct mat4
   f32 data[4][4]{};
 };
 mat4 unit_matrix();
-mat4 perspective(f32 fov, f32 aspect, f32 near, f32 far, bool vertical);
-mat4 orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far);
-mat4 look_at(const vec3& pos, const vec3& target, const vec3& up);
+mat4 perspective_matrix(f32 fov, f32 aspect, f32 near, f32 far, bool vertical);
+mat4 orthographic_matrix(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far);
+mat4 look_at_matrix(const vec3& pos, const vec3& target, const vec3& up);
 mat4 scale_matrix(f32 scale);
 mat4 scale_matrix(const vec3& scale);
 mat4 translation_matrix(const vec3& position);

@@ -299,7 +299,7 @@ mat4 unit_matrix()
   return {{{1, 0, 0, 0}, {0, 1, 0, 0}, {0, 0, 1, 0}, {0, 0, 0, 1}}};
 }
 
-mat4 perspective(f32 fov, f32 aspect, f32 near, f32 far, bool vertical)
+mat4 perspective_matrix(f32 fov, f32 aspect, f32 near, f32 far, bool vertical)
 {
   f32 tangent = std::tan(fov / 2.0f);
   f32 top;
@@ -324,7 +324,7 @@ mat4 perspective(f32 fov, f32 aspect, f32 near, f32 far, bool vertical)
   return out;
 }
 
-mat4 orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far)
+mat4 orthographic_matrix(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far)
 {
   mat4 out = {};
   out.data[0][0] = 2 / (right - left);
@@ -337,7 +337,7 @@ mat4 orthographic(f32 right, f32 left, f32 top, f32 bottom, f32 near, f32 far)
   return out;
 }
 
-mat4 look_at(const vec3& pos, const vec3& target, const vec3& up)
+mat4 look_at_matrix(const vec3& pos, const vec3& target, const vec3& up)
 {
   vec3 f = normalize(target - pos);
   vec3 s = normalize(cross(f, up));

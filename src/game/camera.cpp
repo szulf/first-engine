@@ -32,7 +32,7 @@ void camera_move(Camera& camera, const vec3& acceleration, const vec3& direction
 mat4 camera_view(const Camera& camera, f32 t)
 {
   vec3 render_pos = camera.pos * t + camera.prev_pos * (1.0f - t);
-  return look_at(render_pos, render_pos + camera.front, camera.up);
+  return look_at_matrix(render_pos, render_pos + camera.front, camera.up);
 }
 
 mat4 camera_projection(const Camera& camera)
@@ -41,7 +41,7 @@ mat4 camera_projection(const Camera& camera)
   {
     case CAMERA_TYPE_PERSPECTIVE:
     {
-      return perspective(
+      return perspective_matrix(
         camera.fov,
         (f32) camera.viewport.x / (f32) camera.viewport.y,
         camera.near_plane,
@@ -52,7 +52,7 @@ mat4 camera_projection(const Camera& camera)
     break;
     case CAMERA_TYPE_ORTHOGRAPHIC:
     {
-      return orthographic(
+      return orthographic_matrix(
         (f32) camera.viewport.x,
         0.0f,
         0.0f,
