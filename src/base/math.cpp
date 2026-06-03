@@ -316,7 +316,6 @@ mat4 perspective(f32 fov, f32 aspect, f32 near, f32 far, bool vertical)
   }
   mat4 out = {};
   out.data[0][0] = near / right;
-  out.data[0][0] = near / right;
   out.data[1][1] = near / top;
   out.data[2][2] = -(far + near) / (far - near);
   out.data[2][3] = -1;
