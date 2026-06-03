@@ -368,8 +368,9 @@ mat4 look_at(const vec3& pos, const vec3& target, const vec3& up)
   return out;
 }
 
-mat4 scale(mat4 mat, f32 scale)
+mat4 scale_matrix(f32 scale)
 {
+  auto mat = unit_matrix();
   mat.data[0][0] *= scale;
   mat.data[1][0] *= scale;
   mat.data[2][0] *= scale;
@@ -384,8 +385,9 @@ mat4 scale(mat4 mat, f32 scale)
   return mat;
 }
 
-mat4 scale(mat4 mat, const vec3& scale)
+mat4 scale_matrix(const vec3& scale)
 {
+  auto mat = unit_matrix();
   mat.data[0][0] *= scale.x;
   mat.data[0][1] *= scale.x;
   mat.data[0][2] *= scale.x;
@@ -400,21 +402,23 @@ mat4 scale(mat4 mat, const vec3& scale)
   return mat;
 }
 
-mat4 translate(mat4 mat, const vec3& position)
+mat4 translation_matrix(const vec3& position)
 {
+  mat4 mat = unit_matrix();
   mat.data[3][0] = position.x;
   mat.data[3][1] = position.y;
   mat.data[3][2] = position.z;
   return mat;
 }
 
-mat4 rotate(mat4 mat, f32 rad, const vec3& axis)
+mat4 rotation_matrix(f32 rad, const vec3& axis)
 {
   f32 s = std::sin(rad);
   f32 c = std::cos(rad);
   f32 t = 1.0f - c;
   vec3 u = normalize(axis);
 
+  auto mat = unit_matrix();
   mat.data[0][0] = (u.x * u.x) * t + c;
   mat.data[0][1] = (u.x * u.y) * t - u.z * s;
   mat.data[0][2] = (u.x * u.z) * t + u.y * s;

@@ -52,6 +52,8 @@ static constexpr std::array<std::string_view, ENTITY_TYPE_COUNT> ENTITY_MESH_PAT
   return out;
 }();
 
+// TODO: i dont like that its filled up when calling entity_new()
+// maybe store the bounding box in a map indexed by MeshHandle in the AssetStore? (seems kinda bad)
 extern std::array<vec2, ENTITY_TYPE_COUNT> ENTITY_BOUNDING_BOX;
 
 static constexpr std::array<bool, ENTITY_TYPE_COUNT> ENTITY_UNBREAKABLE = []()

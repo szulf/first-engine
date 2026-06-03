@@ -527,11 +527,7 @@ void render_pass_set_light(Render_Pass& pass, const vec3& pos, const vec3& color
 
 static mat4 get_transform(const vec3& pos, const vec3& size, f32 rotation)
 {
-  auto transform = unit_matrix();
-  transform = rotate(transform, rotation, {0, 1, 0});
-  transform = translate(transform, pos);
-  transform = scale(transform, size);
-  return transform;
+  return translation_matrix(pos) * rotation_matrix(rotation, {0, 1, 0}) * scale_matrix(size);
 }
 
 // NOTE: 2D
