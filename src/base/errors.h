@@ -6,6 +6,8 @@
 
 #include "base.h"
 
+// TODO: i really need to sort out error handling everywhere
+
 // TODO: make this a sort of linked list that where the next node is a comment to this node?
 struct Error
 {

@@ -211,7 +211,7 @@ void os_input_clear(OS_Input& input)
   input.mouse_scroll = 0;
 }
 
-struct OS_Window::PlatformData
+struct OS_WindowPlatformData
 {
   SDL_Window* window{};
   SDL_GLContext gl_context{};
@@ -223,7 +223,7 @@ os_window_open(std::string_view name, const vec2& dimensions)
   OS_Window window = {
     .name = std::string{name},
     .dimensions = dimensions,
-    .platform_data = (OS_Window::PlatformData*) malloc(sizeof(OS_Window::PlatformData)),
+    .platform_data = (OS_WindowPlatformData*) malloc(sizeof(OS_WindowPlatformData)),
   };
   ASSERT(window.platform_data, "Failed to alloc window platform data");
   window.platform_data->window = SDL_CreateWindow(
@@ -579,9 +579,18 @@ void os_window_center_mouse_pointer(OS_Window& window)
   );
 }
 
-struct OS_Audio::PlatformData
+static constexpr usize OS_SDL_MIX_BUFFER_SIZE = 16384;
+struct OS_SDL_CallbackData
+{
+  OS_AudioCallback user_callback{};
+  void* user_data{};
+  i16* mix_buffer{};
+};
+
+struct OS_AudioPlatformData
 {
   SDL_AudioStream* stream{};
+  OS_SDL_CallbackData* callback_data{};
 };
 
 static std::expected<SDL_AudioFormat, std::string_view> bit_count_to_sdl_audio_format(u32 bit_count)
@@ -595,45 +604,69 @@ static std::expected<SDL_AudioFormat, std::string_view> bit_count_to_sdl_audio_f
   }
 }
 
-std::expected<OS_Audio, std::string_view>
-os_audio_init(u32 sample_rate, u32 channels, u32 bit_count)
+std::expected<OS_Audio, std::string_view> os_audio_init()
 {
   OS_Audio audio = {
-    .platform_data = (OS_Audio::PlatformData*) malloc(sizeof(OS_Audio::PlatformData)),
+    .platform_data = (OS_AudioPlatformData*) malloc(sizeof(OS_AudioPlatformData)),
+    // NOTE: allocates memory for 1 second of audio, SURELY it will never ask for this much at once
   };
   ASSERT(audio.platform_data, "Failed to alloc audio platform data");
-  auto audio_format = bit_count_to_sdl_audio_format(bit_count);
+
+  audio.platform_data->callback_data = (OS_SDL_CallbackData*) malloc(sizeof(OS_SDL_CallbackData));
+  ASSERT(audio.platform_data->callback_data, "Failed to alloc audio callback data");
+  audio.platform_data->callback_data->mix_buffer = (i16*) malloc(OS_SDL_MIX_BUFFER_SIZE);
+  ASSERT(audio.platform_data->callback_data->mix_buffer, "Failed to alloc audio mixing buffer");
+
+  auto audio_format = bit_count_to_sdl_audio_format(OS_AUDIO_SAMPLE_SIZE_BITS);
   if (!audio_format)
   {
     return std::unexpected{"Invalid audio description bit count provided"};
   }
   SDL_AudioSpec spec = {
     .format = *audio_format,
-    .channels = (i32) channels,
-    .freq = (i32) sample_rate,
+    .channels = (i32) OS_AUDIO_CHANNELS,
+    .freq = (i32) OS_AUDIO_SAMPLE_RATE,
   };
+
   audio.platform_data->stream =
     SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, nullptr, nullptr);
-  SDL_ResumeAudioStreamDevice(audio.platform_data->stream);
   return audio;
 }
 
 void os_audio_deinit(OS_Audio& audio)
 {
   SDL_DestroyAudioStream(audio.platform_data->stream);
+  free(audio.platform_data->callback_data->mix_buffer);
+  free(audio.platform_data->callback_data);
   free(audio.platform_data);
 }
 
-u32 os_audio_get_queued(const OS_Audio& audio)
+static void
+os_sdl_callback(void* user_data, SDL_AudioStream* stream, int additional_amount, int total_amount)
 {
-  return (u32) SDL_GetAudioStreamQueued(audio.platform_data->stream);
+  // TODO: not really sure which one to use additional_amount or total_amount,
+  // they seem to be always equal on my machine
+  UNUSED(total_amount);
+  auto data = (OS_SDL_CallbackData*) user_data;
+  // TODO: should this be an ASSERT() or REPORT_ERROR()?
+  // probably a REPORT_ERROR(), will get to this when i refactor errors everywhere
+  ASSERT(
+    OS_SDL_MIX_BUFFER_SIZE > (usize) additional_amount,
+    "Audio mixing buffer is not big enough"
+  );
+  std::memset(data->mix_buffer, 0, (usize) additional_amount);
+  data->user_callback(data->mix_buffer, (usize) additional_amount, data->user_data);
+  SDL_PutAudioStreamData(stream, data->mix_buffer, additional_amount);
 }
 
-void os_audio_push(OS_Audio& audio, std::span<i16> buffer)
+void os_audio_set_callback(OS_Audio& audio, OS_AudioCallback callback, void* user_data)
 {
-  SDL_PutAudioStreamData(
+  audio.platform_data->callback_data->user_callback = callback;
+  audio.platform_data->callback_data->user_data = user_data;
+  SDL_SetAudioStreamGetCallback(
     audio.platform_data->stream,
-    buffer.data(),
-    (i32) (buffer.size() * sizeof(i16))
+    os_sdl_callback,
+    audio.platform_data->callback_data
   );
+  SDL_ResumeAudioStreamDevice(audio.platform_data->stream);
 }

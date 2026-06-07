@@ -96,14 +96,14 @@ struct OS_Input
 
 void os_input_clear(OS_Input& input);
 
+struct OS_WindowPlatformData;
 struct OS_Window
 {
   std::string name{};
   bool running{};
   vec2 dimensions{};
   OS_Input input{};
-  struct PlatformData;
-  PlatformData* platform_data{};
+  OS_WindowPlatformData* platform_data{};
 };
 
 std::expected<OS_Window, std::string_view>
@@ -113,16 +113,20 @@ void os_window_update(OS_Window& window);
 void os_window_swap_buffers(OS_Window& window);
 void os_window_center_mouse_pointer(OS_Window& window);
 
+static constexpr u32 OS_AUDIO_SAMPLE_RATE = 48000;
+static constexpr u32 OS_AUDIO_CHANNELS = 2;
+static constexpr u32 OS_AUDIO_SAMPLE_SIZE_BITS = 16;
+static constexpr u32 OS_AUDIO_SAMPLE_SIZE_BYTES = OS_AUDIO_SAMPLE_SIZE_BITS / 8;
+
+using OS_AudioCallback = void (*)(i16* buffer, usize bytes_to_fill, void* user_data);
+struct OS_AudioPlatformData;
 struct OS_Audio
 {
-  struct PlatformData;
-  PlatformData* platform_data{};
+  OS_AudioPlatformData* platform_data{};
 };
 
-std::expected<OS_Audio, std::string_view>
-os_audio_init(u32 sample_rate = 48000, u32 channels = 2, u32 bit_count = 16);
+std::expected<OS_Audio, std::string_view> os_audio_init();
 void os_audio_deinit(OS_Audio& audio);
-u32 os_audio_get_queued(const OS_Audio& audio);
-void os_audio_push(OS_Audio& audio, std::span<i16> buffer);
+void os_audio_set_callback(OS_Audio& audio, OS_AudioCallback callback, void* user_data);
 
 #endif

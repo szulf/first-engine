@@ -156,8 +156,7 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
 {
   GameData game{};
   game.window = &window;
-  game.sound_system = sound_system_init(audio);
-  sound_system_start(game.sound_system);
+  sound_system_init(game.sound_system, audio);
   game.keymap = load_gkey("data/keymap.gkey");
   game.gameplay_camera = {
     .type = CAMERA_TYPE_PERSPECTIVE,
@@ -199,7 +198,7 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
   render_create_framebuffer(game.shadow_map, game.assets);
   // TODO: load this with FilterOption::NEAREST
   game.font_texture = load_texture(game.assets, "assets/font.png");
-  // m_sound_system.play_looped(SoundHandle::TEST_MUSIC, 0.1f);
+  // sound_play_looped(game.sound_system, SOUND_TEST_MUSIC, 0.1f);
 
   for (usize item_type = 0; item_type < ITEM_TYPE_COUNT; ++item_type)
   {
@@ -211,7 +210,7 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
 
 void game_deinit(GameData& game)
 {
-  sound_system_deinit(game.sound_system);
+  UNUSED(game);
 }
 
 static bool in_player_interaction_radius(const Entity& player, const vec3& pos)
@@ -706,7 +705,7 @@ void game_update_tick(GameData& game, f32 dt)
           {
             entity.player.velocity -=
               dot(entity.player.velocity, collision_normal) * collision_normal;
-            sound_play_once(game.sound_system, SOUND_HANDLE_SINE, 0.1f);
+            sound_play_once(game.sound_system, SOUND_SINE, 0.1f);
           }
         }
 
@@ -745,8 +744,8 @@ void game_update_tick(GameData& game, f32 dt)
                 interactee.light_bulb.on = !interactee.light_bulb.on;
                 interactee.tint =
                   interactee.light_bulb.on ? EntityLightBulb::ON_TINT : EntityLightBulb::OFF_TINT;
-                sound_play_once(game.sound_system, SOUND_HANDLE_SHOTGUN, 0.1f);
-                sound_stop_looped(game.sound_system, SOUND_HANDLE_TEST_MUSIC);
+                sound_play_once(game.sound_system, SOUND_SHOTGUN, 0.1f);
+                sound_stop_looped(game.sound_system, SOUND_TEST_MUSIC);
               }
             }
             break;
