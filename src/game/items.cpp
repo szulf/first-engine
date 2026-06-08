@@ -1,6 +1,6 @@
 #include "items.h"
 
-std::expected<ItemType, std::string_view> item_type_from_string(std::string_view str)
+std::expected<ItemType, Error> item_type_from_string(std::string_view str)
 {
   if (str == "block")
   {
@@ -18,5 +18,5 @@ std::expected<ItemType, std::string_view> item_type_from_string(std::string_view
   {
     return {ITEM_STORAGE};
   }
-  return std::unexpected{"Invalid item type string"};
+  return std::unexpected{ERROR("Invalid item type string: {}", str)};
 }

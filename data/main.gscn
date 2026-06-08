@@ -1,11 +1,11 @@
 ambient_color : (0.1, 0.1, 0.1)
 
 player : {
-  pos : (1.3206524, 0, -0.14739597)
+  pos : (0.21884562, 0, -1.591)
   tint : (1, 1, 1)
-  rotation : 2.714848
-  target_rotation : -3.1415927
-  velocity : (-0.6445064, 0, -0.74485815)
+  rotation : 1.5773921
+  target_rotation : 1.5707964
+  velocity : (0.014207281, 0, 0.003164878)
   inventory : [
     ItemSlot{ type : block ; count : 100 }
     ItemSlot{ type : conveyor ; count : 0 }
@@ -843,14 +843,14 @@ storage : {
 item : {
   pos : (3, 0, 0)
   tint : (1, 1, 1)
-  rotation : 2.312212
+  rotation : -1.8095696
   slot : ItemSlot{ type : conveyor ; count : 1 }
 }
 
 item : {
   pos : (3, 0, -1)
   tint : (1, 1, 1)
-  rotation : 2.01062
+  rotation : -2.1111624
   slot : ItemSlot{ type : conveyor ; count : 1 }
 }
 

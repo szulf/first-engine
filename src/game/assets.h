@@ -77,7 +77,7 @@ struct Shader
   u32 texture_slot{};
 };
 
-std::expected<Shader, std::string_view> shader_from_file(
+std::expected<Shader, Error> shader_from_file(
   const std::filesystem::path& vs,
   const std::filesystem::path& fs,
   const std::filesystem::path& gs = ""

@@ -6,6 +6,7 @@
 #include <array>
 
 #include "base/base.h"
+#include "base/errors.h"
 
 static constexpr u8 ITEMS_MAX_STACK_SIZE = 100;
 
@@ -28,7 +29,7 @@ static constexpr std::array<std::string_view, ITEM_TYPE_COUNT> ITEM_TYPE_STRING 
   return out;
 }();
 
-std::expected<ItemType, std::string_view> item_type_from_string(std::string_view str);
+std::expected<ItemType, Error> item_type_from_string(std::string_view str);
 
 struct ItemSlot
 {

@@ -15,7 +15,7 @@
 #include "parser.h"
 #include "ui.h"
 
-std::expected<Action, std::string_view> string_to_action(std::string_view str)
+std::expected<Action, Error> string_to_action(std::string_view str)
 {
   if (str == "move_front")
   {
@@ -77,7 +77,7 @@ std::expected<Action, std::string_view> string_to_action(std::string_view str)
   {
     return {ACTION_TOGGLE_NOCLIP};
   }
-  return std::unexpected{"Invalid action string"};
+  return std::unexpected{ERROR("Invalid action string: {}", str)};
 }
 
 Keymap load_gkey(const std::filesystem::path& path)
@@ -86,7 +86,7 @@ Keymap load_gkey(const std::filesystem::path& path)
   std::ifstream file{path};
   if (file.fail())
   {
-    REPORT_ERROR("Failed to open keymap file");
+    report(ERROR("Failed to open keymap file"));
     return keymap;
   }
   std::string line{};
@@ -102,15 +102,21 @@ Keymap load_gkey(const std::filesystem::path& path)
     auto action = string_to_action(action_str);
     if (!action)
     {
-      REPORT_ERROR("Invalid action");
+      report(FORWARD(action.error()));
       return keymap;
     }
-    parser_expect_and_skip(pos, ':');
+    {
+      auto res = parser_expect_and_skip(pos, ':');
+      if (!res)
+      {
+        report(FORWARD(res.error()));
+      }
+    }
     auto key_str = parser_word(pos);
     auto key = os_string_to_key(key_str);
     if (!key)
     {
-      REPORT_ERROR("Invalid key");
+      report(FORWARD(key.error()));
       return keymap;
     }
     keymap.map[*action] = *key;
@@ -176,7 +182,10 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
   render_init(game.assets);
   {
     auto scene = load_scene("data/main.gscn", game.assets);
-    ASSERT(scene, "Failed to load scene {}", scene.error());
+    if (!scene)
+    {
+      FATAL("Failed to load scene:\n{}", error_to_string(scene.error()));
+    }
     game.scene = *scene;
   }
   game.shadow_map = asset_set(game.assets, texture_init(TEXTURE_CUBEMAP, SHADOW_MAP_DIMENSIONS));
@@ -186,14 +195,11 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
       "shaders/shadow_depth.frag",
       "shaders/shadow_depth.geom"
     );
-    if (shader)
+    if (!shader)
     {
-      game.shadow_depth_shader = asset_set(game.assets, *shader);
+      FATAL("Failed to load shadow depth shader:\n{}", error_to_string(shader.error()));
     }
-    else
-    {
-      REPORT_ERROR(shader.error());
-    }
+    game.shadow_depth_shader = asset_set(game.assets, *shader);
   }
   render_create_framebuffer(game.shadow_map, game.assets);
   // TODO: load this with FilterOption::NEAREST
@@ -379,21 +385,13 @@ void game_update_tick(GameData& game, f32 dt)
       auto res = save_scene(game.scene, "data/main.gscn");
       if (!res)
       {
-        REPORT_ERROR("Failed to save scene");
+        report(FORWARD(res.error()));
       }
     }
     // NOTE: this has to be before any of the updates to the scene
     if (os_key_just_pressed(key_state_from_action(ACTION_LOAD_SCENE, game)))
     {
-      auto scene = load_scene("data/main.gscn", game.assets);
-      if (scene)
-      {
-        game.scene = *scene;
-      }
-      else
-      {
-        REPORT_ERROR("Failed to load new scene");
-      }
+      TRY_ASSIGN_REPORT(game.scene, load_scene("data/main.gscn", game.assets));
     }
 
     // NOTE: calculate mouse position in world space
@@ -1124,7 +1122,7 @@ void game_update_tick(GameData& game, f32 dt)
             }
           }
 
-          ui_text(error_list, std::format("{} errors (F1)", g_error_list.size()), 1.0f);
+          ui_text(error_list, std::format("{} errors (F1)", g_error_count), 1.0f);
 
           if (titlebar_clicked)
           {
@@ -1147,7 +1145,7 @@ void game_update_tick(GameData& game, f32 dt)
           }
         }
 
-        if (game.debug.error_list.open && !g_error_list.empty())
+        if (game.debug.error_list.open && g_error_count > 0)
         {
           ui_element_begin(error_list, UI_AUTO_ID);
           defer(ui_element_end(
@@ -1158,12 +1156,18 @@ void game_update_tick(GameData& game, f32 dt)
              .bg_color = {0.2f, 0.2f, 0.2f, 0.5f}}
           ));
 
-          for (usize i = 0; i < g_error_list.size(); ++i)
+          for (usize i = 0; i < g_error_count; ++i)
           {
             auto& err = g_error_list[i];
             ui_text(
               error_list,
-              std::format("{}. ({}:{}) {}", i + 1, err.function, err.line, err.message),
+              std::format(
+                "{}. ({}:{}) {}",
+                i + 1,
+                err.trace[err.trace_count - 1].function,
+                err.trace[err.trace_count - 1].line,
+                err.message
+              ),
               1.0f
             );
           }

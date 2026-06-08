@@ -195,13 +195,17 @@ static GLenum shader_type_to_gl_shader(ShaderType type)
   ASSERT(false, "Invalid shader type");
 }
 
-static std::expected<u32, std::string_view>
+static std::expected<u32, Error>
 shader_load(const std::filesystem::path& path, ShaderType shader_type)
 {
   std::ifstream file_stream{path};
   if (file_stream.fail())
   {
-    return std::unexpected{"Failed to read shader file"};
+    return std::unexpected{ERROR(
+      "Failed to read {} shader file at path: '{}'",
+      shader_type_to_string(shader_type),
+      path.string()
+    )};
   }
   std::stringstream ss{};
   ss << file_stream.rdbuf();
@@ -219,14 +223,18 @@ shader_load(const std::filesystem::path& path, ShaderType shader_type)
     GLsizei log_length = 0;
     GLchar message[1024];
     glGetShaderInfoLog(shader, 1024, &log_length, message);
-    // TODO: i hate not reporting the actual compilation message here
-    return std::unexpected{"Failed to compile shader"};
+    return std::unexpected{ERROR(
+      "Failed to compile {} shader, message:\n{}",
+      shader_type_to_string(shader_type),
+      message
+    )};
   }
 
   return {shader};
 }
 
-static u32 shader_link(u32 vertex_shader, u32 fragment_shader, std::optional<u32> geometry_shader)
+static std::expected<u32, Error>
+shader_link(u32 vertex_shader, u32 fragment_shader, std::optional<u32> geometry_shader)
 {
   GLuint program = glCreateProgram();
   glAttachShader(program, vertex_shader);
@@ -251,40 +259,31 @@ static u32 shader_link(u32 vertex_shader, u32 fragment_shader, std::optional<u32
     GLsizei log_length = 0;
     GLchar message[1024];
     glGetProgramInfoLog(program, 1024, &log_length, message);
-    ASSERT(false, "Failed to link shaders with message:\n{}", message);
+    return std::unexpected{ERROR("Failed to link shaders, message:\n{}", message)};
   }
-  return program;
+  return {program};
 }
 
-std::expected<Shader, std::string_view> shader_from_file(
+std::expected<Shader, Error> shader_from_file(
   const std::filesystem::path& vs_path,
   const std::filesystem::path& fs_path,
   const std::filesystem::path& gs_path
 )
 {
   Shader shader{};
-  auto vs = shader_load(vs_path, SHADER_TYPE_VERTEX);
-  if (!vs)
-  {
-    return std::unexpected{"Failed to load vertex shader"};
-  }
-  auto fs = shader_load(fs_path, SHADER_TYPE_FRAGMENT);
-  if (!fs)
-  {
-    return std::unexpected{"Failed to load fragment shader"};
-  }
+  u32 vs{};
+  TRY_ASSIGN(vs, shader_load(vs_path, SHADER_TYPE_VERTEX));
+  u32 fs{};
+  TRY_ASSIGN(fs, shader_load(fs_path, SHADER_TYPE_FRAGMENT));
   if (gs_path.empty())
   {
-    shader.id = shader_link(*vs, *fs, std::nullopt);
+    TRY_ASSIGN(shader.id, shader_link(vs, fs, std::nullopt));
   }
   else
   {
-    auto gs = shader_load(gs_path, SHADER_TYPE_GEOMETRY);
-    if (!gs)
-    {
-      return std::unexpected{"Failed to load geometry shader"};
-    }
-    shader.id = shader_link(*vs, *fs, *gs);
+    u32 gs{};
+    TRY_ASSIGN(gs, shader_load(gs_path, SHADER_TYPE_GEOMETRY));
+    TRY_ASSIGN(shader.id, shader_link(vs, fs, gs));
   }
 
   auto index = glGetUniformBlockIndex(shader.id, "Camera");
@@ -525,16 +524,17 @@ struct OBJContext
   std::unordered_map<Vertex, std::size_t> vertex_cache{};
 };
 
-static vec3 obj_parse_vec3(Parser_Pos& pos)
+static std::expected<vec3, Error> obj_parse_vec3(Parser_Pos& pos)
 {
   vec3 out{};
-  out.x = parser_number_f32(pos);
-  out.y = parser_number_f32(pos);
-  out.z = parser_number_f32(pos);
-  return out;
+  TRY_ASSIGN(out.x, parser_number_f32(pos));
+  TRY_ASSIGN(out.y, parser_number_f32(pos));
+  TRY_ASSIGN(out.z, parser_number_f32(pos));
+  return {out};
 }
 
-static void load_mtl_file(const std::filesystem::path& path, AssetStore& assets)
+static std::expected<void, Error>
+load_mtl_file(const std::filesystem::path& path, AssetStore& assets)
 {
   std::string mat_name{};
   Material mat{};
@@ -542,8 +542,7 @@ static void load_mtl_file(const std::filesystem::path& path, AssetStore& assets)
   std::ifstream file{path};
   if (file.fail())
   {
-    REPORT_ERROR("Failed to open mtl file");
-    return;
+    return std::unexpected{ERROR("Failed to open mtl file at path: {}", path.string())};
   }
   std::string line{};
   while (std::getline(file, line))
@@ -583,7 +582,7 @@ static void load_mtl_file(const std::filesystem::path& path, AssetStore& assets)
     }
     else if (key == "Kd")
     {
-      mat.diffuse_color = obj_parse_vec3(pos);
+      TRY_ASSIGN(mat.diffuse_color, obj_parse_vec3(pos));
     }
     else if (key == "map_Kd")
     {
@@ -592,7 +591,7 @@ static void load_mtl_file(const std::filesystem::path& path, AssetStore& assets)
     }
     else if (key == "Ks")
     {
-      mat.specular_color = obj_parse_vec3(pos);
+      TRY_ASSIGN(mat.specular_color, obj_parse_vec3(pos));
     }
     else if (key == "map_Ks")
     {
@@ -600,7 +599,7 @@ static void load_mtl_file(const std::filesystem::path& path, AssetStore& assets)
     }
     else if (key == "Ns")
     {
-      mat.specular_exponent = parser_number_f32(pos);
+      TRY_ASSIGN(mat.specular_exponent, parser_number_f32(pos));
     }
     else if (key == "map_Ns")
     {
@@ -628,8 +627,7 @@ static void load_mtl_file(const std::filesystem::path& path, AssetStore& assets)
     }
     else
     {
-      REPORT_ERROR("Invalid mtl key");
-      continue;
+      return std::unexpected{ERROR("Invalid mtl key: {}", key)};
     }
   }
   if (parsing)
@@ -637,15 +635,20 @@ static void load_mtl_file(const std::filesystem::path& path, AssetStore& assets)
     auto material_handle = asset_set(assets, mat);
     assets.material_handles.insert_or_assign(mat_name, material_handle);
   }
+  return {};
 }
 
-static void obj_parse_vertex(OBJContext& ctx, Parser_Pos& pos)
+static std::expected<void, Error> obj_parse_vertex(OBJContext& ctx, Parser_Pos& pos)
 {
-  auto position_idx = parser_number_u32(pos);
-  parser_expect_and_skip(pos, '/');
-  auto uv_idx = parser_number_u32(pos);
-  parser_expect_and_skip(pos, '/');
-  auto normal_idx = parser_number_u32(pos);
+  u32 position_idx{};
+  u32 normal_idx{};
+  u32 uv_idx{};
+
+  TRY_ASSIGN(position_idx, parser_number_u32(pos));
+  TRY(parser_expect_and_skip(pos, '/'));
+  TRY_ASSIGN(uv_idx, parser_number_u32(pos));
+  TRY(parser_expect_and_skip(pos, '/'));
+  TRY_ASSIGN(normal_idx, parser_number_u32(pos));
 
   Vertex v{
     .pos = ctx.positions[position_idx - 1],
@@ -665,6 +668,7 @@ static void obj_parse_vertex(OBJContext& ctx, Parser_Pos& pos)
     ctx.vertices.push_back(v);
   }
   ++ctx.submeshes[ctx.submeshes.size() - 1].index_count;
+  return {};
 }
 
 static void start_new_submesh(OBJContext& ctx)
@@ -686,7 +690,7 @@ MeshHandle load_obj(AssetStore& assets, const std::filesystem::path& path)
   std::ifstream file{path};
   if (file.fail())
   {
-    REPORT_ERROR("Failed to open obj file");
+    report(ERROR("Failed to open obj file at path: {}", path.string()));
     return assets.render_data->quad;
   }
   std::string line{};
@@ -702,7 +706,12 @@ MeshHandle load_obj(AssetStore& assets, const std::filesystem::path& path)
     if (key == "mtllib")
     {
       auto mtl_filename = parser_word(pos);
-      load_mtl_file(path.parent_path() / mtl_filename, assets);
+      auto res = load_mtl_file(path.parent_path() / mtl_filename, assets);
+      if (!res)
+      {
+        report(FORWARD(res.error()));
+        return assets.render_data->quad;
+      }
     }
     else if (key == "o")
     {
@@ -710,19 +719,21 @@ MeshHandle load_obj(AssetStore& assets, const std::filesystem::path& path)
     }
     else if (key == "v")
     {
-      auto position = obj_parse_vec3(pos);
+      vec3 position{};
+      TRY_ASSIGN_REPORT(position, obj_parse_vec3(pos));
       ctx.positions.push_back(position);
     }
     else if (key == "vn")
     {
-      auto normal = obj_parse_vec3(pos);
+      vec3 normal{};
+      TRY_ASSIGN_REPORT(normal, obj_parse_vec3(pos));
       ctx.normals.push_back(normal);
     }
     else if (key == "vt")
     {
       vec2 uv{};
-      uv.x = parser_number_f32(pos);
-      uv.y = parser_number_f32(pos);
+      TRY_ASSIGN_REPORT(uv.x, parser_number_f32(pos));
+      TRY_ASSIGN_REPORT(uv.y, parser_number_f32(pos));
       ctx.uvs.push_back(uv);
     }
     else if (key == "s")
@@ -752,7 +763,7 @@ MeshHandle load_obj(AssetStore& assets, const std::filesystem::path& path)
     }
     else
     {
-      REPORT_ERROR("Invalid obj key");
+      report(ERROR("Invalid obj key: {}", key));
       return assets.render_data->quad;
     }
   }
@@ -780,7 +791,7 @@ TextureHandle load_texture(AssetStore& assets, const std::filesystem::path& path
   auto img = image_from_file(path);
   if (!img)
   {
-    REPORT_ERROR(img.error());
+    report(FORWARD(img.error()));
     return assets.render_data->blank_texture;
   }
   auto handle = asset_set(assets, texture_from_image(*img));

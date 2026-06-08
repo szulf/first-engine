@@ -4,6 +4,7 @@
 #include <fstream>
 #include <cmath>
 
+#include "base/errors.h"
 #include "parser.h"
 #include "assets.h"
 #include "sound.h"
@@ -32,7 +33,7 @@ std::string_view entity_type_to_string(EntityType type)
   }
 }
 
-std::expected<EntityType, std::string_view> entity_type_from_string(std::string_view str)
+std::expected<EntityType, Error> entity_type_from_string(std::string_view str)
 {
   if (str == "player")
   {
@@ -58,7 +59,7 @@ std::expected<EntityType, std::string_view> entity_type_from_string(std::string_
   {
     return {ENTITY_ITEM};
   }
-  return std::unexpected{"Invalid entity type string"};
+  return std::unexpected{ERROR("Invalid entity type string: {}", str)};
 }
 
 ItemType item_type_from_entity_type(EntityType entity_type)
@@ -157,56 +158,55 @@ f32 entity_render_rotation(const Entity& entity, f32 t)
   }
 }
 
-static vec3 gscn_parse_vec3(Parser_Pos& pos)
+static std::expected<vec3, Error> gscn_parse_vec3(Parser_Pos& pos)
 {
   vec3 out{};
-  parser_expect_and_skip(pos, '(');
-  out.x = parser_number_f32(pos);
-  parser_expect_and_skip(pos, ',');
-  out.y = parser_number_f32(pos);
-  parser_expect_and_skip(pos, ',');
-  out.z = parser_number_f32(pos);
-  parser_expect_and_skip(pos, ')');
-  return out;
+  TRY(parser_expect_and_skip(pos, '('));
+  TRY_ASSIGN(out.x, parser_number_f32(pos));
+  TRY(parser_expect_and_skip(pos, ','));
+  TRY_ASSIGN(out.y, parser_number_f32(pos));
+  TRY(parser_expect_and_skip(pos, ','));
+  TRY_ASSIGN(out.z, parser_number_f32(pos));
+  TRY(parser_expect_and_skip(pos, ')'));
+  return {out};
 }
 
-static ItemSlot gscn_parse_item_slot(Parser_Pos& pos)
+static std::expected<ItemSlot, Error> gscn_parse_item_slot(Parser_Pos& pos)
 {
   ItemSlot slot{};
   parser_skip_whitespace(pos);
-  parser_expect_and_skip(pos, "ItemSlot{");
+  TRY(parser_expect_and_skip(pos, "ItemSlot{"));
   {
-    parser_expect_and_skip(pos, "type");
-    parser_expect_and_skip(pos, ':');
-    auto type = item_type_from_string(parser_word(pos));
-    ASSERT(type, "{}", type.error());
-    slot.type = *type;
+    TRY(parser_expect_and_skip(pos, "type"));
+    TRY(parser_expect_and_skip(pos, ':'));
+    TRY_ASSIGN(slot.type, item_type_from_string(parser_word(pos)));
   }
-  parser_expect_and_skip(pos, ';');
+  TRY(parser_expect_and_skip(pos, ';'));
   {
-    parser_expect_and_skip(pos, "count");
-    parser_expect_and_skip(pos, ':');
-    slot.count = parser_number_u32(pos);
+    TRY(parser_expect_and_skip(pos, "count"));
+    TRY(parser_expect_and_skip(pos, ':'));
+    TRY_ASSIGN(slot.count, parser_number_u32(pos));
   }
-  parser_expect_and_skip(pos, '}');
-  return slot;
+  TRY(parser_expect_and_skip(pos, '}'));
+  return {slot};
 }
 
-static void
+static std::expected<void, Error>
 gscn_parse_inventory(Parser_Pos& pos, std::istream& is, ItemSlot* inventory, usize inventory_size)
 {
   std::string line{};
-  parser_expect_and_skip(pos, '[');
+  TRY(parser_expect_and_skip(pos, '['));
   for (usize slot_idx = 0; slot_idx < inventory_size; ++slot_idx)
   {
     std::getline(is, line);
     pos = {.line = line};
-    inventory[slot_idx] = gscn_parse_item_slot(pos);
+    TRY_ASSIGN(inventory[slot_idx], gscn_parse_item_slot(pos));
   }
   std::getline(is, line);
   pos = {.line = line};
   parser_skip_whitespace(pos);
-  parser_expect_and_skip(pos, ']');
+  TRY(parser_expect_and_skip(pos, ']'));
+  return {};
 }
 
 enum SceneLoadingMode
@@ -215,15 +215,14 @@ enum SceneLoadingMode
   SCENE_LOADING_ENTITY,
 };
 
-std::expected<Scene, std::string_view>
-load_scene(const std::filesystem::path& path, AssetStore& assets)
+std::expected<Scene, Error> load_scene(const std::filesystem::path& path, AssetStore& assets)
 {
+  Scene scene{};
   std::ifstream file{path};
   if (file.fail())
   {
-    return std::unexpected{"Failed to open scene file for reading"};
+    return std::unexpected{ERROR("Failed to open scene file at path: {}", path.string())};
   }
-  Scene scene{};
   SceneLoadingMode mode = SCENE_LOADING_GLOBAL;
   Entity entity{};
   std::string line{};
@@ -240,20 +239,17 @@ load_scene(const std::filesystem::path& path, AssetStore& assets)
       case SCENE_LOADING_GLOBAL:
       {
         auto key = parser_word(pos);
-        parser_expect_and_skip(pos, ':');
+        TRY(parser_expect_and_skip(pos, ':'));
         if (key == "ambient_color")
         {
-          scene.ambient_color = gscn_parse_vec3(pos);
+          TRY_ASSIGN(scene.ambient_color, gscn_parse_vec3(pos));
           continue;
         }
-        auto entity_type = entity_type_from_string(key);
-        if (!entity_type)
-        {
-          return std::unexpected{entity_type.error()};
-        }
-        entity = entity_new(*entity_type, assets);
+        EntityType entity_type{};
+        TRY_ASSIGN(entity_type, entity_type_from_string(key));
+        entity = entity_new(entity_type, assets);
         mode = SCENE_LOADING_ENTITY;
-        parser_expect_and_skip(pos, '{');
+        TRY(parser_expect_and_skip(pos, '{'));
       }
       break;
       case SCENE_LOADING_ENTITY:
@@ -267,14 +263,14 @@ load_scene(const std::filesystem::path& path, AssetStore& assets)
         }
         else
         {
-          parser_expect_and_skip(pos, ':');
+          TRY(parser_expect_and_skip(pos, ':'));
           if (key == "pos")
           {
-            entity.pos = gscn_parse_vec3(pos);
+            TRY_ASSIGN(entity.pos, gscn_parse_vec3(pos));
           }
           else if (key == "tint")
           {
-            entity.tint = gscn_parse_vec3(pos);
+            TRY_ASSIGN(entity.tint, gscn_parse_vec3(pos));
           }
           else
           {
@@ -283,32 +279,32 @@ load_scene(const std::filesystem::path& path, AssetStore& assets)
               case ENTITY_PLAYER:
                 if (key == "rotation")
                 {
-                  entity.player.rotation = parser_number_f32(pos);
+                  TRY_ASSIGN(entity.player.rotation, parser_number_f32(pos));
                   continue;
                 }
                 else if (key == "target_rotation")
                 {
-                  entity.player.target_rotation = parser_number_f32(pos);
+                  TRY_ASSIGN(entity.player.target_rotation, parser_number_f32(pos));
                   continue;
                 }
                 else if (key == "velocity")
                 {
-                  entity.player.velocity = gscn_parse_vec3(pos);
+                  TRY_ASSIGN(entity.player.velocity, gscn_parse_vec3(pos));
                   continue;
                 }
                 else if (key == "selected_hotbar_slot")
                 {
-                  entity.player.selected_hotbar_slot = (u8) parser_number_u32(pos);
+                  TRY_ASSIGN_CAST(entity.player.selected_hotbar_slot, u8, parser_number_u32(pos));
                   continue;
                 }
                 else if (key == "is_inventory_open")
                 {
-                  entity.player.is_inventory_open = parser_boolean(pos);
+                  TRY_ASSIGN(entity.player.is_inventory_open, parser_boolean(pos));
                   continue;
                 }
                 else if (key == "hand")
                 {
-                  entity.player.hand = gscn_parse_item_slot(pos);
+                  TRY_ASSIGN(entity.player.hand, gscn_parse_item_slot(pos));
                   continue;
                 }
                 else if (key == "inventory")
@@ -327,21 +323,21 @@ load_scene(const std::filesystem::path& path, AssetStore& assets)
               case ENTITY_LIGHT_BULB:
                 if (key == "on")
                 {
-                  entity.light_bulb.on = parser_boolean(pos);
+                  TRY_ASSIGN(entity.light_bulb.on, parser_boolean(pos));
                   continue;
                 }
                 break;
               case ENTITY_CONVEYOR:
                 if (key == "rotation")
                 {
-                  entity.conveyor.rotation = parser_number_f32(pos);
+                  TRY_ASSIGN(entity.conveyor.rotation, parser_number_f32(pos));
                   continue;
                 }
                 break;
               case ENTITY_STORAGE:
                 if (key == "rotation")
                 {
-                  entity.storage.rotation = parser_number_f32(pos);
+                  TRY_ASSIGN(entity.storage.rotation, parser_number_f32(pos));
                   continue;
                 }
                 else if (key == "inventory")
@@ -356,19 +352,19 @@ load_scene(const std::filesystem::path& path, AssetStore& assets)
                 }
                 else if (key == "is_inventory_open")
                 {
-                  entity.storage.is_inventory_open = parser_boolean(pos);
+                  TRY_ASSIGN(entity.storage.is_inventory_open, parser_boolean(pos));
                   continue;
                 }
                 else if (key == "scroll_value")
                 {
-                  entity.storage.scroll_value = parser_number_i32(pos);
+                  TRY_ASSIGN(entity.storage.scroll_value, parser_number_i32(pos));
                   continue;
                 }
                 break;
               case ENTITY_ITEM:
                 if (key == "rotation")
                 {
-                  entity.item.rotation = parser_number_f32(pos);
+                  TRY_ASSIGN(entity.item.rotation, parser_number_f32(pos));
                   continue;
                 }
                 else if (key == "slot")
@@ -377,7 +373,13 @@ load_scene(const std::filesystem::path& path, AssetStore& assets)
                   vec3 item_pos = entity.pos;
                   vec3 item_tint = entity.tint;
                   f32 item_rotation = entity.item.rotation;
-                  entity = entity_new_item(gscn_parse_item_slot(pos), assets);
+                  ItemSlot item_slot{};
+                  TRY_ASSIGN(item_slot, gscn_parse_item_slot(pos));
+                  if (item_slot.count == 0)
+                  {
+                    return std::unexpected{ERROR("Item entities cannot have 0 item count")};
+                  }
+                  entity = entity_new_item(item_slot, assets);
                   entity.pos = item_pos;
                   entity.tint = item_tint;
                   entity.item.rotation = item_rotation;
@@ -387,14 +389,13 @@ load_scene(const std::filesystem::path& path, AssetStore& assets)
               case ENTITY_TYPE_COUNT:
                 break;
             }
-            return std::unexpected{"Invalid key in scene file"};
+            return std::unexpected{ERROR("Invalid key in scene file: {}", key)};
           }
         }
       }
       break;
     }
   }
-
   return {scene};
 }
 
@@ -415,13 +416,12 @@ static void gscn_write_inventory(std::ostream& os, const ItemSlot* inventory, us
   std::println(os, "  ]");
 }
 
-std::expected<void, std::string_view>
-save_scene(const Scene& scene, const std::filesystem::path& path)
+std::expected<void, Error> save_scene(const Scene& scene, const std::filesystem::path& path)
 {
   std::ofstream file{path};
   if (file.fail())
   {
-    return std::unexpected{"Failed to open scene file for writing"};
+    return std::unexpected{ERROR("Failed to open scene file at path: {}", path.string())};
   }
 
   std::println(
@@ -483,6 +483,5 @@ save_scene(const Scene& scene, const std::filesystem::path& path)
         break;
     }
   }
-
   return {};
 }

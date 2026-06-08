@@ -26,7 +26,7 @@ void os_show_mouse_pointer()
   SDL_ShowCursor();
 }
 
-std::expected<OS_Key, std::string_view> os_string_to_key(std::string_view str)
+std::expected<OS_Key, Error> os_string_to_key(std::string_view str)
 {
   if (str == "A")
   {
@@ -197,7 +197,7 @@ std::expected<OS_Key, std::string_view> os_string_to_key(std::string_view str)
     return {OS_KEY_ESCAPE};
   }
 
-  return std::unexpected{"Invalid key string"};
+  return std::unexpected{ERROR("Invalid key string: {}", str)};
 }
 
 void os_input_clear(OS_Input& input)
@@ -217,8 +217,7 @@ struct OS_WindowPlatformData
   SDL_GLContext gl_context{};
 };
 
-std::expected<OS_Window, std::string_view>
-os_window_open(std::string_view name, const vec2& dimensions)
+std::expected<OS_Window, Error> os_window_open(std::string_view name, const vec2& dimensions)
 {
   OS_Window window = {
     .name = std::string{name},
@@ -234,7 +233,7 @@ os_window_open(std::string_view name, const vec2& dimensions)
   );
   if (!window.platform_data->window)
   {
-    return std::unexpected{"Failed to open window"};
+    return std::unexpected{ERROR("Failed to open window")};
   }
   window.running = true;
 
@@ -251,7 +250,7 @@ os_window_open(std::string_view name, const vec2& dimensions)
   window.platform_data->gl_context = SDL_GL_CreateContext(window.platform_data->window);
   if (!window.platform_data->gl_context)
   {
-    return std::unexpected{"Failed to create OpenGL context"};
+    return std::unexpected{ERROR("Failed to create OpenGL context")};
   }
   setup_gl_functions();
   // SDL_GL_SetSwapInterval(0);
@@ -271,121 +270,121 @@ void os_window_close(OS_Window& window)
   free(window.platform_data);
 }
 
-static std::expected<SDL_Keycode, std::string_view> sdlk_from_key(OS_Key key)
+static SDL_Keycode sdlk_from_key(OS_Key key)
 {
   switch (key)
   {
     case OS_KEY_A:
-      return {SDLK_A};
+      return SDLK_A;
     case OS_KEY_B:
-      return {SDLK_B};
+      return SDLK_B;
     case OS_KEY_C:
-      return {SDLK_C};
+      return SDLK_C;
     case OS_KEY_D:
-      return {SDLK_D};
+      return SDLK_D;
     case OS_KEY_E:
-      return {SDLK_E};
+      return SDLK_E;
     case OS_KEY_F:
-      return {SDLK_F};
+      return SDLK_F;
     case OS_KEY_G:
-      return {SDLK_G};
+      return SDLK_G;
     case OS_KEY_H:
-      return {SDLK_H};
+      return SDLK_H;
     case OS_KEY_I:
-      return {SDLK_I};
+      return SDLK_I;
     case OS_KEY_J:
-      return {SDLK_J};
+      return SDLK_J;
     case OS_KEY_K:
-      return {SDLK_K};
+      return SDLK_K;
     case OS_KEY_L:
-      return {SDLK_L};
+      return SDLK_L;
     case OS_KEY_M:
-      return {SDLK_M};
+      return SDLK_M;
     case OS_KEY_N:
-      return {SDLK_N};
+      return SDLK_N;
     case OS_KEY_O:
-      return {SDLK_O};
+      return SDLK_O;
     case OS_KEY_P:
-      return {SDLK_P};
+      return SDLK_P;
     case OS_KEY_Q:
-      return {SDLK_Q};
+      return SDLK_Q;
     case OS_KEY_R:
-      return {SDLK_R};
+      return SDLK_R;
     case OS_KEY_S:
-      return {SDLK_S};
+      return SDLK_S;
     case OS_KEY_T:
-      return {SDLK_T};
+      return SDLK_T;
     case OS_KEY_U:
-      return {SDLK_U};
+      return SDLK_U;
     case OS_KEY_V:
-      return {SDLK_V};
+      return SDLK_V;
     case OS_KEY_W:
-      return {SDLK_W};
+      return SDLK_W;
     case OS_KEY_X:
-      return {SDLK_X};
+      return SDLK_X;
     case OS_KEY_Y:
-      return {SDLK_Y};
+      return SDLK_Y;
     case OS_KEY_Z:
-      return {SDLK_Z};
+      return SDLK_Z;
     case OS_KEY_0:
-      return {SDLK_0};
+      return SDLK_0;
     case OS_KEY_1:
-      return {SDLK_1};
+      return SDLK_1;
     case OS_KEY_2:
-      return {SDLK_2};
+      return SDLK_2;
     case OS_KEY_3:
-      return {SDLK_3};
+      return SDLK_3;
     case OS_KEY_4:
-      return {SDLK_4};
+      return SDLK_4;
     case OS_KEY_5:
-      return {SDLK_5};
+      return SDLK_5;
     case OS_KEY_6:
-      return {SDLK_6};
+      return SDLK_6;
     case OS_KEY_7:
-      return {SDLK_7};
+      return SDLK_7;
     case OS_KEY_8:
-      return {SDLK_8};
+      return SDLK_8;
     case OS_KEY_9:
-      return {SDLK_9};
+      return SDLK_9;
     case OS_KEY_F1:
-      return {SDLK_F1};
+      return SDLK_F1;
     case OS_KEY_F2:
-      return {SDLK_F2};
+      return SDLK_F2;
     case OS_KEY_F3:
-      return {SDLK_F3};
+      return SDLK_F3;
     case OS_KEY_F4:
-      return {SDLK_F4};
+      return SDLK_F4;
     case OS_KEY_F5:
-      return {SDLK_F5};
+      return SDLK_F5;
     case OS_KEY_F6:
-      return {SDLK_F6};
+      return SDLK_F6;
     case OS_KEY_F7:
-      return {SDLK_F7};
+      return SDLK_F7;
     case OS_KEY_F8:
-      return {SDLK_F8};
+      return SDLK_F8;
     case OS_KEY_F9:
-      return {SDLK_F9};
+      return SDLK_F9;
     case OS_KEY_F10:
-      return {SDLK_F10};
+      return SDLK_F10;
     case OS_KEY_F11:
-      return {SDLK_F11};
+      return SDLK_F11;
     case OS_KEY_F12:
-      return {SDLK_F12};
+      return SDLK_F12;
     case OS_KEY_SPACE:
-      return {SDLK_SPACE};
+      return SDLK_SPACE;
     case OS_KEY_LSHIFT:
-      return {SDLK_LSHIFT};
+      return SDLK_LSHIFT;
     case OS_KEY_TAB:
-      return {SDLK_TAB};
+      return SDLK_TAB;
     case OS_KEY_ESCAPE:
-      return {SDLK_ESCAPE};
+      return SDLK_ESCAPE;
     case OS_KEY_COUNT:
-    default:
-      return std::unexpected{"Invalid key provided"};
+      break;
   }
+  ASSERT(false, "Invalid key value");
 }
 
-static std::expected<OS_Key, std::string_view> key_from_sdlk(SDL_Keycode sdlk)
+static std::expected<OS_Key, Error> key_from_sdlk(SDL_Keycode sdlk)
 {
   switch (sdlk)
   {
@@ -494,7 +493,7 @@ static std::expected<OS_Key, std::string_view> key_from_sdlk(SDL_Keycode sdlk)
     case SDLK_ESCAPE:
       return {OS_KEY_ESCAPE};
   }
-  return std::unexpected{"Invalid key provided"};
+  return std::unexpected{ERROR("Invalid sdlk")};
 }
 
 void os_window_update(OS_Window& window)
@@ -560,7 +559,7 @@ void os_window_update(OS_Window& window)
     auto sdlk = sdlk_from_key((OS_Key) i);
     if (sdlk)
     {
-      window.input.keys[i].down = key_states[SDL_GetScancodeFromKey(*sdlk, nullptr)];
+      window.input.keys[i].down = key_states[SDL_GetScancodeFromKey(sdlk, nullptr)];
     }
   }
 }
@@ -593,18 +592,18 @@ struct OS_AudioPlatformData
   OS_SDL_CallbackData* callback_data{};
 };
 
-static std::expected<SDL_AudioFormat, std::string_view> bit_count_to_sdl_audio_format(u32 bit_count)
+static std::expected<SDL_AudioFormat, Error> bit_count_to_sdl_audio_format(u32 bit_count)
 {
   switch (bit_count)
   {
     case 16:
       return SDL_AUDIO_S16;
     default:
-      return std::unexpected{"Invalid bit count provided."};
+      return std::unexpected{ERROR("Invalid bit count: {}", bit_count)};
   }
 }
 
-std::expected<OS_Audio, std::string_view> os_audio_init()
+std::expected<OS_Audio, Error> os_audio_init()
 {
   OS_Audio audio = {
     .platform_data = (OS_AudioPlatformData*) malloc(sizeof(OS_AudioPlatformData)),
@@ -617,16 +616,11 @@ std::expected<OS_Audio, std::string_view> os_audio_init()
   audio.platform_data->callback_data->mix_buffer = (i16*) malloc(OS_SDL_MIX_BUFFER_SIZE);
   ASSERT(audio.platform_data->callback_data->mix_buffer, "Failed to alloc audio mixing buffer");
 
-  auto audio_format = bit_count_to_sdl_audio_format(OS_AUDIO_SAMPLE_SIZE_BITS);
-  if (!audio_format)
-  {
-    return std::unexpected{"Invalid audio description bit count provided"};
-  }
   SDL_AudioSpec spec = {
-    .format = *audio_format,
     .channels = (i32) OS_AUDIO_CHANNELS,
     .freq = (i32) OS_AUDIO_SAMPLE_RATE,
   };
+  TRY_ASSIGN(spec.format, bit_count_to_sdl_audio_format(OS_AUDIO_SAMPLE_SIZE_BITS));
 
   audio.platform_data->stream =
     SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, nullptr, nullptr);
@@ -648,8 +642,6 @@ os_sdl_callback(void* user_data, SDL_AudioStream* stream, int additional_amount,
   // they seem to be always equal on my machine
   UNUSED(total_amount);
   auto data = (OS_SDL_CallbackData*) user_data;
-  // TODO: should this be an ASSERT() or REPORT_ERROR()?
-  // probably a REPORT_ERROR(), will get to this when i refactor errors everywhere
   ASSERT(
     OS_SDL_MIX_BUFFER_SIZE > (usize) additional_amount,
     "Audio mixing buffer is not big enough"

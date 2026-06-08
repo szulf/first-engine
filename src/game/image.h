@@ -7,6 +7,7 @@
 
 #include "base/base.h"
 #include "base/math.h"
+#include "base/errors.h"
 
 struct Image
 {
@@ -15,6 +16,6 @@ struct Image
 };
 
 Image image_init(const u8* data, const vec2& dimensions);
-std::expected<Image, std::string_view> image_from_file(const std::filesystem::path& path);
+std::expected<Image, Error> image_from_file(const std::filesystem::path& path);
 
 #endif

@@ -1,6 +1,7 @@
 #include <chrono>
 
 #include "base/base.h"
+#include "base/errors.h"
 #include "os/os.h"
 #include "game/game.h"
 
@@ -16,11 +17,17 @@ i32 main()
   defer(os_shutdown());
 
   auto window = os_window_open("game", {1280, 720});
-  ASSERT(window, "Failed to create window");
+  if (!window)
+  {
+    FATAL("Failed to create window:\n{}", error_to_string(window.error()));
+  }
   defer(os_window_close(*window));
 
   auto audio = os_audio_init();
-  ASSERT(audio, "Failed to init audio");
+  if (!audio)
+  {
+    FATAL("Failed to init audio:\n{}", error_to_string(audio.error()));
+  }
   defer(os_audio_deinit(*audio));
 
   auto game = game_init(*window, *audio);

@@ -11,13 +11,13 @@ Image image_init(const u8* data, const vec2& dimensions)
   return img;
 }
 
-std::expected<Image, std::string_view> image_from_file(const std::filesystem::path& path)
+std::expected<Image, Error> image_from_file(const std::filesystem::path& path)
 {
   int width, height, channels;
   u8* data = stbi_load(path.c_str(), &width, &height, &channels, 4);
   if (!data)
   {
-    return std::unexpected{"Failed to load image file"};
+    return std::unexpected{ERROR("Failed to load image file at path: '{}'", path.string())};
   }
   Image img = image_init(data, {(f32) width, (f32) height});
   stbi_image_free(data);

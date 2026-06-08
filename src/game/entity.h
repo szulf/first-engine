@@ -26,7 +26,7 @@ enum EntityType
 
 // TODO: should these maybe just be arrays?
 std::string_view entity_type_to_string(EntityType type);
-std::expected<EntityType, std::string_view> entity_type_from_string(std::string_view str);
+std::expected<EntityType, Error> entity_type_from_string(std::string_view str);
 
 static constexpr std::array<EntityType, ITEM_TYPE_COUNT> ENTITY_TYPE_FROM_ITEM_TYPE = []()
 {
@@ -197,9 +197,7 @@ struct Scene
   std::vector<usize> entity_idx_remove_queue{};
 };
 
-std::expected<Scene, std::string_view>
-load_scene(const std::filesystem::path& path, AssetStore& assets);
-std::expected<void, std::string_view>
-save_scene(const Scene& scene, const std::filesystem::path& path);
+std::expected<Scene, Error> load_scene(const std::filesystem::path& path, AssetStore& assets);
+std::expected<void, Error> save_scene(const Scene& scene, const std::filesystem::path& path);
 
 #endif

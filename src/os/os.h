@@ -7,6 +7,7 @@
 
 #include "base/base.h"
 #include "base/math.h"
+#include "base/errors.h"
 
 void os_init();
 void os_shutdown();
@@ -71,7 +72,7 @@ enum OS_Key
   OS_KEY_COUNT,
 };
 
-std::expected<OS_Key, std::string_view> os_string_to_key(std::string_view str);
+std::expected<OS_Key, Error> os_string_to_key(std::string_view str);
 
 struct OS_KeyState
 {
@@ -106,8 +107,7 @@ struct OS_Window
   OS_WindowPlatformData* platform_data{};
 };
 
-std::expected<OS_Window, std::string_view>
-os_window_open(std::string_view name, const vec2& dimensions);
+std::expected<OS_Window, Error> os_window_open(std::string_view name, const vec2& dimensions);
 void os_window_close(OS_Window& window);
 void os_window_update(OS_Window& window);
 void os_window_swap_buffers(OS_Window& window);
@@ -125,7 +125,7 @@ struct OS_Audio
   OS_AudioPlatformData* platform_data{};
 };
 
-std::expected<OS_Audio, std::string_view> os_audio_init();
+std::expected<OS_Audio, Error> os_audio_init();
 void os_audio_deinit(OS_Audio& audio);
 void os_audio_set_callback(OS_Audio& audio, OS_AudioCallback callback, void* user_data);
 

@@ -27,6 +27,15 @@ using f64 = double;
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(*arr))
 
+#define FATAL(...)                                                                                 \
+  do                                                                                               \
+  {                                                                                                \
+    std::println("fatal error occurred, exiting with message:");                                   \
+    std::println(__VA_ARGS__);                                                                     \
+    std::exit(1);                                                                                  \
+  }                                                                                                \
+  while (false)
+
 #define ASSERT(expr, ...)                                                                          \
   do                                                                                               \
   {                                                                                                \

@@ -583,7 +583,7 @@ static void ui_generate_render_cmds(UI_Layout& layout, UI_ElementIdx idx = 0)
           }
           else
           {
-            ASSERT(false, "Unsupported character '{}'({}) found in drawing", str[i], (i32) str[i]);
+            texture_offset = {5, 3};
           }
           layout.system->render_cmds.push_back(render_texture_part(
             layout.font_texture,

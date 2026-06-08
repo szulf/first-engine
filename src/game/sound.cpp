@@ -51,7 +51,7 @@ enum WaveFormat
   WAVE_FORMAT_EXTENSIBLE = 0xFFFE,
 };
 
-std::expected<Sound_Data, std::string_view> sound_load_wav(const std::filesystem::path& path)
+std::expected<Sound_Data, Error> sound_load_wav(const std::filesystem::path& path)
 {
   WAVContext ctx{};
   // NOTE: i absolutely hate this, but there is no easy way to read a binary file in the stl
@@ -59,7 +59,7 @@ std::expected<Sound_Data, std::string_view> sound_load_wav(const std::filesystem
     std::ifstream file{path, std::ios::binary};
     if (file.fail())
     {
-      return std::unexpected{"Failed to open wav file"};
+      return std::unexpected{ERROR("Failed to open wav file at path: {}", path.string())};
     }
     ctx.buffer.resize(std::filesystem::file_size(path));
     file.read((char*) ctx.buffer.data(), (i64) ctx.buffer.size());
@@ -67,39 +67,39 @@ std::expected<Sound_Data, std::string_view> sound_load_wav(const std::filesystem
 
   if (!wav_expect(ctx, "RIFF"))
   {
-    return std::unexpected{"Invalid 'RIFF' master header"};
+    return std::unexpected{ERROR("Invalid 'RIFF' master header")};
   }
   wav_read_u32(ctx); // file_size (?)
   if (!wav_expect(ctx, "WAVE"))
   {
-    return std::unexpected{"Invalid 'WAVE' master header"};
+    return std::unexpected{ERROR("Invalid 'WAVE' master header")};
   }
   if (!wav_expect(ctx, "fmt "))
   {
-    return std::unexpected{"Invalid 'fmt ' header"};
+    return std::unexpected{ERROR("Invalid 'fmt ' header")};
   }
   wav_read_u32(ctx); // fmt_size
   u16 format_type = wav_read_u16(ctx);
   if (format_type != 1)
   {
-    return std::unexpected{"Invalid format_type - Non PCM"};
+    return std::unexpected{ERROR("Invalid format_type - Non PCM")};
   }
   u16 channels = wav_read_u16(ctx);
   u32 sample_rate = wav_read_u32(ctx);
   if (sample_rate != 48'000)
   {
-    return std::unexpected{"Invalid sample rate"};
+    return std::unexpected{ERROR("Invalid sample rate")};
   }
   wav_read_u32(ctx); // idk
   wav_read_u16(ctx); // idk2
   u16 bits_per_sample = wav_read_u16(ctx);
   if (bits_per_sample != 16)
   {
-    return std::unexpected{"Invalid bits per sample count"};
+    return std::unexpected{ERROR("Invalid bits per sample count")};
   }
   if (!wav_expect(ctx, "data"))
   {
-    return std::unexpected{"Invalid 'data' header"};
+    return std::unexpected{ERROR("Invalid 'data' header")};
   }
   u32 data_size = wav_read_u32(ctx);
   ctx.out.samples.reserve(data_size);
@@ -120,35 +120,32 @@ static void sound_callback(i16* buffer, usize bytes_to_fill, void* user_data)
   Sound_Cmd cmd{};
   while (spsc_queue_consume_one(system.cmds, cmd))
   {
-    // TODO: not decided yet whether this should be an ASSERT() or a REPORT_ERROR()
     switch (cmd.type)
     {
       case SOUND_CMD_PLAY_ONCE:
       {
-        ASSERT(
-          system.active_sources_count < SOUND_MAX_ACTIVE_SOURCES,
-          "Exceeded max amount of active sound sources"
-        );
-        system.active_sources[system.active_sources_count] = {
-          .handle = cmd.sound,
-          .volume = cmd.volume,
-          .loop = false,
-        };
-        ++system.active_sources_count;
+        if (system.active_sources_count < SOUND_MAX_ACTIVE_SOURCES)
+        {
+          system.active_sources[system.active_sources_count] = {
+            .handle = cmd.sound,
+            .volume = cmd.volume,
+            .loop = false,
+          };
+          ++system.active_sources_count;
+        }
       }
       break;
       case SOUND_CMD_START_LOOP:
       {
-        ASSERT(
-          system.active_sources_count < SOUND_MAX_ACTIVE_SOURCES,
-          "Exceeded max amount of active sound sources"
-        );
-        system.active_sources[system.active_sources_count] = {
-          .handle = cmd.sound,
-          .volume = cmd.volume,
-          .loop = true,
-        };
-        ++system.active_sources_count;
+        if (system.active_sources_count < SOUND_MAX_ACTIVE_SOURCES)
+        {
+          system.active_sources[system.active_sources_count] = {
+            .handle = cmd.sound,
+            .volume = cmd.volume,
+            .loop = true,
+          };
+          ++system.active_sources_count;
+        }
       }
       break;
       case SOUND_CMD_END_LOOP:
@@ -248,28 +245,8 @@ void sound_system_init(Sound_System& system, OS_Audio& audio)
       sound.samples[frame * 2 + 1] = sample;
     }
   }
-  {
-    auto sound = sound_load_wav("assets/shotgun.wav");
-    if (sound)
-    {
-      system.sound_data[SOUND_SHOTGUN] = *sound;
-    }
-    else
-    {
-      REPORT_ERROR(sound.error());
-    }
-  }
-  {
-    auto sound = sound_load_wav("assets/music.wav");
-    if (sound)
-    {
-      system.sound_data[SOUND_TEST_MUSIC] = *sound;
-    }
-    else
-    {
-      REPORT_ERROR(sound.error());
-    }
-  }
+  TRY_ASSIGN_REPORT(system.sound_data[SOUND_SHOTGUN], sound_load_wav("assets/shotgun.wav"));
+  TRY_ASSIGN_REPORT(system.sound_data[SOUND_TEST_MUSIC], sound_load_wav("assets/music.wav"));
 }
 
 void sound_play_once(Sound_System& system, Sound_Handle sound, f32 volume)

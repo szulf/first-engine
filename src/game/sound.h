@@ -5,6 +5,7 @@
 #include <filesystem>
 
 #include "base/base.h"
+#include "base/errors.h"
 #include "base/spsc_queue.h"
 #include "os/os.h"
 
@@ -23,7 +24,7 @@ struct Sound_Data
   u32 frames{};
 };
 
-std::expected<Sound_Data, std::string_view> sound_load_wav(const std::filesystem::path& path);
+std::expected<Sound_Data, Error> sound_load_wav(const std::filesystem::path& path);
 
 enum Sound_CmdType
 {

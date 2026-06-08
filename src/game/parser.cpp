@@ -12,19 +12,32 @@ void parser_skip_whitespace(Parser_Pos& pos)
   }
 }
 
-void parser_expect_and_skip(Parser_Pos& pos, char c)
+std::expected<void, Error> parser_expect_and_skip(Parser_Pos& pos, char c)
 {
-  ASSERT(parser_curr_char(pos) == c, "Expected '{}', found '{}'.", c, parser_curr_char(pos));
-  ++pos.pos;
-  parser_skip_whitespace(pos);
+  if (parser_curr_char(pos) == c)
+  {
+    ++pos.pos;
+    parser_skip_whitespace(pos);
+    return {};
+  }
+  return std::unexpected{ERROR(
+    "Expected '{}'({}) found '{}'({}) at pos: {} line: {}",
+    c,
+    (i32) c,
+    parser_curr_char(pos),
+    (i32) parser_curr_char(pos),
+    pos.pos,
+    pos.line
+  )};
 }
 
-void parser_expect_and_skip(Parser_Pos& pos, std::string_view c)
+std::expected<void, Error> parser_expect_and_skip(Parser_Pos& pos, std::string_view c)
 {
   for (usize i = 0; i < c.size(); ++i)
   {
-    parser_expect_and_skip(pos, c[i]);
+    TRY(parser_expect_and_skip(pos, c[i]));
   }
+  return {};
 }
 
 std::string_view parser_word(Parser_Pos& pos)
@@ -43,7 +56,7 @@ std::string_view parser_word(Parser_Pos& pos)
   return word;
 }
 
-f32 parser_number_f32(Parser_Pos& pos)
+std::expected<f32, Error> parser_number_f32(Parser_Pos& pos)
 {
   parser_skip_whitespace(pos);
   usize num_length{};
@@ -59,12 +72,15 @@ f32 parser_number_f32(Parser_Pos& pos)
   f32 result{};
   auto ec =
     std::from_chars(pos.line.data() + (pos.pos - num_length), pos.line.data() + pos.pos, result).ec;
-  ASSERT(ec == std::errc{}, "Invalid f32.");
+  if (ec != std::errc{})
+  {
+    return std::unexpected{ERROR("Invalid f32 at pos: {} line: {}", pos.pos, pos.line)};
+  }
   parser_skip_whitespace(pos);
-  return result;
+  return {result};
 }
 
-u32 parser_number_u32(Parser_Pos& pos)
+std::expected<u32, Error> parser_number_u32(Parser_Pos& pos)
 {
   parser_skip_whitespace(pos);
   usize num_length{};
@@ -77,12 +93,15 @@ u32 parser_number_u32(Parser_Pos& pos)
   u32 result{};
   auto ec =
     std::from_chars(pos.line.data() + (pos.pos - num_length), pos.line.data() + pos.pos, result).ec;
-  ASSERT(ec == std::errc{}, "Invalid u32.");
+  if (ec != std::errc{})
+  {
+    return std::unexpected{ERROR("Invalid u32 at pos: {} line: {}", pos.pos, pos.line)};
+  }
   parser_skip_whitespace(pos);
-  return result;
+  return {result};
 }
 
-i32 parser_number_i32(Parser_Pos& pos)
+std::expected<i32, Error> parser_number_i32(Parser_Pos& pos)
 {
   parser_skip_whitespace(pos);
   usize num_length{};
@@ -96,23 +115,26 @@ i32 parser_number_i32(Parser_Pos& pos)
   i32 result{};
   auto ec =
     std::from_chars(pos.line.data() + (pos.pos - num_length), pos.line.data() + pos.pos, result).ec;
-  ASSERT(ec == std::errc{}, "Invalid i32.");
+  if (ec != std::errc{})
+  {
+    return std::unexpected{ERROR("Invalid i32 at pos: {} line: {}", pos.pos, pos.line)};
+  }
   parser_skip_whitespace(pos);
-  return result;
+  return {result};
 }
 
-bool parser_boolean(Parser_Pos& pos)
+std::expected<bool, Error> parser_boolean(Parser_Pos& pos)
 {
   parser_skip_whitespace(pos);
   if (pos.line.size() - pos.pos >= 4 && pos.line.substr(pos.pos, 4) == "true")
   {
     pos.pos += 4;
-    return true;
+    return {true};
   }
   else if (pos.line.size() - pos.pos >= 5 && pos.line.substr(pos.pos, 5) == "false")
   {
     pos.pos += 5;
-    return false;
+    return {false};
   }
-  ASSERT(false, "Invalid boolean.");
+  return std::unexpected{ERROR("Invalid boolean at pos: {} line: {}", pos.pos, pos.line)};
 }

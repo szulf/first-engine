@@ -153,36 +153,27 @@ void render_init(AssetStore& assets)
 
   {
     auto shader = shader_from_file("shaders/shader.vert", "shaders/default.frag");
-    if (shader)
+    if (!shader)
     {
-      g_render_data.default_shader = asset_set(assets, *shader);
+      FATAL("failed to load default shader:\n{}", error_to_string(shader.error()));
     }
-    else
-    {
-      REPORT_ERROR(shader.error());
-    }
+    g_render_data.default_shader = asset_set(assets, *shader);
   }
   {
     auto shader = shader_from_file("shaders/quads.vert", "shaders/quads.frag");
-    if (shader)
+    if (!shader)
     {
-      g_render_data.quads_shader = asset_set(assets, *shader);
+      FATAL("failed to load quads shader:\n{}", error_to_string(shader.error()));
     }
-    else
-    {
-      REPORT_ERROR(shader.error());
-    }
+    g_render_data.quads_shader = asset_set(assets, *shader);
   }
   {
     auto shader = shader_from_file("shaders/shader.vert", "shaders/lighting.frag");
-    if (shader)
+    if (!shader)
     {
-      g_render_data.lighting_shader = asset_set(assets, *shader);
+      FATAL("failed to load lighting shader:\n{}", error_to_string(shader.error()));
     }
-    else
-    {
-      REPORT_ERROR(shader.error());
-    }
+    g_render_data.lighting_shader = asset_set(assets, *shader);
   }
 
   g_render_data.cube_wires = static_model_init(
