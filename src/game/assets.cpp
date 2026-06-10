@@ -160,40 +160,35 @@ void texture_activate(const Texture& texture, u32 slot)
   glBindTexture(texture_type_to_gl_texture(texture.type), texture.id);
 }
 
+#define SHADER_TYPES                                                                               \
+  X(SHADER_TYPE_VERTEX, "Vertex", GL_VERTEX_SHADER)                                                \
+  X(SHADER_TYPE_FRAGMENT, "Fragment", GL_FRAGMENT_SHADER)                                          \
+  X(SHADER_TYPE_GEOMETRY, "Geometry", GL_GEOMETRY_SHADER)
+
+#define X(type, str, gl) type,
 enum ShaderType
 {
-  SHADER_TYPE_VERTEX,
-  SHADER_TYPE_FRAGMENT,
-  SHADER_TYPE_GEOMETRY,
+  SHADER_TYPES SHADER_TYPE_COUNT,
 };
+#undef X
 
-static std::string_view shader_type_to_string(ShaderType type)
+#define X(type, str, gl) map[type] = str;
+static constexpr std::array<std::string_view, SHADER_TYPE_COUNT> SHADER_TYPE_TO_STRING = []()
 {
-  switch (type)
-  {
-    case SHADER_TYPE_VERTEX:
-      return "Vertex";
-    case SHADER_TYPE_FRAGMENT:
-      return "Fragment";
-    case SHADER_TYPE_GEOMETRY:
-      return "Geometry";
-  }
-  ASSERT(false, "Invalid shader type");
-}
+  std::array<std::string_view, SHADER_TYPE_COUNT> map{};
+  SHADER_TYPES
+  return map;
+}();
+#undef X
 
-static GLenum shader_type_to_gl_shader(ShaderType type)
+#define X(type, str, gl) map[type] = gl;
+static constexpr std::array<GLenum, SHADER_TYPE_COUNT> SHADER_TYPE_TO_GL_SHADER = []()
 {
-  switch (type)
-  {
-    case SHADER_TYPE_VERTEX:
-      return GL_VERTEX_SHADER;
-    case SHADER_TYPE_FRAGMENT:
-      return GL_FRAGMENT_SHADER;
-    case SHADER_TYPE_GEOMETRY:
-      return GL_GEOMETRY_SHADER;
-  }
-  ASSERT(false, "Invalid shader type");
-}
+  std::array<GLenum, SHADER_TYPE_COUNT> map{};
+  SHADER_TYPES
+  return map;
+}();
+#undef X
 
 static std::expected<u32, Error>
 shader_load(const std::filesystem::path& path, ShaderType shader_type)
@@ -203,7 +198,7 @@ shader_load(const std::filesystem::path& path, ShaderType shader_type)
   {
     return std::unexpected{ERROR(
       "Failed to read {} shader file at path: '{}'",
-      shader_type_to_string(shader_type),
+      SHADER_TYPE_TO_STRING[shader_type],
       path.string()
     )};
   }
@@ -211,7 +206,7 @@ shader_load(const std::filesystem::path& path, ShaderType shader_type)
   ss << file_stream.rdbuf();
   auto file = ss.str();
 
-  auto gl_shader_type = shader_type_to_gl_shader(shader_type);
+  auto gl_shader_type = SHADER_TYPE_TO_GL_SHADER[shader_type];
   u32 shader = glCreateShader(gl_shader_type);
   auto shader_src = file.c_str();
   glShaderSource(shader, 1, &shader_src, nullptr);
@@ -226,7 +221,7 @@ shader_load(const std::filesystem::path& path, ShaderType shader_type)
     glDeleteShader(shader);
     return std::unexpected{ERROR(
       "Failed to compile {} shader, message:\n{}",
-      shader_type_to_string(shader_type),
+      SHADER_TYPE_TO_STRING[shader_type],
       message
     )};
   }

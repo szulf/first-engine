@@ -401,7 +401,12 @@ std::expected<Scene, Error> load_scene(const std::filesystem::path& path, AssetS
 
 static void gscn_write_item_slot(std::ostream& os, const ItemSlot& slot)
 {
-  std::println(os, "ItemSlot{{ type : {} ; count : {} }}", ITEM_TYPE_STRING[slot.type], slot.count);
+  std::println(
+    os,
+    "ItemSlot{{ type : {} ; count : {} }}",
+    ITEM_TYPE_TO_STRING[slot.type],
+    slot.count
+  );
 }
 
 // TODO: think about the indentation here

@@ -10,24 +10,27 @@
 
 static constexpr u8 ITEMS_MAX_STACK_SIZE = 100;
 
+#define ITEM_TYPES                                                                                 \
+  X(ITEM_BLOCK, "block")                                                                           \
+  X(ITEM_LIGHT_BULB, "light_bulb")                                                                 \
+  X(ITEM_CONVEYOR, "conveyor")                                                                     \
+  X(ITEM_STORAGE, "storage")
+
+#define X(type, str) type,
 enum ItemType
 {
-  ITEM_BLOCK,
-  ITEM_LIGHT_BULB,
-  ITEM_CONVEYOR,
-  ITEM_STORAGE,
-  ITEM_TYPE_COUNT,
+  ITEM_TYPES ITEM_TYPE_COUNT,
 };
+#undef X
 
-static constexpr std::array<std::string_view, ITEM_TYPE_COUNT> ITEM_TYPE_STRING = []()
+#define X(type, str) out[type] = str;
+static constexpr std::array<std::string_view, ITEM_TYPE_COUNT> ITEM_TYPE_TO_STRING = []()
 {
   std::array<std::string_view, ITEM_TYPE_COUNT> out{};
-  out[ITEM_BLOCK] = "block";
-  out[ITEM_LIGHT_BULB] = "light_bulb";
-  out[ITEM_CONVEYOR] = "conveyor";
-  out[ITEM_STORAGE] = "storage";
+  ITEM_TYPES
   return out;
 }();
+#undef X
 
 std::expected<ItemType, Error> item_type_from_string(std::string_view str);
 

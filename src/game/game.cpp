@@ -15,75 +15,14 @@
 #include "parser.h"
 #include "ui.h"
 
-std::expected<Action, Error> string_to_action(std::string_view str)
+static std::expected<Action, Error> string_to_action(std::string_view str)
 {
-  if (str == "move_front")
+  for (usize i = 0; i < ACTION_COUNT; ++i)
   {
-    return {ACTION_MOVE_FRONT};
-  }
-  else if (str == "move_back")
-  {
-    return {ACTION_MOVE_BACK};
-  }
-  else if (str == "move_left")
-  {
-    return {ACTION_MOVE_LEFT};
-  }
-  else if (str == "move_right")
-  {
-    return {ACTION_MOVE_RIGHT};
-  }
-  else if (str == "interact")
-  {
-    return {ACTION_INTERACT};
-  }
-  else if (str == "open_inventory")
-  {
-    return {ACTION_OPEN_INVENTORY};
-  }
-  else if (str == "slot1")
-  {
-    return {ACTION_SLOT_1};
-  }
-  else if (str == "slot2")
-  {
-    return {ACTION_SLOT_2};
-  }
-  else if (str == "slot3")
-  {
-    return {ACTION_SLOT_3};
-  }
-  else if (str == "slot4")
-  {
-    return {ACTION_SLOT_4};
-  }
-  else if (str == "save_scene")
-  {
-    return {ACTION_SAVE_SCENE};
-  }
-  else if (str == "load_scene")
-  {
-    return {ACTION_LOAD_SCENE};
-  }
-  else if (str == "rotate_entity_to_place")
-  {
-    return {ACTION_ROTATE_ENTITY_TO_PLACE};
-  }
-  else if (str == "camera_move_up")
-  {
-    return {ACTION_CAMERA_MOVE_UP};
-  }
-  else if (str == "camera_move_down")
-  {
-    return {ACTION_CAMERA_MOVE_DOWN};
-  }
-  else if (str == "toggle_debug_menu")
-  {
-    return {ACTION_TOGGLE_DEBUG_MENU};
-  }
-  else if (str == "toggle_noclip")
-  {
-    return {ACTION_TOGGLE_NOCLIP};
+    if (str == ACTION_TO_STRING[(Action) i])
+    {
+      return {(Action) i};
+    }
   }
   return std::unexpected{ERROR("Invalid action string: {}", str)};
 }
@@ -127,7 +66,7 @@ Keymap load_gkey(const std::filesystem::path& path)
       report(FORWARD(key.error()));
       return keymap;
     }
-    keymap.map[*action] = *key;
+    keymap[*action] = *key;
   }
   return keymap;
 }

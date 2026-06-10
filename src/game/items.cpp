@@ -2,21 +2,12 @@
 
 std::expected<ItemType, Error> item_type_from_string(std::string_view str)
 {
-  if (str == "block")
+  for (usize i = 0; i < ITEM_TYPE_COUNT; ++i)
   {
-    return {ITEM_BLOCK};
-  }
-  else if (str == "light_bulb")
-  {
-    return {ITEM_LIGHT_BULB};
-  }
-  else if (str == "conveyor")
-  {
-    return {ITEM_CONVEYOR};
-  }
-  else if (str == "storage")
-  {
-    return {ITEM_STORAGE};
+    if (str == ITEM_TYPE_TO_STRING[(ItemType) i])
+    {
+      return {(ItemType) i};
+    }
   }
   return std::unexpected{ERROR("Invalid item type string: {}", str)};
 }

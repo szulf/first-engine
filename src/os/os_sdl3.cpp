@@ -38,215 +38,13 @@ void os_show_mouse_pointer()
 
 std::expected<OS_Key, Error> os_string_to_key(std::string_view str)
 {
-  if (str == "A")
+  for (usize i = 0; i < OS_KEY_COUNT; ++i)
   {
-    return {OS_KEY_A};
+    if (str == OS_KEY_TO_STRING[(OS_Key) i])
+    {
+      return {(OS_Key) i};
+    }
   }
-  else if (str == "B")
-  {
-    return {OS_KEY_B};
-  }
-  else if (str == "C")
-  {
-    return {OS_KEY_C};
-  }
-  else if (str == "D")
-  {
-    return {OS_KEY_D};
-  }
-  else if (str == "E")
-  {
-    return {OS_KEY_E};
-  }
-  else if (str == "F")
-  {
-    return {OS_KEY_F};
-  }
-  else if (str == "G")
-  {
-    return {OS_KEY_G};
-  }
-  else if (str == "H")
-  {
-    return {OS_KEY_H};
-  }
-  else if (str == "I")
-  {
-    return {OS_KEY_I};
-  }
-  else if (str == "J")
-  {
-    return {OS_KEY_J};
-  }
-  else if (str == "K")
-  {
-    return {OS_KEY_K};
-  }
-  else if (str == "L")
-  {
-    return {OS_KEY_L};
-  }
-  else if (str == "M")
-  {
-    return {OS_KEY_M};
-  }
-  else if (str == "N")
-  {
-    return {OS_KEY_N};
-  }
-  else if (str == "O")
-  {
-    return {OS_KEY_O};
-  }
-  else if (str == "P")
-  {
-    return {OS_KEY_P};
-  }
-  else if (str == "Q")
-  {
-    return {OS_KEY_Q};
-  }
-  else if (str == "R")
-  {
-    return {OS_KEY_R};
-  }
-  else if (str == "S")
-  {
-    return {OS_KEY_S};
-  }
-  else if (str == "T")
-  {
-    return {OS_KEY_T};
-  }
-  else if (str == "U")
-  {
-    return {OS_KEY_U};
-  }
-  else if (str == "V")
-  {
-    return {OS_KEY_V};
-  }
-  else if (str == "W")
-  {
-    return {OS_KEY_W};
-  }
-  else if (str == "X")
-  {
-    return {OS_KEY_X};
-  }
-  else if (str == "Y")
-  {
-    return {OS_KEY_Y};
-  }
-  else if (str == "Z")
-  {
-    return {OS_KEY_Z};
-  }
-  else if (str == "0")
-  {
-    return {OS_KEY_0};
-  }
-  else if (str == "1")
-  {
-    return {OS_KEY_1};
-  }
-  else if (str == "2")
-  {
-    return {OS_KEY_2};
-  }
-  else if (str == "3")
-  {
-    return {OS_KEY_F3};
-  }
-  else if (str == "4")
-  {
-    return {OS_KEY_4};
-  }
-  else if (str == "5")
-  {
-    return {OS_KEY_5};
-  }
-  else if (str == "6")
-  {
-    return {OS_KEY_6};
-  }
-  else if (str == "7")
-  {
-    return {OS_KEY_7};
-  }
-  else if (str == "8")
-  {
-    return {OS_KEY_8};
-  }
-  else if (str == "9")
-  {
-    return {OS_KEY_9};
-  }
-  else if (str == "F1")
-  {
-    return {OS_KEY_F1};
-  }
-  else if (str == "F2")
-  {
-    return {OS_KEY_F2};
-  }
-  else if (str == "F3")
-  {
-    return {OS_KEY_F3};
-  }
-  else if (str == "F4")
-  {
-    return {OS_KEY_F4};
-  }
-  else if (str == "F5")
-  {
-    return {OS_KEY_F5};
-  }
-  else if (str == "F6")
-  {
-    return {OS_KEY_F6};
-  }
-  else if (str == "F7")
-  {
-    return {OS_KEY_F7};
-  }
-  else if (str == "F8")
-  {
-    return {OS_KEY_F8};
-  }
-  else if (str == "F9")
-  {
-    return {OS_KEY_F9};
-  }
-  else if (str == "F10")
-  {
-    return {OS_KEY_F10};
-  }
-  else if (str == "F11")
-  {
-    return {OS_KEY_F11};
-  }
-  else if (str == "F12")
-  {
-    return {OS_KEY_F12};
-  }
-  else if (str == "SPACE")
-  {
-    return {OS_KEY_SPACE};
-  }
-  else if (str == "LSHIFT")
-  {
-    return {OS_KEY_LSHIFT};
-  }
-  else if (str == "TAB")
-  {
-    return {OS_KEY_TAB};
-  }
-  else if (str == "ESCAPE")
-  {
-    return {OS_KEY_ESCAPE};
-  }
-
   return std::unexpected{ERROR("Invalid key string: {}", str)};
 }
 
@@ -323,230 +121,74 @@ void os_window_close(OS_Window& window)
   free(window.platform_data);
 }
 
-static SDL_Keycode sdlk_from_key(OS_Key key)
+static constexpr std::array<SDL_Keycode, OS_KEY_COUNT> OS_KEY_TO_SDLK = []()
 {
-  switch (key)
-  {
-    case OS_KEY_A:
-      return SDLK_A;
-    case OS_KEY_B:
-      return SDLK_B;
-    case OS_KEY_C:
-      return SDLK_C;
-    case OS_KEY_D:
-      return SDLK_D;
-    case OS_KEY_E:
-      return SDLK_E;
-    case OS_KEY_F:
-      return SDLK_F;
-    case OS_KEY_G:
-      return SDLK_G;
-    case OS_KEY_H:
-      return SDLK_H;
-    case OS_KEY_I:
-      return SDLK_I;
-    case OS_KEY_J:
-      return SDLK_J;
-    case OS_KEY_K:
-      return SDLK_K;
-    case OS_KEY_L:
-      return SDLK_L;
-    case OS_KEY_M:
-      return SDLK_M;
-    case OS_KEY_N:
-      return SDLK_N;
-    case OS_KEY_O:
-      return SDLK_O;
-    case OS_KEY_P:
-      return SDLK_P;
-    case OS_KEY_Q:
-      return SDLK_Q;
-    case OS_KEY_R:
-      return SDLK_R;
-    case OS_KEY_S:
-      return SDLK_S;
-    case OS_KEY_T:
-      return SDLK_T;
-    case OS_KEY_U:
-      return SDLK_U;
-    case OS_KEY_V:
-      return SDLK_V;
-    case OS_KEY_W:
-      return SDLK_W;
-    case OS_KEY_X:
-      return SDLK_X;
-    case OS_KEY_Y:
-      return SDLK_Y;
-    case OS_KEY_Z:
-      return SDLK_Z;
-    case OS_KEY_0:
-      return SDLK_0;
-    case OS_KEY_1:
-      return SDLK_1;
-    case OS_KEY_2:
-      return SDLK_2;
-    case OS_KEY_3:
-      return SDLK_3;
-    case OS_KEY_4:
-      return SDLK_4;
-    case OS_KEY_5:
-      return SDLK_5;
-    case OS_KEY_6:
-      return SDLK_6;
-    case OS_KEY_7:
-      return SDLK_7;
-    case OS_KEY_8:
-      return SDLK_8;
-    case OS_KEY_9:
-      return SDLK_9;
-    case OS_KEY_F1:
-      return SDLK_F1;
-    case OS_KEY_F2:
-      return SDLK_F2;
-    case OS_KEY_F3:
-      return SDLK_F3;
-    case OS_KEY_F4:
-      return SDLK_F4;
-    case OS_KEY_F5:
-      return SDLK_F5;
-    case OS_KEY_F6:
-      return SDLK_F6;
-    case OS_KEY_F7:
-      return SDLK_F7;
-    case OS_KEY_F8:
-      return SDLK_F8;
-    case OS_KEY_F9:
-      return SDLK_F9;
-    case OS_KEY_F10:
-      return SDLK_F10;
-    case OS_KEY_F11:
-      return SDLK_F11;
-    case OS_KEY_F12:
-      return SDLK_F12;
-    case OS_KEY_SPACE:
-      return SDLK_SPACE;
-    case OS_KEY_LSHIFT:
-      return SDLK_LSHIFT;
-    case OS_KEY_TAB:
-      return SDLK_TAB;
-    case OS_KEY_ESCAPE:
-      return SDLK_ESCAPE;
-    case OS_KEY_COUNT:
-      break;
-  }
-  ASSERT(false, "Invalid key value");
-}
+  std::array<SDL_Keycode, OS_KEY_COUNT> map{};
+  map[OS_KEY_A] = SDLK_A;
+  map[OS_KEY_B] = SDLK_B;
+  map[OS_KEY_C] = SDLK_C;
+  map[OS_KEY_D] = SDLK_D;
+  map[OS_KEY_E] = SDLK_E;
+  map[OS_KEY_F] = SDLK_F;
+  map[OS_KEY_G] = SDLK_G;
+  map[OS_KEY_H] = SDLK_H;
+  map[OS_KEY_I] = SDLK_I;
+  map[OS_KEY_J] = SDLK_J;
+  map[OS_KEY_K] = SDLK_K;
+  map[OS_KEY_L] = SDLK_L;
+  map[OS_KEY_M] = SDLK_M;
+  map[OS_KEY_N] = SDLK_N;
+  map[OS_KEY_O] = SDLK_O;
+  map[OS_KEY_P] = SDLK_P;
+  map[OS_KEY_Q] = SDLK_Q;
+  map[OS_KEY_R] = SDLK_R;
+  map[OS_KEY_S] = SDLK_S;
+  map[OS_KEY_T] = SDLK_T;
+  map[OS_KEY_U] = SDLK_U;
+  map[OS_KEY_V] = SDLK_V;
+  map[OS_KEY_W] = SDLK_W;
+  map[OS_KEY_X] = SDLK_X;
+  map[OS_KEY_Y] = SDLK_Y;
+  map[OS_KEY_Z] = SDLK_Z;
+  map[OS_KEY_0] = SDLK_0;
+  map[OS_KEY_1] = SDLK_1;
+  map[OS_KEY_2] = SDLK_2;
+  map[OS_KEY_3] = SDLK_3;
+  map[OS_KEY_4] = SDLK_4;
+  map[OS_KEY_5] = SDLK_5;
+  map[OS_KEY_6] = SDLK_6;
+  map[OS_KEY_7] = SDLK_7;
+  map[OS_KEY_8] = SDLK_8;
+  map[OS_KEY_9] = SDLK_9;
+  map[OS_KEY_F1] = SDLK_F1;
+  map[OS_KEY_F2] = SDLK_F2;
+  map[OS_KEY_F3] = SDLK_F3;
+  map[OS_KEY_F4] = SDLK_F4;
+  map[OS_KEY_F5] = SDLK_F5;
+  map[OS_KEY_F6] = SDLK_F6;
+  map[OS_KEY_F7] = SDLK_F7;
+  map[OS_KEY_F8] = SDLK_F8;
+  map[OS_KEY_F9] = SDLK_F9;
+  map[OS_KEY_F10] = SDLK_F10;
+  map[OS_KEY_F11] = SDLK_F11;
+  map[OS_KEY_F12] = SDLK_F12;
+  map[OS_KEY_SPACE] = SDLK_SPACE;
+  map[OS_KEY_LSHIFT] = SDLK_LSHIFT;
+  map[OS_KEY_TAB] = SDLK_TAB;
+  map[OS_KEY_ESCAPE] = SDLK_ESCAPE;
+  return map;
+}();
 
-static std::expected<OS_Key, Error> key_from_sdlk(SDL_Keycode sdlk)
+static std::expected<OS_Key, Error> sdlk_to_os_key(SDL_Keycode sdlk)
 {
-  switch (sdlk)
+  for (usize i = 0; i < OS_KEY_COUNT; ++i)
   {
-    case SDLK_A:
-      return {OS_KEY_A};
-    case SDLK_B:
-      return {OS_KEY_B};
-    case SDLK_C:
-      return {OS_KEY_C};
-    case SDLK_D:
-      return {OS_KEY_D};
-    case SDLK_E:
-      return {OS_KEY_E};
-    case SDLK_F:
-      return {OS_KEY_F};
-    case SDLK_G:
-      return {OS_KEY_G};
-    case SDLK_H:
-      return {OS_KEY_H};
-    case SDLK_I:
-      return {OS_KEY_I};
-    case SDLK_J:
-      return {OS_KEY_J};
-    case SDLK_K:
-      return {OS_KEY_K};
-    case SDLK_L:
-      return {OS_KEY_L};
-    case SDLK_M:
-      return {OS_KEY_M};
-    case SDLK_N:
-      return {OS_KEY_N};
-    case SDLK_O:
-      return {OS_KEY_O};
-    case SDLK_P:
-      return {OS_KEY_P};
-    case SDLK_Q:
-      return {OS_KEY_Q};
-    case SDLK_R:
-      return {OS_KEY_R};
-    case SDLK_S:
-      return {OS_KEY_S};
-    case SDLK_T:
-      return {OS_KEY_T};
-    case SDLK_U:
-      return {OS_KEY_U};
-    case SDLK_V:
-      return {OS_KEY_V};
-    case SDLK_W:
-      return {OS_KEY_W};
-    case SDLK_X:
-      return {OS_KEY_X};
-    case SDLK_Y:
-      return {OS_KEY_Y};
-    case SDLK_Z:
-      return {OS_KEY_Z};
-    case SDLK_0:
-      return {OS_KEY_0};
-    case SDLK_1:
-      return {OS_KEY_1};
-    case SDLK_2:
-      return {OS_KEY_2};
-    case SDLK_3:
-      return {OS_KEY_3};
-    case SDLK_4:
-      return {OS_KEY_4};
-    case SDLK_5:
-      return {OS_KEY_5};
-    case SDLK_6:
-      return {OS_KEY_6};
-    case SDLK_7:
-      return {OS_KEY_7};
-    case SDLK_8:
-      return {OS_KEY_8};
-    case SDLK_9:
-      return {OS_KEY_9};
-    case SDLK_F1:
-      return {OS_KEY_F1};
-    case SDLK_F2:
-      return {OS_KEY_F2};
-    case SDLK_F3:
-      return {OS_KEY_F3};
-    case SDLK_F4:
-      return {OS_KEY_F4};
-    case SDLK_F5:
-      return {OS_KEY_F5};
-    case SDLK_F6:
-      return {OS_KEY_F6};
-    case SDLK_F7:
-      return {OS_KEY_F7};
-    case SDLK_F8:
-      return {OS_KEY_F8};
-    case SDLK_F9:
-      return {OS_KEY_F9};
-    case SDLK_F10:
-      return {OS_KEY_F10};
-    case SDLK_F11:
-      return {OS_KEY_F11};
-    case SDLK_F12:
-      return {OS_KEY_F12};
-    case SDLK_SPACE:
-      return {OS_KEY_SPACE};
-    case SDLK_LSHIFT:
-      return {OS_KEY_LSHIFT};
-    case SDLK_TAB:
-      return {OS_KEY_TAB};
-    case SDLK_ESCAPE:
-      return {OS_KEY_ESCAPE};
+    if (sdlk == OS_KEY_TO_SDLK[(OS_Key) i])
+    {
+      return {(OS_Key) i};
+    }
   }
-  return std::unexpected{ERROR("Invalid sdlk")};
+  return std::unexpected{ERROR("Invalid sdlk: {}", sdlk)};
 }
 
 void os_window_update(OS_Window& window)
@@ -570,7 +212,7 @@ void os_window_update(OS_Window& window)
       case SDL_EVENT_KEY_UP:
       case SDL_EVENT_KEY_DOWN:
       {
-        auto key = key_from_sdlk(e.key.key);
+        auto key = sdlk_to_os_key(e.key.key);
         if (key)
         {
           ++window.input.keys[*key].transition_count;
@@ -608,11 +250,8 @@ void os_window_update(OS_Window& window)
   const bool* key_states = SDL_GetKeyboardState(nullptr);
   for (usize i = 0; i < OS_KEY_COUNT; ++i)
   {
-    auto sdlk = sdlk_from_key((OS_Key) i);
-    if (sdlk)
-    {
-      window.input.keys[i].down = key_states[SDL_GetScancodeFromKey(sdlk, nullptr)];
-    }
+    window.input.keys[i].down =
+      key_states[SDL_GetScancodeFromKey(OS_KEY_TO_SDLK[(OS_Key) i], nullptr)];
   }
 }
 

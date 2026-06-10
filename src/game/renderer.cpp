@@ -147,7 +147,7 @@ void render_init(AssetStore& assets)
     GL_ARRAY_BUFFER,
     RENDER_MAX_INSTANCES * sizeof(Render_InstanceData),
     nullptr,
-    GL_STATIC_DRAW
+    GL_DYNAMIC_DRAW
   );
   glBindBuffer(GL_ARRAY_BUFFER, 0);
 

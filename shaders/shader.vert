@@ -26,6 +26,7 @@ void main()
 {
   vert_out.uv = a_uv;
   vert_out.frag_pos = vec3(a_model * vec4(a_pos, 1.0f));
+  // TODO: precompute transpose(inverse(a_model)) on the cpu
   vert_out.normal = mat3(transpose(inverse(a_model))) * a_normal;
   vert_out.tint = a_tint;
 

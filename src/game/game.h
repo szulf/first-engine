@@ -10,60 +10,51 @@
 #include "entity.h"
 #include "ui.h"
 
+#define ACTIONS                                                                                    \
+  X(ACTION_MOVE_FRONT, "move_front", OS_KEY_W)                                                     \
+  X(ACTION_MOVE_BACK, "move_back", OS_KEY_S)                                                       \
+  X(ACTION_MOVE_LEFT, "move_left", OS_KEY_A)                                                       \
+  X(ACTION_MOVE_RIGHT, "move_right", OS_KEY_D)                                                     \
+  X(ACTION_INTERACT, "interact", OS_KEY_E)                                                         \
+  X(ACTION_OPEN_INVENTORY, "open_inventory", OS_KEY_TAB)                                           \
+  X(ACTION_SLOT_1, "slot_1", OS_KEY_1)                                                             \
+  X(ACTION_SLOT_2, "slot_2", OS_KEY_2)                                                             \
+  X(ACTION_SLOT_3, "slot_3", OS_KEY_3)                                                             \
+  X(ACTION_SLOT_4, "slot_4", OS_KEY_4)                                                             \
+  X(ACTION_SAVE_SCENE, "save_scene", OS_KEY_K)                                                     \
+  X(ACTION_LOAD_SCENE, "load_scene", OS_KEY_L)                                                     \
+  X(ACTION_ROTATE_ENTITY_TO_PLACE, "rotate_entity_to_place", OS_KEY_R)                             \
+  X(ACTION_CAMERA_MOVE_UP, "camera_move_up", OS_KEY_SPACE)                                         \
+  X(ACTION_CAMERA_MOVE_DOWN, "camera_move_down", OS_KEY_LSHIFT)                                    \
+  X(ACTION_TOGGLE_DEBUG_MENU, "toggle_debug_menu", OS_KEY_F1)                                      \
+  X(ACTION_TOGGLE_NOCLIP, "toggle_noclip", OS_KEY_F2)
+
+#define X(action, str, key) action,
 enum Action
 {
-  ACTION_MOVE_FRONT,
-  ACTION_MOVE_BACK,
-  ACTION_MOVE_LEFT,
-  ACTION_MOVE_RIGHT,
-  ACTION_INTERACT,
-
-  ACTION_OPEN_INVENTORY,
-  ACTION_SLOT_1,
-  ACTION_SLOT_2,
-  ACTION_SLOT_3,
-  ACTION_SLOT_4,
-
-  ACTION_SAVE_SCENE,
-  ACTION_LOAD_SCENE,
-
-  ACTION_ROTATE_ENTITY_TO_PLACE,
-
-  ACTION_CAMERA_MOVE_UP,
-  ACTION_CAMERA_MOVE_DOWN,
-  ACTION_TOGGLE_DEBUG_MENU,
-  ACTION_TOGGLE_NOCLIP,
-
-  ACTION_COUNT,
+  ACTIONS ACTION_COUNT,
 };
+#undef X
 
-struct Keymap
+#define X(action, str, key) map[action] = str;
+static constexpr std::array<std::string_view, ACTION_COUNT> ACTION_TO_STRING = []()
 {
-  OS_Key map[ACTION_COUNT]{};
-};
+  std::array<std::string_view, ACTION_COUNT> map{};
+  ACTIONS
+  return map;
+}();
+#undef X
 
+using Keymap = std::array<OS_Key, ACTION_COUNT>;
+
+#define X(action, str, key) k[action] = key;
 static constexpr Keymap DEFAULT_KEYMAP = []() -> Keymap
 {
   Keymap k{};
-  k.map[ACTION_MOVE_FRONT] = OS_KEY_W;
-  k.map[ACTION_MOVE_BACK] = OS_KEY_S;
-  k.map[ACTION_MOVE_LEFT] = OS_KEY_A;
-  k.map[ACTION_MOVE_RIGHT] = OS_KEY_D;
-  k.map[ACTION_INTERACT] = OS_KEY_E;
-  k.map[ACTION_OPEN_INVENTORY] = OS_KEY_TAB;
-  k.map[ACTION_SLOT_1] = OS_KEY_1;
-  k.map[ACTION_SLOT_2] = OS_KEY_2;
-  k.map[ACTION_SLOT_3] = OS_KEY_3;
-  k.map[ACTION_SLOT_4] = OS_KEY_4;
-  k.map[ACTION_SAVE_SCENE] = OS_KEY_K;
-  k.map[ACTION_LOAD_SCENE] = OS_KEY_L;
-  k.map[ACTION_ROTATE_ENTITY_TO_PLACE] = OS_KEY_R;
-  k.map[ACTION_CAMERA_MOVE_UP] = OS_KEY_SPACE;
-  k.map[ACTION_CAMERA_MOVE_DOWN] = OS_KEY_LSHIFT;
-  k.map[ACTION_TOGGLE_DEBUG_MENU] = OS_KEY_F1;
-  k.map[ACTION_TOGGLE_NOCLIP] = OS_KEY_F2;
+  ACTIONS
   return k;
 }();
+#undef X
 
 static constexpr vec2 SHADOW_MAP_DIMENSIONS = {1024, 1024};
 static constexpr vec2 CHAR_SIZE = {9, 16};
@@ -118,7 +109,7 @@ void game_render(GameData& game, f32 t);
 
 inline OS_KeyState key_state_from_action(Action action, GameData& game)
 {
-  return game.window->input.keys[game.keymap.map[action]];
+  return game.window->input.keys[game.keymap[action]];
 }
 
 #endif
