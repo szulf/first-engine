@@ -132,6 +132,46 @@ std::expected<OS_Key, Error> os_string_to_key(std::string_view str)
   {
     return {OS_KEY_Z};
   }
+  else if (str == "0")
+  {
+    return {OS_KEY_0};
+  }
+  else if (str == "1")
+  {
+    return {OS_KEY_1};
+  }
+  else if (str == "2")
+  {
+    return {OS_KEY_2};
+  }
+  else if (str == "3")
+  {
+    return {OS_KEY_F3};
+  }
+  else if (str == "4")
+  {
+    return {OS_KEY_4};
+  }
+  else if (str == "5")
+  {
+    return {OS_KEY_5};
+  }
+  else if (str == "6")
+  {
+    return {OS_KEY_6};
+  }
+  else if (str == "7")
+  {
+    return {OS_KEY_7};
+  }
+  else if (str == "8")
+  {
+    return {OS_KEY_8};
+  }
+  else if (str == "9")
+  {
+    return {OS_KEY_9};
+  }
   else if (str == "F1")
   {
     return {OS_KEY_F1};

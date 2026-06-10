@@ -37,6 +37,10 @@ std::expected<Action, Error> string_to_action(std::string_view str)
   {
     return {ACTION_INTERACT};
   }
+  else if (str == "open_inventory")
+  {
+    return {ACTION_OPEN_INVENTORY};
+  }
   else if (str == "slot1")
   {
     return {ACTION_SLOT_1};
@@ -48,6 +52,10 @@ std::expected<Action, Error> string_to_action(std::string_view str)
   else if (str == "slot3")
   {
     return {ACTION_SLOT_3};
+  }
+  else if (str == "slot4")
+  {
+    return {ACTION_SLOT_4};
   }
   else if (str == "save_scene")
   {
