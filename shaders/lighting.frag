@@ -12,8 +12,8 @@ struct Material
 
 struct Light
 {
-  vec3 pos;
-  vec3 color;
+  vec4 pos;
+  vec4 color;
 
   // NOTE: for attenuation
   float constant;
@@ -63,21 +63,21 @@ void main()
   }
   object_color *= vert_out.tint.rgb;
 
-  float dist = length(light.pos - vert_out.frag_pos);
+  float dist = length(light.pos.xyz - vert_out.frag_pos);
   float attenuation =
     1.0f / (light.constant + light.linear * dist + light.quadratic * dist * dist);
 
-  vec3 light_dir = normalize(light.pos - vert_out.frag_pos);
+  vec3 light_dir = normalize(light.pos.xyz - vert_out.frag_pos);
   float diff = max(dot(norm, light_dir), 0.0f);
-  vec3 diffuse = diff * light.color;
+  vec3 diffuse = diff * light.color.rgb;
 
   float specular_strength = 0.5f;
   vec3 view_dir = normalize(view_pos - vert_out.frag_pos);
   vec3 halfway = normalize(light_dir + view_dir);
   float spec = pow(max(dot(norm, halfway), 0.0f), material.specular_exponent);
-  vec3 specular = spec * specular_strength * light.color;
+  vec3 specular = spec * specular_strength * light.color.rgb;
 
-  vec3 frag_to_light = vert_out.frag_pos - light.pos;
+  vec3 frag_to_light = vert_out.frag_pos - light.pos.xyz;
   float closest_depth = texture(shadow_map, frag_to_light).r;
   closest_depth *= shadow_map_camera_far_plane;
   float current_depth = length(frag_to_light);

@@ -62,9 +62,9 @@ struct Render_Cmd3D
   Render_InstanceData instance_data{};
 };
 
-#define RENDER_LIGHT_ATTENUATION_CONSTANT 1.0f
-#define RENDER_LIGHT_ATTENUATION_LINEAR 0.22f
-#define RENDER_LIGHT_ATTENUATION_QUADRATIC 0.2f
+static constexpr f32 RENDER_LIGHT_ATTENUATION_CONSTANT = 1.0f;
+static constexpr f32 RENDER_LIGHT_ATTENUATION_LINEAR = 0.35f;
+static constexpr f32 RENDER_LIGHT_ATTENUATION_QUADRATIC = 0.44f;
 struct Render_Light
 {
   vec3 pos{};
