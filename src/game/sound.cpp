@@ -22,12 +22,16 @@ inline static u8 wav_read_u8(WAVContext& ctx)
 
 inline static u16 wav_read_u16(WAVContext& ctx)
 {
-  return (wav_read_u8(ctx)) | (u16) (wav_read_u8(ctx) << 8);
+  auto left = wav_read_u8(ctx);
+  auto right = wav_read_u8(ctx);
+  return left | (u16) (right << 8);
 }
 
 inline static u32 wav_read_u32(WAVContext& ctx)
 {
-  return (wav_read_u16(ctx)) | (u32) (wav_read_u16(ctx) << 16);
+  auto left = wav_read_u16(ctx);
+  auto right = wav_read_u16(ctx);
+  return left | (u32) (right << 16);
 }
 
 inline static bool wav_expect(WAVContext& ctx, std::string_view str)
@@ -85,6 +89,10 @@ std::expected<Sound_Data, Error> sound_load_wav(const std::filesystem::path& pat
     return std::unexpected{ERROR("Invalid format_type - Non PCM")};
   }
   u16 channels = wav_read_u16(ctx);
+  if (channels != 2)
+  {
+    return std::unexpected{ERROR("Invalid channel count")};
+  }
   u32 sample_rate = wav_read_u32(ctx);
   if (sample_rate != 48'000)
   {
@@ -102,7 +110,7 @@ std::expected<Sound_Data, Error> sound_load_wav(const std::filesystem::path& pat
     return std::unexpected{ERROR("Invalid 'data' header")};
   }
   u32 data_size = wav_read_u32(ctx);
-  ctx.out.samples.reserve(data_size);
+  ctx.out.samples.reserve(data_size / OS_AUDIO_SAMPLE_SIZE_BYTES);
   const usize end = data_size + ctx.curr_pos;
   while (ctx.curr_pos < end)
   {
