@@ -446,7 +446,7 @@ mat4 transpose(const mat4& mat)
   return t;
 }
 
-static f32 minor(const mat4& m, i32 i, i32 j)
+static f32 cofactor(const mat4& m, i32 i, i32 j)
 {
   i32 r1 = !i;
   i32 r2 = 2 - (i / 2);
@@ -465,19 +465,19 @@ static f32 minor(const mat4& m, i32 i, i32 j)
   sarrus -= m.data[c2][r3] * m.data[c3][r2] * m.data[c1][r1];
   sarrus -= m.data[c3][r3] * m.data[c1][r2] * m.data[c2][r1];
 
-  sarrus *= (f32) std::pow(-1, (i + 1) + (j + 1));
+  sarrus *= ((i + 1) + (j + 1)) % 2 == 0 ? 1 : -1;
   return sarrus;
 }
 
 // NOTE: always uses column one
 static f32 determinant(const mat4& m)
 {
-  f32 out = 0;
+  f32 det = 0;
   for (i32 row = 0; row < 4; ++row)
   {
-    out += minor(m, row, 0) * m.data[0][row];
+    det += cofactor(m, row, 0) * m.data[0][row];
   }
-  return out;
+  return det;
 }
 
 mat4 inverse(const mat4& a)
@@ -485,24 +485,22 @@ mat4 inverse(const mat4& a)
   f32 det = determinant(a);
   ASSERT(!f32_equal(det, 0), "Determinant of a matrix cannot be 0");
 
-  mat4 d{};
+  mat4 d_transposed{};
   for (i32 i = 0; i < 4; ++i)
   {
     for (i32 j = 0; j < 4; ++j)
     {
-      d.data[j][i] = minor(a, i, j);
+      d_transposed.data[i][j] = cofactor(a, i, j);
     }
   }
-  d = transpose(d);
 
   mat4 inv{};
-  // TODO: this is a bad name probably
-  f32 temp = 1.0f / det;
+  f32 inv_det = 1.0f / det;
   for (i32 i = 0; i < 4; ++i)
   {
     for (i32 j = 0; j < 4; ++j)
     {
-      inv.data[j][i] = temp * d.data[j][i];
+      inv.data[j][i] = inv_det * d_transposed.data[j][i];
     }
   }
   return inv;
