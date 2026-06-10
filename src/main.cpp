@@ -13,7 +13,11 @@ static constexpr f32 DT_F32{(f32) DT.count() / (f32) std::milli::den};
 
 i32 main()
 {
-  os_init();
+  bool ok = os_init();
+  if (!ok)
+  {
+    FATAL("Failed to init os layer");
+  }
   defer(os_shutdown());
 
   auto window = os_window_open("game", {1280, 720});

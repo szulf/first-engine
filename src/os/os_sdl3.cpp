@@ -6,9 +6,9 @@
 #include "base/base.h"
 #include "gl_functions.h"
 
-void os_init()
+bool os_init()
 {
-  SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
+  return SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
 }
 
 void os_shutdown()
@@ -259,6 +259,16 @@ struct OS_WindowPlatformData
 
 std::expected<OS_Window, Error> os_window_open(std::string_view name, const vec2& dimensions)
 {
+#ifdef MODE_DEBUG
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
+#else
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
+#endif
+  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+
   OS_Window window = {
     .name = std::string{name},
     .dimensions = dimensions,
@@ -273,29 +283,22 @@ std::expected<OS_Window, Error> os_window_open(std::string_view name, const vec2
   );
   if (!window.platform_data->window)
   {
+    free(window.platform_data);
     return std::unexpected{ERROR("Failed to open window")};
   }
   window.running = true;
 
-#ifdef GAME_DEBUG
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
-#else
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
-#endif
-  SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-
   window.platform_data->gl_context = SDL_GL_CreateContext(window.platform_data->window);
   if (!window.platform_data->gl_context)
   {
+    SDL_DestroyWindow(window.platform_data->window);
+    free(window.platform_data);
     return std::unexpected{ERROR("Failed to create OpenGL context")};
   }
   setup_gl_functions();
   // SDL_GL_SetSwapInterval(0);
 
-#ifdef GAME_DEBUG
+#ifdef MODE_DEBUG
   glEnable(GL_DEBUG_OUTPUT);
   glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
   glDebugMessageCallback(debug_callback, nullptr);
@@ -660,11 +663,28 @@ std::expected<OS_Audio, Error> os_audio_init()
     .channels = (i32) OS_AUDIO_CHANNELS,
     .freq = (i32) OS_AUDIO_SAMPLE_RATE,
   };
-  TRY_ASSIGN(spec.format, bit_count_to_sdl_audio_format(OS_AUDIO_SAMPLE_SIZE_BITS));
+  if (auto bit_count = bit_count_to_sdl_audio_format(OS_AUDIO_SAMPLE_SIZE_BITS))
+  {
+    spec.format = *bit_count;
+  }
+  else
+  {
+    free(audio.platform_data->callback_data->mix_buffer);
+    free(audio.platform_data->callback_data);
+    free(audio.platform_data);
+    return std::unexpected{FORWARD(bit_count.error())};
+  }
 
   audio.platform_data->stream =
     SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, nullptr, nullptr);
-  return audio;
+  if (!audio.platform_data->stream)
+  {
+    free(audio.platform_data->callback_data->mix_buffer);
+    free(audio.platform_data->callback_data);
+    free(audio.platform_data);
+    return std::unexpected{ERROR("Failed to initialize audio:\n{}", SDL_GetError())};
+  }
+  return {audio};
 }
 
 void os_audio_deinit(OS_Audio& audio)
@@ -695,10 +715,12 @@ void os_audio_set_callback(OS_Audio& audio, OS_AudioCallback callback, void* use
 {
   audio.platform_data->callback_data->user_callback = callback;
   audio.platform_data->callback_data->user_data = user_data;
-  SDL_SetAudioStreamGetCallback(
+  bool ok = SDL_SetAudioStreamGetCallback(
     audio.platform_data->stream,
     os_sdl_callback,
     audio.platform_data->callback_data
   );
-  SDL_ResumeAudioStreamDevice(audio.platform_data->stream);
+  ASSERT(ok, "Failed to set audio callback:\n{}", SDL_GetError());
+  ok = SDL_ResumeAudioStreamDevice(audio.platform_data->stream);
+  ASSERT(ok, "Failed to start audio:\n{}", SDL_GetError());
 }

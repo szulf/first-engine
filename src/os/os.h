@@ -9,7 +9,7 @@
 #include "base/math.h"
 #include "base/errors.h"
 
-void os_init();
+bool os_init();
 void os_shutdown();
 
 void os_show_mouse_pointer();
