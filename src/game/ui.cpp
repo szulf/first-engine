@@ -553,15 +553,15 @@ static void ui_generate_render_cmds(UI_Layout& layout, UI_ElementIdx idx = 0)
         for (usize i = 0; i < str.size(); ++i)
         {
           vec2 texture_offset{};
-          if (std::islower(str[i]))
+          if (std::islower((u8) str[i]))
           {
             texture_offset = {(f32) (str[i] - 'a'), 1};
           }
-          else if (std::isupper(str[i]))
+          else if (std::isupper((u8) str[i]))
           {
             texture_offset = {(f32) (str[i] - 'A'), 1};
           }
-          else if (std::isdigit(str[i]))
+          else if (std::isdigit((u8) str[i]))
           {
             texture_offset = {(f32) (str[i] - '0'), 2};
           }
@@ -577,7 +577,7 @@ static void ui_generate_render_cmds(UI_Layout& layout, UI_ElementIdx idx = 0)
           {
             texture_offset = {(f32) (str[i] - '['), 5};
           }
-          else if (std::isspace(str[i]))
+          else if (std::isspace((u8) str[i]))
           {
             continue;
           }

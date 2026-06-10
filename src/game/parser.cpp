@@ -6,7 +6,7 @@
 
 void parser_skip_whitespace(Parser_Pos& pos)
 {
-  while (parser_size_ok(pos) && std::isspace(parser_curr_char(pos)))
+  while (parser_size_ok(pos) && std::isspace((u8) parser_curr_char(pos)))
   {
     ++pos.pos;
   }
@@ -14,21 +14,27 @@ void parser_skip_whitespace(Parser_Pos& pos)
 
 std::expected<void, Error> parser_expect_and_skip(Parser_Pos& pos, char c)
 {
-  if (parser_curr_char(pos) == c)
+  if (parser_size_ok(pos))
   {
-    ++pos.pos;
-    parser_skip_whitespace(pos);
-    return {};
+    if (parser_curr_char(pos) == c)
+    {
+      ++pos.pos;
+      parser_skip_whitespace(pos);
+      return {};
+    }
+    return std::unexpected{ERROR(
+      "Expected '{}'({}) found '{}'({}) at pos: {} line: {}",
+      c,
+      (i32) c,
+      parser_curr_char(pos),
+      (i32) parser_curr_char(pos),
+      pos.pos,
+      pos.line
+    )};
   }
-  return std::unexpected{ERROR(
-    "Expected '{}'({}) found '{}'({}) at pos: {} line: {}",
-    c,
-    (i32) c,
-    parser_curr_char(pos),
-    (i32) parser_curr_char(pos),
-    pos.pos,
-    pos.line
-  )};
+  return std::unexpected{
+    ERROR("Expected '{}'({}) found invalid pos at pos: {} line: {}", c, (i32) c, pos.pos, pos.line)
+  };
 }
 
 std::expected<void, Error> parser_expect_and_skip(Parser_Pos& pos, std::string_view c)
@@ -45,7 +51,8 @@ std::string_view parser_word(Parser_Pos& pos)
   parser_skip_whitespace(pos);
   usize word_length{};
   while (parser_size_ok(pos) &&
-         (std::isalnum(parser_curr_char(pos)) || std::ispunct(parser_curr_char(pos))))
+         (std::isalnum((u8) parser_curr_char(pos)) ||
+          (std::ispunct((u8) parser_curr_char(pos)) && parser_curr_char(pos) != ':')))
   {
     ++word_length;
     ++pos.pos;
@@ -61,7 +68,7 @@ std::expected<f32, Error> parser_number_f32(Parser_Pos& pos)
   parser_skip_whitespace(pos);
   usize num_length{};
   while (parser_size_ok(pos) &&
-         (std::isdigit(parser_curr_char(pos)) || parser_curr_char(pos) == '.' ||
+         (std::isdigit((u8) parser_curr_char(pos)) || parser_curr_char(pos) == '.' ||
           parser_curr_char(pos) == 'e' || parser_curr_char(pos) == 'E' ||
           parser_curr_char(pos) == '+' || parser_curr_char(pos) == '-'))
   {
@@ -84,7 +91,7 @@ std::expected<u32, Error> parser_number_u32(Parser_Pos& pos)
 {
   parser_skip_whitespace(pos);
   usize num_length{};
-  while (parser_size_ok(pos) && std::isdigit(parser_curr_char(pos)))
+  while (parser_size_ok(pos) && std::isdigit((u8) parser_curr_char(pos)))
   {
     ++num_length;
     ++pos.pos;
@@ -106,7 +113,7 @@ std::expected<i32, Error> parser_number_i32(Parser_Pos& pos)
   parser_skip_whitespace(pos);
   usize num_length{};
   while (parser_size_ok(pos) &&
-         (std::isdigit(parser_curr_char(pos)) || parser_curr_char(pos) == '-'))
+         (std::isdigit((u8) parser_curr_char(pos)) || parser_curr_char(pos) == '-'))
   {
     ++num_length;
     ++pos.pos;
