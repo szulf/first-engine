@@ -117,7 +117,7 @@ void render_init(AssetStore& assets)
     .type = CAMERA_TYPE_ORTHOGRAPHIC,
     .pos = {0, 0, 1},
     .prev_pos = {0, 0, 1},
-    .yaw = -90,
+    .yaw = -0.5f * std::numbers::pi_v<f32>,
     .pitch = 0,
     .fov_type = FOV_TYPE_VERTICAL,
     .fov = 0.25f * std::numbers::pi_v<f32>,

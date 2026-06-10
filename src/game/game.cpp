@@ -138,8 +138,8 @@ static TextureHandle create_item_icon(ItemType item_type, AssetStore& assets)
     .type = CAMERA_TYPE_PERSPECTIVE,
     .pos = {0, 0.9f, 1.8f},
     .prev_pos = {0, 0.9f, 1.8f},
-    .yaw = -90,
-    .pitch = -30,
+    .yaw = -0.5f * std::numbers::pi_v<f32>,
+    .pitch = -(std::numbers::pi_v<f32> / 6.0f),
     .fov_type = FOV_TYPE_VERTICAL,
     .fov = -0.25f * std::numbers::pi_v<f32>,
     .near_plane = 0.1f,
@@ -173,10 +173,10 @@ void game_init(GameData& game, OS_Window& window, OS_Audio& audio)
   game.keymap = load_gkey("data/keymap.gkey");
   game.gameplay_camera = {
     .type = CAMERA_TYPE_PERSPECTIVE,
-    .pos = {0, 12, 8},
-    .prev_pos = {0, 12, 8},
-    .yaw = -90,
-    .pitch = -55,
+    .pos = {0, 12, 7},
+    .prev_pos = {0, 12, 7},
+    .yaw = -0.5f * std::numbers::pi_v<f32>,
+    .pitch = -0.3f * std::numbers::pi_v<f32>,
     .fov_type = FOV_TYPE_VERTICAL,
     .fov = 0.25f * std::numbers::pi_v<f32>,
     .near_plane = 0.1f,
@@ -410,6 +410,7 @@ void game_update_tick(GameData& game, f32 dt)
       ray_view.w = 0;
       vec4 ray_world = inverse(camera_view(game.gameplay_camera, 0)) * ray_view;
       vec3 ray = normalize(vec3{ray_world.x, ray_world.y, ray_world.z});
+      ASSERT(!f32_equal(ray.y, 0));
       f32 t = (0 - game.gameplay_camera.pos.y) / ray.y;
       mouse_world_pos = game.gameplay_camera.pos + t * ray;
       game.mouse_tile_pos.x = std::round(mouse_world_pos.x);

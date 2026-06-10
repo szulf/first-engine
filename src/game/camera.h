@@ -16,9 +16,9 @@ enum FovType
   FOV_TYPE_HORIZONTAL,
 };
 
-#define CAMERA_WORLD_UP vec3{0.0f, 1.0f, 0.0f}
-#define CAMERA_SPEED 4.0f
-#define CAMERA_SENSITIVITY 0.1f
+static constexpr vec3 CAMERA_WORLD_UP = {0.0f, 1.0f, 0.0f};
+static constexpr f32 CAMERA_SPEED = 4;
+static constexpr f32 CAMERA_SENSITIVITY = 0.002f;
 
 struct Camera
 {

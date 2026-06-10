@@ -4,9 +4,9 @@
 
 void camera_update_vectors(Camera& camera)
 {
-  camera.front.x = std::cos(radians(camera.yaw)) * std::cos(radians(camera.pitch));
-  camera.front.y = std::sin(radians(camera.pitch));
-  camera.front.z = std::sin(radians(camera.yaw)) * std::cos(radians(camera.pitch));
+  camera.front.x = std::cos(camera.yaw) * std::cos(camera.pitch);
+  camera.front.y = std::sin(camera.pitch);
+  camera.front.z = std::sin(camera.yaw) * std::cos(camera.pitch);
   camera.front = normalize(camera.front);
 
   camera.right = normalize(cross(camera.front, CAMERA_WORLD_UP));
@@ -17,7 +17,8 @@ void camera_look_around(Camera& camera, const vec2& offset)
 {
   camera.yaw += offset.x;
   camera.pitch -= offset.y;
-  camera.pitch = std::clamp(camera.pitch, -89.0f, 89.0f);
+  camera.pitch =
+    std::clamp(camera.pitch, -0.49f * std::numbers::pi_v<f32>, 0.49f * std::numbers::pi_v<f32>);
   camera_update_vectors(camera);
 }
 
