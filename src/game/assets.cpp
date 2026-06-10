@@ -223,6 +223,7 @@ shader_load(const std::filesystem::path& path, ShaderType shader_type)
     GLsizei log_length = 0;
     GLchar message[1024];
     glGetShaderInfoLog(shader, 1024, &log_length, message);
+    glDeleteShader(shader);
     return std::unexpected{ERROR(
       "Failed to compile {} shader, message:\n{}",
       shader_type_to_string(shader_type),
@@ -259,6 +260,7 @@ shader_link(u32 vertex_shader, u32 fragment_shader, std::optional<u32> geometry_
     GLsizei log_length = 0;
     GLchar message[1024];
     glGetProgramInfoLog(program, 1024, &log_length, message);
+    glDeleteProgram(program);
     return std::unexpected{ERROR("Failed to link shaders, message:\n{}", message)};
   }
   return {program};
@@ -272,9 +274,24 @@ std::expected<Shader, Error> shader_from_file(
 {
   Shader shader{};
   u32 vs{};
-  TRY_ASSIGN(vs, shader_load(vs_path, SHADER_TYPE_VERTEX));
+  if (auto vs_res = shader_load(vs_path, SHADER_TYPE_VERTEX))
+  {
+    vs = *vs_res;
+  }
+  else
+  {
+    return std::unexpected{FORWARD(vs_res.error())};
+  }
   u32 fs{};
-  TRY_ASSIGN(fs, shader_load(fs_path, SHADER_TYPE_FRAGMENT));
+  if (auto fs_res = shader_load(fs_path, SHADER_TYPE_FRAGMENT))
+  {
+    fs = *fs_res;
+  }
+  else
+  {
+    glDeleteShader(vs);
+    return std::unexpected{FORWARD(fs_res.error())};
+  }
   if (gs_path.empty())
   {
     TRY_ASSIGN(shader.id, shader_link(vs, fs, std::nullopt));
@@ -282,7 +299,16 @@ std::expected<Shader, Error> shader_from_file(
   else
   {
     u32 gs{};
-    TRY_ASSIGN(gs, shader_load(gs_path, SHADER_TYPE_GEOMETRY));
+    if (auto gs_res = shader_load(gs_path, SHADER_TYPE_GEOMETRY))
+    {
+      gs = *gs_res;
+    }
+    else
+    {
+      glDeleteShader(vs);
+      glDeleteShader(gs);
+      return std::unexpected{FORWARD(gs_res.error())};
+    }
     TRY_ASSIGN(shader.id, shader_link(vs, fs, gs));
   }
 
@@ -498,7 +524,7 @@ void mesh_use(const Mesh& mesh)
 
 vec2 bounding_box_from_mesh(MeshHandle handle, AssetStore& assets)
 {
-  vec3 max_corner = {std::numeric_limits<f32>::min(), 0, std::numeric_limits<f32>::min()};
+  vec3 max_corner = {std::numeric_limits<f32>::lowest(), 0, std::numeric_limits<f32>::lowest()};
   vec3 min_corner = {std::numeric_limits<f32>::max(), 0, std::numeric_limits<f32>::max()};
   const auto& mesh = asset_get(assets, handle);
 

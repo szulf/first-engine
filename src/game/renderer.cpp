@@ -215,7 +215,6 @@ void render_init(AssetStore& assets)
   asset_store_bind_render_data(assets, g_render_data);
 }
 
-// NOTE: doesnt attach depth on 2d textures
 void render_create_framebuffer(TextureHandle handle, AssetStore& assets)
 {
   auto& texture = asset_get(assets, handle);
@@ -227,6 +226,7 @@ void render_create_framebuffer(TextureHandle handle, AssetStore& assets)
     case TEXTURE_2D:
     {
       glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture.id, 0);
+      // TODO: should save this handle
       u32 rbo{};
       glGenRenderbuffers(1, &rbo);
       glBindRenderbuffer(GL_RENDERBUFFER, rbo);
