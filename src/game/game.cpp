@@ -271,8 +271,7 @@ inventory_slot_ui(UI_Layout& layout, const ItemSlot& slot, bool selected, GameDa
 
 static void handle_hand_slot_interaction(ItemSlot& hand, ItemSlot& slot)
 {
-  if (hand.count > 0 && hand.count < ITEMS_MAX_STACK_SIZE && slot.count < ITEMS_MAX_STACK_SIZE &&
-      hand.type == slot.type)
+  if (hand.count > 0 && hand.type == slot.type)
   {
     if (slot.count + hand.count > ITEMS_MAX_STACK_SIZE)
     {
