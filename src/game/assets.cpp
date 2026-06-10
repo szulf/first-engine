@@ -357,7 +357,7 @@ void shader_set(Shader& shader, std::string_view name, const mat4& value)
 
 void shader_set(Shader& shader, std::string_view name, TextureHandle handle, AssetStore& assets)
 {
-  ASSERT(shader.texture_slot < 16, "Reached max active textures.");
+  ASSERT(shader.texture_slot < MAX_TEXTURE_SLOTS, "Reached max active textures.");
   texture_activate(asset_get(assets, handle), shader.texture_slot);
   shader_set(shader, name, (i32) shader.texture_slot);
   ++shader.texture_slot;

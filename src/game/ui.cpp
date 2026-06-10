@@ -622,6 +622,12 @@ void ui_layout_end(UI_Layout& layout)
   layout.system->last_frame_data[layout.id].elements = layout.elements;
 }
 
+vec2 ui_layout_real_dimensions(UI_Layout& layout)
+{
+  ASSERT(layout.elements.size() > 1, "layout needs at least one element to have real dimensions");
+  return layout.elements[1].dimensions;
+}
+
 // TODO: i hate this, but currently i dont have a clue what could be better
 static void set_first_child_or_next_sibling(UI_Layout& layout)
 {

@@ -138,10 +138,10 @@ static TextureHandle create_item_icon(ItemType item_type, AssetStore& assets)
     .type = CAMERA_TYPE_PERSPECTIVE,
     .pos = {0, 0.9f, 1.8f},
     .prev_pos = {0, 0.9f, 1.8f},
-    .yaw = -0.5f * std::numbers::pi_v<f32>,
-    .pitch = -(std::numbers::pi_v<f32> / 6.0f),
+    .yaw = -0.5f * PI,
+    .pitch = -(PI / 6.0f),
     .fov_type = FOV_TYPE_VERTICAL,
-    .fov = -0.25f * std::numbers::pi_v<f32>,
+    .fov = -0.25f * PI,
     .near_plane = 0.1f,
     .far_plane = 5,
     .viewport = {256, 256},
@@ -157,7 +157,7 @@ static TextureHandle create_item_icon(ItemType item_type, AssetStore& assets)
     pass.cmds_3d,
     load_obj(assets, ENTITY_MESH_PATH[ENTITY_TYPE_FROM_ITEM_TYPE[item_type]]),
     {0, 0, 0},
-    -0.25f * std::numbers::pi_v<f32>,
+    -0.25f * PI,
     {1, 1, 1},
     {1, 1, 1},
     assets
@@ -175,10 +175,10 @@ void game_init(GameData& game, OS_Window& window, OS_Audio& audio)
     .type = CAMERA_TYPE_PERSPECTIVE,
     .pos = {0, 12, 7},
     .prev_pos = {0, 12, 7},
-    .yaw = -0.5f * std::numbers::pi_v<f32>,
-    .pitch = -0.3f * std::numbers::pi_v<f32>,
+    .yaw = -0.5f * PI,
+    .pitch = -0.3f * PI,
     .fov_type = FOV_TYPE_VERTICAL,
-    .fov = 0.25f * std::numbers::pi_v<f32>,
+    .fov = 0.25f * PI,
     .near_plane = 0.1f,
     .far_plane = 1000.0f,
     .viewport = window.dimensions,
@@ -493,12 +493,10 @@ void game_update_tick(GameData& game, f32 dt)
               switch (player_selected_hotbar_slot(entity).type)
               {
                 case ITEM_CONVEYOR:
-                  placed_entity.conveyor.rotation =
-                    (f32) game.scene.place_rotation * (0.5f * std::numbers::pi_v<f32>);
+                  placed_entity.conveyor.rotation = (f32) game.scene.place_rotation * (0.5f * PI);
                   break;
                 case ITEM_STORAGE:
-                  placed_entity.storage.rotation =
-                    (f32) game.scene.place_rotation * (0.5f * std::numbers::pi_v<f32>);
+                  placed_entity.storage.rotation = (f32) game.scene.place_rotation * (0.5f * PI);
                   break;
                 case ITEM_BLOCK:
                 case ITEM_LIGHT_BULB:
@@ -590,7 +588,7 @@ void game_update_tick(GameData& game, f32 dt)
         // maybe use a better algorithm overall to improve this
         {
           static constexpr f32 FRICTION_COEFFICIENT = 0.35f;
-          static constexpr f32 NORMAL_FORCE = EntityPlayer::MASS * G_F32;
+          static constexpr f32 NORMAL_FORCE = EntityPlayer::MASS * GRAVITY;
           static constexpr f32 FRICTION_MAGNITUDE = FRICTION_COEFFICIENT * NORMAL_FORCE;
 
           acceleration *= EntityPlayer::MOVEMENT_SPEED;
@@ -904,11 +902,10 @@ void game_update_tick(GameData& game, f32 dt)
       }
     }
     ui_layout_end(hotbar);
-    // TODO: change the access of the first element to a helper function instead?
     mouse_over_hotbar = ui_intersects(
       game.window->input.mouse_pos,
       {hotbar.pos.x, hotbar.pos.y},
-      hotbar.elements[1].dimensions
+      ui_layout_real_dimensions(hotbar)
     );
   }
   bool mouse_over_inventory = false;
@@ -1219,9 +1216,9 @@ void game_render(GameData& game, f32 t)
       .type = CAMERA_TYPE_PERSPECTIVE,
       .pos = pos,
       .prev_pos = pos,
-      .yaw = std::numbers::pi_v<f32>,
+      .yaw = PI,
       .fov_type = FOV_TYPE_VERTICAL,
-      .fov = 0.5f * std::numbers::pi_v<f32>,
+      .fov = 0.5f * PI,
       .near_plane = 0.1f,
       .far_plane = 25.0f,
       .viewport = SHADOW_MAP_DIMENSIONS,
@@ -1326,7 +1323,7 @@ void game_render(GameData& game, f32 t)
                 game.mouse_tile_pos,
                 0.6f,
                 0.3f,
-                (f32) game.scene.place_rotation * (0.5f * std::numbers::pi_v<f32>),
+                (f32) game.scene.place_rotation * (0.5f * PI),
                 EntityLightBulb::OFF_HOVER_COLOR,
                 game.assets
               );

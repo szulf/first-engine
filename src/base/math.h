@@ -1,11 +1,14 @@
 #ifndef BASE_MATH_H
 #define BASE_MATH_H
 
+#include <numbers>
+
 #include "base.h"
 
-#define G_F32 9.81f
-#define FNV_OFFSET 14695981039346656037UL
-#define FNV_PRIME 1099511628211UL
+static constexpr f32 GRAVITY = 9.81f;
+static constexpr f32 PI = std::numbers::pi_v<f32>;
+static constexpr u64 FNV_OFFSET = 14695981039346656037ULL;
+static constexpr u64 FNV_PRIME = 1099511628211ULL;
 
 bool f32_equal(f32 a, f32 b);
 f32 wrap_to_neg_pi_to_pi(f32 value);

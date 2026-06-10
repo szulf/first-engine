@@ -585,12 +585,12 @@ void os_window_update(OS_Window& window)
       case SDL_EVENT_MOUSE_BUTTON_UP:
       case SDL_EVENT_MOUSE_BUTTON_DOWN:
       {
-        if (e.button.button == 1)
+        if (e.button.button == SDL_BUTTON_LEFT)
         {
           window.input.lmb.down = e.button.down;
           ++window.input.lmb.transition_count;
         }
-        else if (e.button.button == 3)
+        else if (e.button.button == SDL_BUTTON_RIGHT)
         {
           window.input.rmb.down = e.button.down;
           ++window.input.rmb.transition_count;

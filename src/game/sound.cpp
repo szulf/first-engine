@@ -238,15 +238,15 @@ void sound_system_init(Sound_System& system, OS_Audio& audio)
     auto& sound = system.sound_data[SOUND_SINE];
     sound.frames = (u32) (48'000 * 0.3f);
     sound.samples.resize(sound.frames * 2);
-    static constexpr f32 phase_inc = 2.0f * std::numbers::pi_v<f32> * 440.0f / 48'000.0f;
-    f32 phase = std::numbers::pi_v<f32> * 0.5f;
+    static constexpr f32 phase_inc = 2.0f * PI * 440.0f / 48'000.0f;
+    f32 phase = PI * 0.5f;
     for (u32 frame = 0; frame < sound.frames; ++frame)
     {
       f32 s = std::sin(phase) * 0.5f;
       phase += phase_inc;
-      if (phase >= 2.0f * std::numbers::pi_v<f32>)
+      if (phase >= 2.0f * PI)
       {
-        phase -= 2.0f * std::numbers::pi_v<f32>;
+        phase -= 2.0f * PI;
       }
       i16 sample = (i16) (s * std::numeric_limits<i16>::max());
       sound.samples[frame * 2 + 0] = sample;

@@ -85,7 +85,7 @@ static constexpr std::array<bool, ENTITY_TYPE_COUNT> ENTITY_HAS_INVENTORY = []()
 struct EntityPlayer
 {
   static constexpr f32 MOVEMENT_SPEED = 8;
-  static constexpr f32 ROTATION_SPEED = 3 * std::numbers::pi_v<f32>;
+  static constexpr f32 ROTATION_SPEED = 3 * PI;
   static constexpr f32 MASS = 80;
   static constexpr f32 INTERACTION_RADIUS = 2;
   f32 rotation{};
@@ -133,7 +133,7 @@ struct EntityStorage
 
 struct EntityItem
 {
-  static constexpr f32 ROTATION_SPEED = 0.5f * std::numbers::pi_v<f32>;
+  static constexpr f32 ROTATION_SPEED = 0.5f * PI;
   static constexpr f32 SCALE = 0.35f;
   f32 rotation{};
   ItemSlot slot{};

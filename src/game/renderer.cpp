@@ -117,10 +117,10 @@ void render_init(AssetStore& assets)
     .type = CAMERA_TYPE_ORTHOGRAPHIC,
     .pos = {0, 0, 1},
     .prev_pos = {0, 0, 1},
-    .yaw = -0.5f * std::numbers::pi_v<f32>,
+    .yaw = -0.5f * PI,
     .pitch = 0,
     .fov_type = FOV_TYPE_VERTICAL,
-    .fov = 0.25f * std::numbers::pi_v<f32>,
+    .fov = 0.25f * PI,
     .near_plane = 0.0f,
     .far_plane = 10.0f,
   };
@@ -690,8 +690,8 @@ void render_line_arrow(
   arrow_start_pos.z -= main_arm_length * 0.5f * std::cos(rotation);
   arrow_end_pos.z += main_arm_length * 0.5f * std::cos(rotation);
   f32 main_arm_rotation = rotation;
-  f32 left_arm_rotation = rotation - 0.75f * std::numbers::pi_v<f32>;
-  f32 right_arm_rotation = rotation + 0.75f * std::numbers::pi_v<f32>;
+  f32 left_arm_rotation = rotation - 0.75f * PI;
+  f32 right_arm_rotation = rotation + 0.75f * PI;
   cmds.push_back(render_line(arrow_start_pos, main_arm_length, main_arm_rotation, color, assets));
   cmds.push_back(render_line(arrow_end_pos, side_arm_length, left_arm_rotation, color, assets));
   cmds.push_back(render_line(arrow_end_pos, side_arm_length, right_arm_rotation, color, assets));

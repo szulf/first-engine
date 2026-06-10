@@ -76,7 +76,7 @@ struct UI_ChildAlignment
   UI_ChildAlignmentAxis y{};
 };
 
-#define SCROLL_SENSITIVITY 50
+static constexpr u32 SCROLL_SENSITIVITY = 50;
 
 struct UI_ElementConfigNormal
 {
@@ -184,8 +184,10 @@ UI_Layout ui_layout_begin(
   TextureHandle font_texture
 );
 void ui_layout_end(UI_Layout& layout);
+// NOTE: needs to be called after ui_layout_end
+vec2 ui_layout_real_dimensions(UI_Layout& layout);
 
-#define UI_AUTO_ID nullptr
+static constexpr const char* UI_AUTO_ID = nullptr;
 void ui_element_begin(UI_Layout& layout, UI_Id id, const UI_StateOptions& state_options = {});
 void ui_element_end(UI_Layout& layout, const UI_ElementConfigNormal& config = {});
 

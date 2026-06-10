@@ -17,8 +17,7 @@ void camera_look_around(Camera& camera, const vec2& offset)
 {
   camera.yaw += offset.x;
   camera.pitch -= offset.y;
-  camera.pitch =
-    std::clamp(camera.pitch, -0.49f * std::numbers::pi_v<f32>, 0.49f * std::numbers::pi_v<f32>);
+  camera.pitch = std::clamp(camera.pitch, -0.49f * PI, 0.49f * PI);
   camera_update_vectors(camera);
 }
 

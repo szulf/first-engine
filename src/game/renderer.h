@@ -35,7 +35,7 @@ struct Render_Data
 };
 extern Render_Data g_render_data;
 
-#define RENDER_MAX_INSTANCES 10000
+static constexpr usize RENDER_MAX_INSTANCES = 10000;
 struct Render_InstanceData
 {
   mat4 transform{};

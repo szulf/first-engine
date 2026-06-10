@@ -71,6 +71,7 @@ struct std::hash<TextureHandle>
   }
 };
 
+static constexpr u32 MAX_TEXTURE_SLOTS = 16;
 struct Shader
 {
   u32 id{};
