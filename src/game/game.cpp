@@ -166,9 +166,8 @@ static TextureHandle create_item_icon(ItemType item_type, AssetStore& assets)
   return icon;
 }
 
-GameData game_init(OS_Window& window, OS_Audio& audio)
+void game_init(GameData& game, OS_Window& window, OS_Audio& audio)
 {
-  GameData game{};
   game.window = &window;
   sound_system_init(game.sound_system, audio);
   game.keymap = load_gkey("data/keymap.gkey");
@@ -218,8 +217,6 @@ GameData game_init(OS_Window& window, OS_Audio& audio)
   {
     game.item_icons[item_type] = create_item_icon((ItemType) item_type, game.assets);
   }
-
-  return game;
 }
 
 void game_deinit(GameData& game)
@@ -329,6 +326,7 @@ void game_update_tick(GameData& game, f32 dt)
   if (os_key_just_pressed(key_state_from_action(ACTION_TOGGLE_NOCLIP, game)))
   {
     game.debug.noclip = !game.debug.noclip;
+    os_window_center_mouse_pointer(*game.window);
   }
 
   vec3 acceleration = {};
@@ -369,7 +367,6 @@ void game_update_tick(GameData& game, f32 dt)
   {
     game.used_camera = &game.debug_camera;
     os_hide_mouse_pointer();
-    os_window_center_mouse_pointer(*game.window);
 
     if (key_state_from_action(ACTION_CAMERA_MOVE_UP, game).down)
     {
@@ -1197,6 +1194,7 @@ void game_update_frame(GameData& game, f32 t)
     vec2 delta = game.window->input.mouse_pos - window_center;
     vec2 offset = delta * CAMERA_SENSITIVITY;
     camera_look_around(game.debug_camera, offset);
+    os_window_center_mouse_pointer(*game.window);
   }
 }
 

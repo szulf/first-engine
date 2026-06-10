@@ -12,6 +12,9 @@
 bool os_init();
 void os_shutdown();
 
+f32 os_get_time();
+u64 os_get_time_ns();
+
 void os_show_mouse_pointer();
 void os_hide_mouse_pointer();
 
@@ -92,7 +95,6 @@ struct OS_Input
   OS_KeyState rmb;
   i32 mouse_scroll;
   vec2 mouse_pos;
-  vec2 mouse_delta;
 };
 
 void os_input_clear(OS_Input& input);

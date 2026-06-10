@@ -16,6 +16,16 @@ void os_shutdown()
   SDL_Quit();
 }
 
+f32 os_get_time()
+{
+  return (f32) SDL_GetTicksNS() / 1000000000.0f;
+}
+
+u64 os_get_time_ns()
+{
+  return SDL_GetTicksNS();
+}
+
 void os_hide_mouse_pointer()
 {
   SDL_HideCursor();
@@ -570,7 +580,6 @@ void os_window_update(OS_Window& window)
       case SDL_EVENT_MOUSE_MOTION:
       {
         window.input.mouse_pos = {e.motion.x, e.motion.y};
-        window.input.mouse_delta = {e.motion.xrel, e.motion.yrel};
       }
       break;
       case SDL_EVENT_MOUSE_BUTTON_UP:
@@ -619,6 +628,7 @@ void os_window_center_mouse_pointer(OS_Window& window)
     (f32) window.dimensions.x / 2.0f,
     (f32) window.dimensions.y / 2.0f
   );
+  window.input.mouse_pos = {(f32) window.dimensions.x / 2.0f, (f32) window.dimensions.y / 2.0f};
 }
 
 static constexpr usize OS_SDL_MIX_BUFFER_SIZE = 16384;

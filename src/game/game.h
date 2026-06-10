@@ -110,7 +110,7 @@ struct GameData
   DebugOptions debug{};
 };
 
-GameData game_init(OS_Window& window, OS_Audio& audio);
+void game_init(GameData& game, OS_Window& window, OS_Audio& audio);
 void game_deinit(GameData& game);
 void game_update_tick(GameData& game, f32 dt);
 void game_update_frame(GameData& game, f32 t);

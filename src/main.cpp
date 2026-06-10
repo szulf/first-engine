@@ -5,11 +5,8 @@
 #include "os/os.h"
 #include "game/game.h"
 
-static constexpr i32 TPS{60};
-static constexpr std::chrono::milliseconds DT{
-  std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::seconds{1}) / TPS
-};
-static constexpr f32 DT_F32{(f32) DT.count() / (f32) std::milli::den};
+static constexpr i32 TPS = 60;
+static constexpr f32 DT = 1.0f / (f32) TPS;
 
 i32 main()
 {
@@ -34,15 +31,18 @@ i32 main()
   }
   defer(os_audio_deinit(*audio));
 
-  auto game = game_init(*window, *audio);
+  GameData game{};
+  game_init(game, *window, *audio);
   defer(game_deinit(game));
 
-  auto current_time = std::chrono::high_resolution_clock::now();
-  std::chrono::nanoseconds accumulator{};
+  auto current_time = os_get_time();
+  f32 accumulator{};
   while (window->running)
   {
-    auto new_time = std::chrono::high_resolution_clock::now();
+    auto new_time = os_get_time();
     auto frame_time = new_time - current_time;
+    // TODO: i dont know if i really want this
+    frame_time = std::min(frame_time, 0.25f);
     current_time = new_time;
     accumulator += frame_time;
 
@@ -50,12 +50,12 @@ i32 main()
 
     while (accumulator >= DT)
     {
-      game_update_tick(game, DT_F32);
+      game_update_tick(game, DT);
       os_input_clear(window->input);
       accumulator -= DT;
     }
 
-    f32 t = ((f32) accumulator.count() / (f32) std::nano::den) / DT_F32;
+    f32 t = accumulator / DT;
     game_update_frame(game, t);
     game_render(game, t);
 
