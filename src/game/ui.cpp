@@ -363,7 +363,9 @@ ui_adjust_centered_position(UI_Layout& layout, UI_ElementIdx idx, f32 used_space
   if (config.layout_direction == layout_direction_from_axis[(usize) axis] &&
       ui_child_alignment_from_axis(config, axis) == UI_CHILD_ALIGNMENT_CENTER)
   {
-    f32 adjust_value = (ui_dimension_from_axis(elem, axis) - used_space + config.child_gap) * 0.5f;
+    f32 adjust_value = (ui_dimension_from_axis(elem, axis) -
+                        ui_total_padding_from_axis(config, axis) - used_space + config.child_gap) *
+                       0.5f;
     for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
          child_idx = layout.elements[child_idx].next_sibling)
     {
