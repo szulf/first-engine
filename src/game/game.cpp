@@ -348,7 +348,7 @@ void game_update_tick(GameData& game, f32 dt)
       ray_view.w = 0;
       vec4 ray_world = inverse(camera_view(game.gameplay_camera, 0)) * ray_view;
       vec3 ray = normalize(vec3{ray_world.x, ray_world.y, ray_world.z});
-      ASSERT(!f32_equal(ray.y, 0));
+      ASSERT(!f32_equal(ray.y, 0), "dont divide by 0");
       f32 t = (0 - game.gameplay_camera.pos.y) / ray.y;
       mouse_world_pos = game.gameplay_camera.pos + t * ray;
       game.mouse_tile_pos.x = std::round(mouse_world_pos.x);

@@ -301,7 +301,7 @@ std::expected<Shader, Error> shader_from_file(
     else
     {
       glDeleteShader(vs);
-      glDeleteShader(gs);
+      glDeleteShader(fs);
       return std::unexpected{FORWARD(gs_res.error())};
     }
     TRY_ASSIGN(shader.id, shader_link(vs, fs, gs));

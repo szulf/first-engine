@@ -212,10 +212,13 @@ void os_window_update(OS_Window& window)
       case SDL_EVENT_KEY_UP:
       case SDL_EVENT_KEY_DOWN:
       {
-        auto key = sdlk_to_os_key(e.key.key);
-        if (key)
+        if (!e.key.repeat)
         {
-          ++window.input.keys[*key].transition_count;
+          auto key = sdlk_to_os_key(e.key.key);
+          if (key)
+          {
+            ++window.input.keys[*key].transition_count;
+          }
         }
       }
       break;
@@ -299,7 +302,6 @@ std::expected<OS_Audio, Error> os_audio_init()
 {
   OS_Audio audio = {
     .platform_data = (OS_AudioPlatformData*) malloc(sizeof(OS_AudioPlatformData)),
-    // NOTE: allocates memory for 1 second of audio, SURELY it will never ask for this much at once
   };
   ASSERT(audio.platform_data, "Failed to alloc audio platform data");
 
