@@ -309,12 +309,12 @@ std::expected<Scene, Error> load_scene(const std::filesystem::path& path, AssetS
                 }
                 else if (key == "inventory")
                 {
-                  gscn_parse_inventory(
+                  TRY(gscn_parse_inventory(
                     pos,
                     file,
                     entity.player.inventory,
                     EntityPlayer::INVENTORY_SIZE
-                  );
+                  ));
                   continue;
                 }
                 break;
@@ -342,12 +342,12 @@ std::expected<Scene, Error> load_scene(const std::filesystem::path& path, AssetS
                 }
                 else if (key == "inventory")
                 {
-                  gscn_parse_inventory(
+                  TRY(gscn_parse_inventory(
                     pos,
                     file,
                     entity.storage.inventory,
                     EntityStorage::INVENTORY_SIZE
-                  );
+                  ));
                   continue;
                 }
                 else if (key == "is_inventory_open")

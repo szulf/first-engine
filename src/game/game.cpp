@@ -736,7 +736,8 @@ void game_update_tick(GameData& game, f32 dt)
             case ENTITY_LIGHT_BULB:
             {
 
-              if (*game.scene.hovered_entity_idx == idx &&
+              if (game.scene.hovered_entity_idx.has_value() &&
+                  *game.scene.hovered_entity_idx == idx &&
                   os_key_just_pressed(key_state_from_action(ACTION_INTERACT, game)))
               {
                 interactee.light_bulb.on = !interactee.light_bulb.on;
@@ -823,7 +824,7 @@ void game_update_tick(GameData& game, f32 dt)
             ));
 
             // TODO: get rid of the double padding in between rows
-            for (usize row = 1;
+            for (usize row = 0;
                  row < (EntityStorage::INVENTORY_SIZE / EntityPlayer::HOTBAR_SLOT_COUNT);
                  ++row)
             {
