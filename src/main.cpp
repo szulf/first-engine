@@ -6,7 +6,8 @@
 #include "game/game.h"
 
 static constexpr i32 TPS = 60;
-static constexpr f32 DT = 1.0f / (f32) TPS;
+static constexpr u64 DT = 1000000000 / TPS;
+static constexpr f32 DT_F32 = 1.0f / (f32) TPS;
 
 i32 main()
 {
@@ -35,14 +36,14 @@ i32 main()
   game_init(game, *window, *audio);
   defer(game_deinit(game));
 
-  auto current_time = os_get_time();
-  f32 accumulator{};
+  u64 current_time = os_get_time_ns();
+  u64 accumulator{};
   while (window->running)
   {
-    auto new_time = os_get_time();
-    auto frame_time = new_time - current_time;
+    u64 new_time = os_get_time_ns();
+    u64 frame_time = new_time - current_time;
     // TODO: i dont know if i really want this
-    frame_time = std::min(frame_time, 0.25f);
+    frame_time = std::min(frame_time, 250000000ul);
     current_time = new_time;
     accumulator += frame_time;
 
@@ -50,12 +51,12 @@ i32 main()
 
     while (accumulator >= DT)
     {
-      game_update_tick(game, DT);
+      game_update_tick(game, DT_F32);
       os_input_clear(window->input);
       accumulator -= DT;
     }
 
-    f32 t = accumulator / DT;
+    f32 t = (f32) accumulator / (DT_F32 * 1e9f);
     game_update_frame(game, t);
     game_render(game, t);
 
