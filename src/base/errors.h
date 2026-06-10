@@ -44,6 +44,19 @@ std::string error_to_string(const Error& error);
   }                                                                                                \
   while (false)
 
+#define TRY_REPORT(code)                                                                           \
+  do                                                                                               \
+  {                                                                                                \
+    if (auto try_test = (code))                                                                    \
+    {                                                                                              \
+    }                                                                                              \
+    else                                                                                           \
+    {                                                                                              \
+      report(FORWARD(try_test.error()));                                                           \
+    }                                                                                              \
+  }                                                                                                \
+  while (false)
+
 #define TRY_ASSIGN(var, code)                                                                      \
   do                                                                                               \
   {                                                                                                \

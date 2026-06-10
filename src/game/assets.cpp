@@ -779,9 +779,9 @@ MeshHandle load_obj(AssetStore& assets, const std::filesystem::path& path)
     }
     else if (key == "f")
     {
-      obj_parse_vertex(ctx, pos);
-      obj_parse_vertex(ctx, pos);
-      obj_parse_vertex(ctx, pos);
+      TRY_REPORT(obj_parse_vertex(ctx, pos));
+      TRY_REPORT(obj_parse_vertex(ctx, pos));
+      TRY_REPORT(obj_parse_vertex(ctx, pos));
     }
     else if (key == "#")
     {
