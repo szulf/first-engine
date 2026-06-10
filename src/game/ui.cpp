@@ -24,8 +24,8 @@ UI_Layout ui_layout_begin(
   TextureHandle font_texture
 )
 {
-  UI_IdInternal id_internal = id ? std::hash<UI_Id>{}(id) : std::hash<usize>{}(system.next_auto_id);
-  ++system.next_auto_id;
+  ASSERT(id, "cannot use auto id in layouts");
+  UI_IdInternal id_internal = std::hash<std::string_view>{}(std::string_view{id});
   UI_Layout layout = {
     .id = id_internal,
     .system = &system,
@@ -363,7 +363,7 @@ ui_adjust_centered_position(UI_Layout& layout, UI_ElementIdx idx, f32 used_space
   if (config.layout_direction == layout_direction_from_axis[(usize) axis] &&
       ui_child_alignment_from_axis(config, axis) == UI_CHILD_ALIGNMENT_CENTER)
   {
-    f32 adjust_value = (ui_dimension_from_axis(elem, axis) - used_space) * 0.5f;
+    f32 adjust_value = (ui_dimension_from_axis(elem, axis) - used_space + config.child_gap) * 0.5f;
     for (UI_ElementIdx child_idx = elem.first_child; child_idx != 0;
          child_idx = layout.elements[child_idx].next_sibling)
     {
@@ -643,8 +643,8 @@ static void set_first_child_or_next_sibling(UI_Layout& layout)
 
 void ui_element_begin(UI_Layout& layout, UI_Id id, const UI_StateOptions& state_options)
 {
-  UI_IdInternal id_internal =
-    id ? std::hash<UI_Id>{}(id) : std::hash<UI_ElementIdx>{}(layout.elements.size());
+  UI_IdInternal id_internal = id ? std::hash<std::string_view>{}(std::string_view{id})
+                                 : std::hash<UI_ElementIdx>{}(layout.elements.size());
   if (layout.system->last_frame_data[layout.id].id_map.contains(id_internal))
   {
     auto& idx = layout.system->last_frame_data[layout.id].id_map[id_internal];

@@ -144,7 +144,6 @@ struct UI_System
     std::unordered_map<UI_IdInternal, UI_ElementIdx> id_map{};
     std::vector<UI_Element> elements{};
   };
-  usize next_auto_id = 1;
   std::unordered_map<UI_IdInternal, LastFrameData> last_frame_data{};
 };
 
